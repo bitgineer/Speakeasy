@@ -3,6 +3,7 @@ import threading
 import logging
 import numpy as np
 import sounddevice as sd
+import platform
 
 from pynput import keyboard
 
@@ -10,7 +11,11 @@ from .settings import Settings
 from .models import ModelWrapper
 from .clipboard import backup_clipboard, set_clipboard, restore_clipboard
 from .paste import paste_to_active_window
-import pulsectl
+
+if platform.system() != "Windows":
+    import pulsectl
+else:
+    pulsectl = None
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +66,20 @@ class MicrophoneTranscriber:
     # Set default audio source
     # ------------------------------------------------------------------
     def set_default_audio_source(self):
+        if platform.system() == "Windows":
+            # On Windows, audio device selection is handled differently
+            logger.info("Audio source management not available on Windows - using system default")
+            return
+        
         try:
-            with pulsectl.Pulse("set-default-source") as pulse:
-                for source in pulse.source_list():
-                    if source.name == self.device_name:
-                        pulse.source_default_set(source)
-                        logger.info(f"Default source set to: {source.name}")
-                        return
-                logger.warning(f"Source '{self.device_name}' not found")
+            if pulsectl is not None:
+                with pulsectl.Pulse("set-default-source") as pulse:
+                    for source in pulse.source_list():
+                        if source.name == self.device_name:
+                            pulse.source_default_set(source)
+                            logger.info(f"Default source set to: {source.name}")
+                            return
+                    logger.warning(f"Source '{self.device_name}' not found")
         except Exception as e:
             logger.debug(f"Failed to set default source: {e}")
 
@@ -154,12 +165,24 @@ class MicrophoneTranscriber:
             self.stop_event.clear()
             self.is_recording = True
             self.recording_start_time = time.time()
+            device_to_use = None
+            if self.device_name and self.device_name != "default":
+                try:
+                    devices = sd.query_devices()
+                    for i, device_info in enumerate(devices):
+                        if (device_info.get('name') == self.device_name and 
+                            device_info.get('max_input_channels', 0) > 0):
+                            device_to_use = i
+                            break
+                except Exception as e:
+                    logger.warning(f"Could not find device '{self.device_name}': {e}")
+            
             self.stream = sd.InputStream(
                 callback=self.audio_callback,
                 channels=1,
                 samplerate=self.sample_rate,
                 blocksize=4000,
-                device="default",
+                device=device_to_use,  # None will use system default
             )
             self.stream.start()
 

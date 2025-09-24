@@ -26,8 +26,12 @@ from .config import (
 )
 from .settings import save_settings, load_settings, Settings
 from .transcriber import MicrophoneTranscriber
+import platform
 
-import pulsectl
+if platform.system() != "Windows":
+    import pulsectl
+else:
+    pulsectl = None
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -53,16 +57,26 @@ def main():
                 # ------------------------------------------------------------------
                 # 1️⃣  Audio source selection
                 # ------------------------------------------------------------------
-                with pulsectl.Pulse() as pulse:
-                    sources = pulse.source_list()
-                    source_names = [src.name for src in sources]
-                    device_name = curses.wrapper(
-                        lambda stdscr: curses_menu(
-                            stdscr, "Audio Device", source_names
-                        )
-                    )
-                    if not device_name:
-                        continue
+                if platform.system() == "Windows":
+                    # On Windows, use default audio device
+                    device_name = "default"
+                    logger.info("Using default audio device on Windows")
+                else:
+                    # On Linux/macOS, use PulseAudio
+                    if pulsectl is not None:
+                        with pulsectl.Pulse() as pulse:
+                            sources = pulse.source_list()
+                            source_names = [src.name for src in sources]
+                            device_name = curses.wrapper(
+                                lambda stdscr: curses_menu(
+                                    stdscr, "Audio Device", source_names
+                                )
+                            )
+                            if not device_name:
+                                continue
+                    else:
+                        device_name = "default"
+                        logger.info("PulseAudio not available, using default device")
 
                 # ------------------------------------------------------------------
                 # 2️⃣  Model type
