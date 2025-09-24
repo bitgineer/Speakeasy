@@ -36,7 +36,8 @@ dependencies = [
     "mistral-common[audio]>=1.8.4",
     "transformers>=4.56",
     "bitsandbytes>=0.43.1",
-    "pyperclip"
+    "pyperclip",
+    "windows-curses; sys_platform == 'win32'"
 
 ]
 
