@@ -92,6 +92,51 @@ _see https://docs.astral.sh/uv/ for more information on uv. uv is fast :\)_
 
 You need to install cudnn https://developer.nvidia.com/cudnn-downloads
 
+### Windows Installation
+
+The main branch uses PulseAudio (Linux-only). For Windows, use the `feature/supportWindows` branch.
+
+#### Fresh Install
+
+```powershell
+git clone https://github.com/eutychius/faster-whisper-hotkey
+cd faster-whisper-hotkey
+git checkout feature/supportWindows
+uv tool install .
+```
+
+#### If You Already Installed the Main Branch
+
+If you previously installed from PyPi or the main branch and got the `libpulse.so.0` error, uninstall first:
+
+```powershell
+uv tool uninstall faster-whisper-hotkey
+```
+
+Then follow the fresh install steps above.
+
+#### Troubleshooting
+
+**`ModuleNotFoundError: No module named '_curses'`**
+
+Windows doesn't include curses natively. Install the Windows version:
+
+```powershell
+uv pip install windows-curses --python %APPDATA%\uv\tools\faster-whisper-hotkey\Scripts\python.exe
+```
+
+**`FileNotFoundError: Could not find module 'libpulse.so.0'`**
+
+You're running the Linux version. Uninstall and reinstall from the Windows branch:
+
+```powershell
+uv tool uninstall faster-whisper-hotkey
+git clone https://github.com/eutychius/faster-whisper-hotkey
+cd faster-whisper-hotkey
+git checkout feature/supportWindows
+uv tool install .
+```
+
 ## Usage
 
 1. Whether you installed from PyPi or from source, just run `faster-whisper-hotkey`
