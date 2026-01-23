@@ -101,6 +101,11 @@ class Settings:
     # Theme settings
     theme_mode: str = "system"  # "system", "light", or "dark"
 
+    # History settings
+    history_retention_days: int = 30  # Auto-delete history older than X days
+    history_confirm_clear: bool = True  # Confirm before clearing history
+    history_backup_enabled: bool = False  # Auto-backup history before clearing
+
     def __post_init__(self):
         if self.text_processing is None:
             self.text_processing = {}
@@ -159,6 +164,10 @@ def load_settings() -> Settings | None:
             data.setdefault("voice_commands", {})
             # Theme settings with defaults
             data.setdefault("theme_mode", "system")
+            # History settings with defaults
+            data.setdefault("history_retention_days", 30)
+            data.setdefault("history_confirm_clear", True)
+            data.setdefault("history_backup_enabled", False)
             return Settings(**data)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load settings: {e}")

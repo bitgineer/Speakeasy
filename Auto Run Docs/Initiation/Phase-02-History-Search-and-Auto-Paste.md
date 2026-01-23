@@ -149,7 +149,7 @@ This phase adds the remaining MVP features: searchable transcription history and
     - Tray recording state updates when transcription state changes
     - Recent items loaded on startup from history manager
 
-- [ ] Polish the history user experience:
+- [x] Polish the history user experience:
   - Add history settings to `settings_panel.py`:
     - Maximum history items limit (default: 1000)
     - Auto-delete after X days option
@@ -159,6 +159,17 @@ This phase adds the remaining MVP features: searchable transcription history and
   - Add tags/labels system for organizing transcriptions
   - Show statistics: total items, today's count, most used model
   - Create history backup/restore functionality
+  - **Status**: COMPLETED - Added comprehensive history settings:
+    - Maximum history items spinbox (5-10000, default: 1000)
+    - Retention days spinbox (1-365, default: 30)
+    - Confirm before clear checkbox (default: enabled)
+    - Auto-backup before clearing checkbox (default: disabled)
+    - History item editing with edit/save buttons in detail panel
+    - Tags/labels system with add/remove tag functionality
+    - Statistics dialog showing: total items, today's count, week count, most used model/language, oldest and newest entries
+    - Backup history button (creates timestamped backups in history_backups/ folder)
+    - Restore history button (imports from JSON backup files)
+    - Enhanced export to use HistoryManager for better compatibility
 
 - [x] Integrate history with main transcription flow:
   - Auto-save every transcription to history

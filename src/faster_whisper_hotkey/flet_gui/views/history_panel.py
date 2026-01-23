@@ -86,6 +86,8 @@ class HistoryPanel:
         self._detail_model: Optional[ft.Text] = None
         self._detail_language: Optional[ft.Text] = None
         self._detail_device: Optional[ft.Text] = None
+        self._detail_tags: Optional[ft.Row] = None  # Tags display row
+        self._tag_input: Optional[ft.TextField] = None  # Tag input field
 
     def build(self) -> ft.Container:
         """
@@ -202,6 +204,11 @@ class HistoryPanel:
                             ),
                             ft.Container(expand=True),
                             ft.IconButton(
+                                icon=ft.icons.ANALYTICS_OUTLINE,
+                                tooltip="View statistics",
+                                on_click=self._on_stats_click,
+                            ),
+                            ft.IconButton(
                                 icon=ft.icons.HELP_OUTLINE,
                                 tooltip="Search help",
                                 on_click=self._on_help_click,
@@ -229,6 +236,9 @@ class HistoryPanel:
 
     def _build_detail_panel(self) -> ft.Container:
         """Build the detail view panel."""
+        # Track edit mode
+        self._edit_mode = False
+
         # Detail text area
         self._detail_text = ft.TextField(
             value="",
@@ -239,6 +249,21 @@ class HistoryPanel:
             border_color=ft.colors.OUTLINE,
             border_radius=8,
             bgcolor=ft.colors.SURFACE_CONTAINER_LOW,
+        )
+
+        # Edit button (hidden by default)
+        self._edit_button = ft.IconButton(
+            icon=ft.icons.EDIT_OUTLINE,
+            tooltip="Edit transcription",
+            on_click=self._on_edit_click,
+        )
+
+        # Save button (hidden by default)
+        self._save_button = ft.IconButton(
+            icon=ft.icons.SAVE,
+            tooltip="Save changes",
+            on_click=self._on_save_click,
+            visible=False,
         )
 
         # Metadata labels
@@ -263,6 +288,30 @@ class HistoryPanel:
             size=12,
         )
 
+        # Tags display row
+        self._detail_tags = ft.Row(
+            [],
+            spacing=4,
+            wrap=True,
+        )
+
+        # Tag management section
+        self._tag_input = ft.TextField(
+            hint_text="Add a tag...",
+            width=150,
+            height=36,
+            text_size=11,
+            visible=False,
+        )
+
+        self._add_tag_button = ft.IconButton(
+            icon=ft.icons.ADD,
+            tooltip="Add tag",
+            icon_size=16,
+            on_click=self._on_add_tag_click,
+            visible=False,
+        )
+
         return ft.Container(
             content=ft.Column(
                 [
@@ -276,6 +325,8 @@ class HistoryPanel:
                                 color=ft.colors.ON_SURFACE,
                             ),
                             ft.Container(expand=True),
+                            self._edit_button,
+                            self._save_button,
                             ft.IconButton(
                                 icon=ft.icons.CLOSE,
                                 tooltip="Close details",
@@ -298,6 +349,39 @@ class HistoryPanel:
                             self._detail_model,
                             self._detail_language,
                             self._detail_device,
+                        ],
+                        spacing=4,
+                    ),
+                    ft.Divider(height=15),
+
+                    # Tags section
+                    ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Text(
+                                        "Tags",
+                                        size=12,
+                                        weight=ft.FontWeight.MEDIUM,
+                                        color=ft.colors.ON_SURFACE_VARIANT,
+                                    ),
+                                    ft.Container(expand=True),
+                                    ft.IconButton(
+                                        icon=ft.icons.EDIT_OUTLINE,
+                                        tooltip="Manage tags",
+                                        icon_size=16,
+                                        on_click=self._on_toggle_tag_edit,
+                                    ),
+                                ],
+                            ),
+                            self._detail_tags,
+                            ft.Row(
+                                [
+                                    self._tag_input,
+                                    self._add_tag_button,
+                                ],
+                                visible=False,
+                            ),
                         ],
                         spacing=4,
                     ),
@@ -567,6 +651,16 @@ class HistoryPanel:
         else:
             self._detail_device.value = "Device: Unknown"
 
+        # Update tags display
+        self._update_tags_display(item.tags or [])
+
+        # Reset tag edit mode
+        self._tag_input.visible = False
+        self._add_tag_button.visible = False
+        if self._tag_input.page:
+            self._tag_input.update()
+            self._add_tag_button.update()
+
         # Make detail panel visible
         if self._detail_panel:
             self._detail_panel.visible = True
@@ -580,9 +674,14 @@ class HistoryPanel:
             self._detail_model.update()
             self._detail_language.update()
             self._detail_device.update()
+            self._detail_tags.update()
 
     def _on_close_detail(self, e):
         """Close the detail panel."""
+        # Exit edit mode if active
+        if self._edit_mode:
+            self._exit_edit_mode()
+
         if self._detail_panel:
             self._detail_panel.visible = False
             if self._detail_panel.page:
@@ -841,6 +940,294 @@ class HistoryPanel:
                     duration=2000,
                 )
             )
+
+    def _on_stats_click(self, e):
+        """Show statistics dialog with detailed history statistics."""
+        if not self._search_field or not self._search_field.page:
+            return
+
+        page = self._search_field.page
+        stats = self.history_manager.get_statistics()
+
+        # Build statistics content
+        total_items = stats.get("total_items", 0)
+        today_count = stats.get("today_count", 0)
+        week_count = stats.get("week_count", 0)
+        most_used_model = stats.get("most_used_model", "N/A")
+        most_used_language = stats.get("most_used_language", "N/A")
+        oldest_item = stats.get("oldest_item", "N/A")
+        newest_item = stats.get("newest_item", "N/A")
+
+        # Format dates
+        def format_date(date_str):
+            if not date_str or date_str == "N/A":
+                return "N/A"
+            try:
+                dt = datetime.fromisoformat(date_str)
+                return dt.strftime("%Y-%m-%d")
+            except (ValueError, TypeError):
+                return date_str[:10] if len(date_str) >= 10 else date_str
+
+        # Create stats rows
+        stats_rows = [
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("Total Items", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(str(total_items), size=14)),
+                ]
+            ),
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("Today", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(str(today_count), size=14)),
+                ]
+            ),
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("This Week", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(str(week_count), size=14)),
+                ]
+            ),
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("Most Used Model", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(most_used_model, size=14)),
+                ]
+            ),
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("Most Used Language", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(most_used_language.upper() if most_used_language != "N/A" else "N/A", size=14)),
+                ]
+            ),
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("Oldest Entry", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(format_date(oldest_item), size=14)),
+                ]
+            ),
+            ft.DataRow(
+                [
+                    ft.DataCell(ft.Text("Newest Entry", weight=ft.FontWeight.BOLD)),
+                    ft.DataCell(ft.Text(format_date(newest_item), size=14)),
+                ]
+            ),
+        ]
+
+        def close_stats(e):
+            page.close(dialog)
+
+        dialog = ft.AlertDialog(
+            title=ft.Row(
+                [
+                    ft.Icon(ft.icons.ANALYTICS, color=ft.colors.PRIMARY),
+                    ft.Text("History Statistics", size=18),
+                ],
+                spacing=8,
+            ),
+            content=ft.Container(
+                content=ft.DataTable(
+                    columns=[
+                        ft.DataColumn(ft.Text("Metric", size=12, weight=ft.FontWeight.BOLD)),
+                        ft.DataColumn(ft.Text("Value", size=12, weight=ft.FontWeight.BOLD)),
+                    ],
+                    rows=stats_rows,
+                    border=ft.border.all(1, ft.colors.OUTLINE_VARIANT),
+                    border_radius=8,
+                    horizontal_lines=ft.border.BorderSide(1, ft.colors.OUTLINE_VARIANT),
+                    data_row_color=ft.colors.SURFACE_CONTAINER_LOW,
+                ),
+                width=350,
+                padding=ft.padding.all(10),
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=close_stats),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.dialog = dialog
+        dialog.open = True
+        page.update()
+
+    def _on_edit_click(self, e):
+        """Handle edit button click - enable edit mode."""
+        if not self._selected_item:
+            return
+
+        self._edit_mode = True
+
+        # Enable editing on the text field
+        self._detail_text.read_only = False
+        self._detail_text.border_color = ft.colors.PRIMARY
+        self._detail_text.bgcolor = ft.colors.SURFACE
+
+        # Toggle button visibility
+        self._edit_button.visible = False
+        self._save_button.visible = True
+
+        # Update UI
+        if self._detail_text.page:
+            self._detail_text.update()
+            self._edit_button.update()
+            self._save_button.update()
+
+        # Focus the text field
+        if self._detail_text.page:
+            self._detail_text.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text("Edit mode enabled - make your changes and click Save"),
+                    duration=3000,
+                )
+            )
+
+    def _on_save_click(self, e):
+        """Handle save button click - save edited text."""
+        if not self._selected_item or not self._selected_item.id:
+            return
+
+        new_text = self._detail_text.value
+
+        # Update the history item
+        self._selected_item.text = new_text
+        self._selected_item.edited = True
+
+        if self.history_manager.update_item(self._selected_item.id, self._selected_item):
+            self._show_snackbar("Changes saved successfully")
+
+            # Update the list item preview
+            for control in self._history_list.controls:
+                if hasattr(control, 'content') and hasattr(control.content, 'controls'):
+                    # This is a card, find the text control
+                    for inner_control in control.content.controls:
+                        if isinstance(inner_control, ft.Column):
+                            for col_control in inner_control.controls:
+                                if isinstance(col_control, ft.Text) and len(col_control.value) > 20:
+                                    # This is likely the preview text
+                                    preview = new_text[:80] + "..." if len(new_text) > 80 else new_text
+                                    col_control.value = preview
+                                    col_control.update()
+        else:
+            self._show_snackbar("Failed to save changes")
+
+        # Exit edit mode
+        self._exit_edit_mode()
+
+        # Refresh the list
+        self._refresh_list()
+
+    def _exit_edit_mode(self):
+        """Exit edit mode and return to view mode."""
+        self._edit_mode = False
+
+        # Disable editing on the text field
+        self._detail_text.read_only = True
+        self._detail_text.border_color = ft.colors.OUTLINE
+        self._detail_text.bgcolor = ft.colors.SURFACE_CONTAINER_LOW
+
+        # Toggle button visibility
+        self._edit_button.visible = True
+        self._save_button.visible = False
+
+        # Update UI
+        if self._detail_text.page:
+            self._detail_text.update()
+            self._edit_button.update()
+            self._save_button.update()
+
+    def _update_tags_display(self, tags: List[str]):
+        """Update the tags display chips."""
+        self._detail_tags.controls.clear()
+
+        if not tags:
+            # Show "No tags" message
+            self._detail_tags.controls.append(
+                ft.Text(
+                    "No tags",
+                    color=ft.colors.ON_SURFACE_VARIANT,
+                    size=11,
+                    italic=True,
+                )
+            )
+        else:
+            # Create a chip for each tag
+            for tag in tags:
+                chip = ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Text(tag, size=11, color=ft.colors.ON_PRIMARY_CONTAINER),
+                            ft.IconButton(
+                                icon=ft.icons.CLOSE,
+                                icon_size=12,
+                                tooltip="Remove tag",
+                                on_click=lambda e, t=tag: self._on_remove_tag_click(t),
+                            ),
+                        ],
+                        spacing=4,
+                    ),
+                    bgcolor=ft.colors.PRIMARY_CONTAINER,
+                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                    border_radius=12,
+                )
+                self._detail_tags.controls.append(chip)
+
+        if self._detail_tags.page:
+            self._detail_tags.update()
+
+    def _on_toggle_tag_edit(self, e):
+        """Toggle tag edit mode."""
+        is_visible = self._tag_input.visible
+        self._tag_input.visible = not is_visible
+        self._add_tag_button.visible = not is_visible
+
+        if self._tag_input.page:
+            self._tag_input.update()
+            self._add_tag_button.update()
+
+    def _on_add_tag_click(self, e):
+        """Add a new tag to the current item."""
+        if not self._selected_item:
+            return
+
+        new_tag = self._tag_input.value.strip().lower()
+        if not new_tag:
+            return
+
+        # Check if tag already exists
+        if self._selected_item.tags and new_tag in self._selected_item.tags:
+            self._show_snackbar(f"Tag '{new_tag}' already exists")
+            return
+
+        # Add the tag
+        if not self._selected_item.tags:
+            self._selected_item.tags = []
+        self._selected_item.tags.append(new_tag)
+
+        # Save to database
+        if self.history_manager.update_item(self._selected_item.id, self._selected_item):
+            self._update_tags_display(self._selected_item.tags)
+            self._tag_input.value = ""
+            if self._tag_input.page:
+                self._tag_input.update()
+            self._show_snackbar(f"Tag '{new_tag}' added")
+        else:
+            self._show_snackbar("Failed to add tag")
+
+    def _on_remove_tag_click(self, tag: str):
+        """Remove a tag from the current item."""
+        if not self._selected_item or not self._selected_item.tags:
+            return
+
+        # Remove the tag
+        if tag in self._selected_item.tags:
+            self._selected_item.tags.remove(tag)
+
+            # Save to database
+            if self.history_manager.update_item(self._selected_item.id, self._selected_item):
+                self._update_tags_display(self._selected_item.tags)
+                self._show_snackbar(f"Tag '{tag}' removed")
+            else:
+                self._show_snackbar("Failed to remove tag")
 
     # Public properties for accessing UI components
     @property
