@@ -1,3 +1,27 @@
+"""
+Platform-specific paste operations for faster-whisper-hotkey.
+
+This module handles sending paste keyboard shortcuts to the active window,
+detecting whether the focused window is a terminal to use the appropriate
+key combination (Ctrl+V for most apps, Ctrl+Shift+V for terminals).
+
+Functions
+---------
+paste_x11
+    Send the paste shortcut on X11 (Linux).
+
+paste_wayland
+    Send the paste shortcut on Wayland (Linux).
+
+paste_to_active_window
+    Detect the focused window and issue the appropriate paste shortcut.
+
+Notes
+-----
+On X11, uses pynput keyboard simulation.
+On Wayland, uses the wtype command if available.
+"""
+
 import time
 import shutil
 import subprocess

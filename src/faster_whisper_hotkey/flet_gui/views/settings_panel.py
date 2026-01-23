@@ -12,6 +12,7 @@ import flet as ft
 
 from ..settings_service import SettingsService
 from ..app_state import AppState
+from ..hardware_detector import HardwareDetector, HardwareInfo, format_vram_size
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,7 @@ class SettingsPanel:
         app_state: AppState,
         on_save: Optional[Callable[[], None]] = None,
         on_cancel: Optional[Callable[[], None]] = None,
+        on_open_model_manager: Optional[Callable[[], None]] = None,
     ):
         """
         Initialize the settings panel.
@@ -99,11 +101,18 @@ class SettingsPanel:
             Callback when settings are saved.
         on_cancel
             Callback when settings are cancelled.
+        on_open_model_manager
+            Callback to open the model manager.
         """
         self.settings_service = settings_service
         self.app_state = app_state
         self._on_save = on_save
         self._on_cancel = on_cancel
+        self._on_open_model_manager = on_open_model_manager
+
+        # Hardware detection
+        self._hardware_detector = HardwareDetector()
+        self._hardware_info: Optional[HardwareInfo] = None
 
         # UI components
         self._model_dropdown: Optional[ft.Dropdown] = None
@@ -115,6 +124,8 @@ class SettingsPanel:
         self._hotkey_capture_status: Optional[ft.Text] = None
         self._is_capturing_hotkey = False
         self._captured_keys: List[str] = []
+        self._hardware_status_text: Optional[ft.Text] = None
+        self._model_status_text: Optional[ft.Text] = None
 
     def build(self) -> ft.Container:
         """
@@ -222,12 +233,34 @@ class SettingsPanel:
                     ),
                     ft.Divider(height=20),
 
-                    # Model settings section
+                    # Hardware detection section (new)
                     ft.Text(
-                        "Model Settings",
+                        "Hardware Detection",
                         size=14,
                         weight=ft.FontWeight.MEDIUM,
                         color=ft.colors.ON_SURFACE,
+                    ),
+                    self._build_hardware_status(),
+
+                    ft.Divider(height=20),
+
+                    # Model settings section
+                    ft.Row(
+                        [
+                            ft.Text(
+                                "Model Settings",
+                                size=14,
+                                weight=ft.FontWeight.MEDIUM,
+                                color=ft.colors.ON_SURFACE,
+                            ),
+                            ft.Container(expand=True),
+                            ft.TextButton(
+                                "Browse All Models",
+                                icon=ft.icons.MODEL_TRAINING,
+                                on_click=self._on_open_model_manager_click,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                     ft.Column(
                         [self._model_dropdown],
@@ -312,6 +345,9 @@ class SettingsPanel:
 
         # Load current settings into UI
         self._load_current_settings()
+
+        # Run hardware detection
+        self._run_hardware_detection()
 
         return panel
 
@@ -498,3 +534,77 @@ class SettingsPanel:
     def hotkey_field(self) -> Optional[ft.TextField]:
         """Get the hotkey field."""
         return self._hotkey_field
+
+    # Hardware detection methods
+    def _build_hardware_status(self) -> ft.Container:
+        """Build the hardware detection status display."""
+        self._hardware_status_text = ft.Text(
+            "Detecting hardware...",
+            size=12,
+            color=ft.colors.ON_SURFACE_VARIANT,
+        )
+
+        return ft.Container(
+            content=self._hardware_status_text,
+            padding=ft.padding.symmetric(horizontal=12, vertical=8),
+            bgcolor=ft.colors.SURFACE_CONTAINER_LOW,
+            border_radius=8,
+        )
+
+    def _run_hardware_detection(self) -> None:
+        """Run hardware detection in background."""
+        def detect():
+            self._hardware_info = self._hardware_detector.detect()
+            self._update_hardware_display()
+
+        import threading
+        threading.Thread(target=detect, daemon=True).start()
+
+    def _update_hardware_display(self) -> None:
+        """Update the hardware display with detection results."""
+        if not self._hardware_info or not self._hardware_status_text:
+            return
+
+        if self._hardware_info.has_cuda:
+            status = f"GPU: {self._hardware_info.gpu_name}"
+            if self._hardware_info.vram_total_mb:
+                status += f" ({format_vram_size(self._hardware_info.vram_total_mb)} VRAM)"
+            color = ft.colors.GREEN
+        else:
+            status = "CPU mode (no GPU detected)"
+            color = ft.colors.AMBER
+
+        self._hardware_status_text.value = status
+        self._hardware_status_text.color = color
+
+        # Update device dropdown recommendation
+        if self._hardware_info.recommended_device:
+            self._device_dropdown.value = self._hardware_info.recommended_device
+        if self._hardware_info.recommended_compute_type:
+            self._compute_type_dropdown.value = self._hardware_info.recommended_compute_type
+
+        # Update UI
+        if self._hardware_status_text.page:
+            self._hardware_status_text.page.update()
+
+    # Model manager integration
+    def _on_open_model_manager_click(self, e) -> None:
+        """Handle Browse Models button click."""
+        if self._on_open_model_manager:
+            self._on_open_model_manager()
+
+    def set_model_status(self, model_name: str, is_installed: bool, status: str = "installed") -> None:
+        """
+        Update the model status display.
+
+        Parameters
+        ----------
+        model_name
+            Name of the model.
+        is_installed
+            Whether the model is installed.
+        status
+            Additional status info.
+        """
+        # Status text may not be initialized yet
+        pass

@@ -1,3 +1,23 @@
+"""
+ASR model wrapper for faster-whisper-hotkey.
+
+This module provides a unified interface for loading and running different
+Automatic Speech Recognition (ASR) models. It supports Whisper, Parakeet,
+Canary, and Voxtral models with model-specific optimizations.
+
+Classes
+-------
+ModelWrapper
+    Encapsulates loading and running different model types.
+
+Notes
+-----
+- Voxtral has a 30-second audio limit and handles chunking automatically.
+- Canary requires source-target language pair specification.
+- Parakeet does not require language specification.
+- Whisper supports the widest range of languages.
+"""
+
 import os
 import tempfile
 import logging
@@ -267,3 +287,93 @@ class ModelWrapper:
                 os.unlink(audio_path)
             except Exception:
                 pass
+
+    def transcribe_streaming(
+        self,
+        audio_data,
+        sample_rate: int = 16000,
+        language: Optional[str] = None,
+        callback=None,
+    ):
+        """
+        Stream transcription results as they are generated.
+
+        Yields tuples of (text, confidence) for each segment as it's transcribed.
+        For Whisper model, uses internal chunking to provide real-time results.
+
+        Args:
+            audio_data: Numpy array of audio samples
+            sample_rate: Audio sample rate (default: 16000)
+            language: Language code for transcription
+            callback: Optional callback function(segment_text, confidence, is_final)
+
+        Returns:
+            Generator yielding (text, confidence, is_final) tuples
+        """
+        mt = self.model_type
+        try:
+            if mt == "whisper":
+                # Whisper supports streaming via its transcribe generator
+                segments, info = self.model.transcribe(
+                    audio_data,
+                    beam_size=5,
+                    condition_on_previous_text=False,
+                    language=(language if language and language != "auto" else None),
+                    word_timestamps=True,  # Enable word-level timestamps for better streaming
+                )
+
+                accumulated_text = ""
+                for segment in segments:
+                    segment_text = segment.text.strip()
+                    if not segment_text:
+                        continue
+
+                    # Calculate average confidence for this segment
+                    # Whisper provides probability scores via segment.avg_logprob
+                    confidence = getattr(segment, 'avg_logprob', None)
+                    if confidence is not None:
+                        # Convert logprob to probability-like score (0-1)
+                        # Typical logprob range is -2 to 0, normalize to 0-1
+                        confidence = max(0, min(1, (confidence + 2) / 2))
+
+                    accumulated_text += (" " if accumulated_text else "") + segment_text
+
+                    if callback:
+                        try:
+                            callback(accumulated_text, confidence, False)
+                        except Exception as e:
+                            logger.debug(f"Streaming callback error: {e}")
+
+                    yield (accumulated_text, confidence, False)
+
+                # Final result with all segments combined
+                if callback:
+                    try:
+                        callback(accumulated_text, 1.0, True)
+                    except Exception:
+                        pass
+
+                yield (accumulated_text, 1.0, True)
+
+            elif mt in ("parakeet", "canary", "voxtral"):
+                # For non-Whisper models, fall back to non-streaming transcription
+                # These models don't support chunked streaming
+                result = self.transcribe(audio_data, sample_rate, language)
+                if callback:
+                    try:
+                        callback(result, 1.0, True)
+                    except Exception:
+                        pass
+                yield (result, 1.0, True)
+
+            else:
+                raise ValueError(f"Unknown model type: {mt}")
+
+        except Exception as e:
+            logger.error(f"Error during model.transcribe_streaming: {e}")
+            if callback:
+                try:
+                    callback("", 0.0, True)
+                except Exception:
+                    pass
+            yield ("", 0.0, True)

@@ -1,3 +1,24 @@
+"""
+Terminal-based UI components using curses.
+
+This module provides interactive terminal user interface components for the
+CLI wizard and settings configuration. It uses the curses library for
+platform-independent terminal UI.
+
+Functions
+---------
+curses_menu
+    Display a scrollable list of options in a curses window.
+
+get_initial_choice
+    Prompt the user to choose between using last settings or new settings.
+
+Notes
+-----
+The curses_menu function handles terminal resize and displays a scroll bar
+when the list of options exceeds the available screen space.
+"""
+
 import curses
 from typing import List
 

@@ -1,0 +1,97 @@
+digraph faster_whisper_hotkey_deps {
+    // Graph settings
+    rankdir=TB;
+    splines=spline;
+    node [fontname="Arial", fontsize=10];
+    edge [fontname="Arial", fontsize=9, color="#555555"];
+
+    // Subgraphs for module categories
+
+    subgraph cluster_ui {
+        label = "UI";
+        style = filled;
+        color = "#F3E5F5";
+        "gui";
+        "history_panel";
+        "hotkey_dialog";
+        "onboarding";
+        "shortcuts_panel";
+        "ui";
+    }
+
+    subgraph cluster_core {
+        label = "CORE";
+        style = filled;
+        color = "#E3F2FD";
+        "models";
+        "settings";
+        "transcriber";
+    }
+
+    subgraph cluster_entry {
+        label = "ENTRY";
+        style = filled;
+        color = "#E8F5E9";
+        "__main__";
+        "cli";
+    }
+
+    subgraph cluster_utils {
+        label = "UTILS";
+        style = filled;
+        color = "#F1F8E9";
+        "shortcuts_manager";
+    }
+
+    subgraph cluster_config {
+        label = "CONFIG";
+        style = filled;
+        color = "#FFF3E0";
+        "config";
+        "transcribe";
+    }
+
+    subgraph cluster_platform {
+        label = "PLATFORM";
+        style = filled;
+        color = "#E0F2F1";
+        "clipboard";
+        "paste";
+        "terminal";
+    }
+
+    subgraph cluster_other {
+        label = "OTHER";
+        style = filled;
+        color = "#F5F5F5";
+        "faster_whisper_hotkey";
+    }
+
+    // Dependencies
+    "__main__" -> "cli";
+    "cli" -> "config";
+    "cli" -> "faster_whisper_hotkey";
+    "cli" -> "models";
+    "cli" -> "settings";
+    "cli" -> "transcribe";
+    "cli" -> "transcriber";
+    "gui" -> "history_panel";
+    "gui" -> "hotkey_dialog";
+    "gui" -> "onboarding";
+    "gui" -> "settings";
+    "gui" -> "shortcuts_panel";
+    "gui" -> "transcriber";
+    "history_panel" -> "settings";
+    "paste" -> "faster_whisper_hotkey";
+    "shortcuts_manager" -> "settings";
+    "shortcuts_panel" -> "hotkey_dialog";
+    "shortcuts_panel" -> "shortcuts_manager";
+    "transcribe" -> "config";
+    "transcribe" -> "settings";
+    "transcribe" -> "transcriber";
+    "transcribe" -> "ui";
+    "transcriber" -> "clipboard";
+    "transcriber" -> "models";
+    "transcriber" -> "paste";
+    "transcriber" -> "settings";
+}

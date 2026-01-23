@@ -83,7 +83,8 @@ class FletApp:
         self._transcription_panel: Optional[TranscriptionPanel] = None
         self._settings_panel: Optional[SettingsPanel] = None
         self._history_panel: Optional[HistoryPanel] = None
-        self._current_view = "transcription"  # "transcription", "settings", or "history"
+        self._model_manager_panel = None  # Will be initialized when needed
+        self._current_view = "transcription"  # "transcription", "settings", "history", or "models"
 
     def build(self, page: ft.Page):
         """
@@ -141,6 +142,7 @@ class FletApp:
             self.app_state,
             on_save=self._on_settings_saved,
             on_cancel=self._on_settings_cancelled,
+            on_open_model_manager=self._open_model_manager,
         )
         self._history_panel = HistoryPanel(
             self.history_manager,
@@ -257,12 +259,12 @@ class FletApp:
 
     def _switch_view(self, view: str):
         """
-        Switch between transcription, settings, and history views.
+        Switch between transcription, settings, history, and models views.
 
         Parameters
         ----------
         view
-            The view to switch to: "transcription", "settings", or "history".
+            The view to switch to: "transcription", "settings", "history", or "models".
         """
         if not self._content_stack:
             return
@@ -791,4 +793,95 @@ class FletApp:
         if self.tray_manager:
             self.tray_manager.stop()
 
+        if self._model_manager_panel:
+            self._model_manager_panel.destroy()
+
         logger.info("FletApp shutdown complete")
+
+    # Model manager methods
+    def _open_model_manager(self, e=None):
+        """
+        Open the model manager panel.
+
+        Creates the model manager panel on first access and switches to it.
+        """
+        if not self._model_manager_panel:
+            from .views.model_manager import ModelManagerPanel
+
+            self._model_manager_panel = ModelManagerPanel(
+                on_model_selected=self._on_model_selected,
+                on_close=lambda: self._switch_view("settings"),
+            )
+
+            # Create a new view for model manager
+            model_manager_content = ft.Column(
+                [
+                    self._model_manager_panel.build(),
+                    self._build_model_manager_controls(),
+                ],
+                spacing=0,
+                expand=True,
+            )
+
+            # Add to content stack
+            model_manager_container = ft.Container(
+                content=model_manager_content,
+                expand=True,
+                visible=False,
+                key="models",
+            )
+            self._content_stack.controls.append(model_manager_container)
+
+        self._switch_view("models")
+
+        # Refresh the model manager when opening
+        self._model_manager_panel._refresh_model_grid()
+        if self.page:
+            self.page.update()
+
+    def _build_model_manager_controls(self) -> ft.Container:
+        """Build the bottom control panel for model manager view."""
+        back_button = ft.IconButton(
+            icon=ft.icons.ARROW_BACK,
+            tooltip="Back to settings",
+            icon_size=24,
+            on_click=lambda _: self._switch_view("settings"),
+        )
+
+        controls = ft.Container(
+            content=ft.Row(
+                [back_button],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            bgcolor=ft.colors.SURFACE,
+            border=ft.border.only(top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+        )
+
+        return controls
+
+    def _on_model_selected(self, model_name: str):
+        """
+        Handle model selection from model manager.
+
+        Parameters
+        ----------
+        model_name
+            Selected model identifier.
+        """
+        # Update settings
+        self.settings_service.set_model_name(model_name)
+
+        # Update app state
+        if self.settings_service.settings:
+            self.app_state.update_from_settings(self.settings_service.settings)
+
+        # Show success message
+        self._show_snackbar(f"Model changed to {model_name}")
+
+        # Go back to settings
+        self._switch_view("settings")
+
+        # Reinitialize transcription service with new model
+        if self.transcription_service and self.settings_service.settings:
+            self.transcription_service.reinitialize(self.settings_service.settings)

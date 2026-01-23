@@ -1,0 +1,129 @@
+# Phase 04: UI Polish and Modern Design
+
+This phase focuses on visual polish, modern design patterns, and user experience enhancements that make the application feel professional and delightful to use. This is what will differentiate the app from "just another CLI tool."
+
+## Goals
+
+- Implement a modern, cohesive design system with dark/light themes
+- Add smooth animations and micro-interactions
+- Create a refined settings experience with better organization
+- Add accessibility features and responsive design
+
+## Tasks
+
+- [ ] Design and implement a modern theme system:
+  - Create `src/faster_whisper_hotkey/flet_gui/theme.py`:
+    - Define color palette for light and dark themes:
+      - Primary color (modern blue/indigo)
+      - Secondary/accent color (for recording state, success, etc.)
+      - Background colors (surface, background, card)
+      - Text colors (primary, secondary, disabled)
+      - Status colors (success, warning, error, info)
+    - Define typography scale (headings, body, small, code)
+    - Define spacing/sizing tokens (padding, margins, border radius)
+    - Define elevation/shadow system for depth
+  - Implement theme switching with persistence
+  - Add system theme detection (follow Windows dark mode setting)
+
+- [ ] Create reusable UI component library:
+  - Create `src/faster_whisper_hotkey/flet_gui/components/` directory:
+    - `card.py`: Rounded card component with elevation
+    - `button.py`: Modern button styles (primary, secondary, danger, icon-only)
+    - `input_field.py`: Styled text input with validation states
+    - `dropdown.py`: Custom dropdown with search capability
+    - `toggle_switch.py`: Modern toggle for boolean settings
+    - `slider.py`: Range slider for numeric settings
+    - `status_badge.py`: Compact status indicator
+    - `audio_visualizer.py`: Animated audio level bar
+  - Document each component with usage examples
+
+- [ ] Add animations and micro-interactions:
+  - Create `src/faster_whisper_hotkey/flet_gui/animations.py`:
+    - Recording state animation (pulsing glow effect)
+    - Transcription completion animation (result fade in)
+    - Button press feedback
+    - Page transition animations (slide/fade)
+    - Loading spinner for async operations
+    - Success/error notification toasts
+  - Add animation for model download progress
+  - Add hover effects on interactive elements
+  - Implement smooth scrolling for history items
+
+- [ ] Redesign the main transcription interface:
+  - Create a more intuitive main view layout:
+    - Large, centered transcription result display
+    - Floating action button for push-to-talk
+    - Collapsible sidebar for quick settings
+    - Top bar with: app menu, theme toggle, minimize to tray
+  - Add visual feedback for recording state:
+    - Ripple/pulse animation when recording
+    - Audio waveform visualization (if possible)
+    - Time elapsed counter
+  - Show recent transcriptions (last 3-5) as quick-access cards
+  - Add keyboard shortcut hints in UI
+
+- [ ] Create a comprehensive settings redesign:
+  - Reorganize settings into logical categories:
+    - General (theme, language, startup behavior)
+    - Recording (hotkey, audio device, recording timeout)
+    - Models (current model, download, auto-update)
+    - Text Processing (capitalization, punctuation)
+    - History (limits, privacy mode, auto-paste)
+    - Shortcuts (all hotkeys and gestures)
+    - Advanced (logging, debug mode)
+  - Implement settings search functionality
+  - Add reset to defaults option with confirmation
+  - Show settings that require restart with indicator
+  - Implement per-application settings override
+
+- [ ] Implement notification and toast system:
+  - Create `src/faster_whisper_hotkey/flet_gui/notifications.py`:
+    - Toast notifications for:
+      - Transcription completed
+      - Errors (with details button)
+      - Model download started/completed
+      - Settings saved
+      - Updates available
+    - Notification queue to prevent overwhelming
+    - Dismissible and auto-dismiss options
+    - Notification history panel
+  - Add system tray notification support
+  - Add sound notifications (optional, with volume control)
+
+- [ ] Add accessibility features:
+  - Implement keyboard navigation for all UI elements
+  - Add high contrast mode option
+  - Support screen reader announcements for state changes
+  - Add font size scaling option
+  - Ensure color contrast meets WCAG standards
+  - Add focus indicators for keyboard navigation
+
+- [ ] Create onboarding and help documentation:
+  - Build in-app tutorial for first-time users:
+    - Interactive walkthrough of main features
+    - Practice push-to-talk session
+    - Explain history and search
+    - Show settings overview
+  - Create "Help" panel with:
+    - FAQ section
+    - Keyboard shortcuts reference
+    - Troubleshooting guide
+    - Link to online documentation
+  - Add tooltip help on complex settings
+
+- [ ] Polish system tray integration:
+  - Enhanced tray menu with:
+    - Transcription status indicator
+    - Quick actions (Record, View History, Settings)
+    - Model selector submenu
+    - Recent transcriptions submenu
+    - Quit option
+  - Tray icon animation during recording
+  - Tray notification on transcription completion (toggleable)
+  - Single-click to show window, double-click to record
+
+- [ ] Add responsive design considerations:
+  - Ensure UI works at minimum resolution (1024x768)
+  - Handle window resizing gracefully
+  - Support fullscreen mode
+  - Add compact mode for small screens

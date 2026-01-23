@@ -1,3 +1,27 @@
+"""
+Clipboard operations for faster-whisper-hotkey.
+
+This module provides clipboard management functionality for copying transcribed
+text to the system clipboard. It handles backup and restore of clipboard contents
+to preserve user data during the transcription process.
+
+Functions
+---------
+backup_clipboard
+    Save the current clipboard content.
+
+set_clipboard
+    Copy text to the system clipboard.
+
+restore_clipboard
+    Restore previously saved clipboard content.
+
+Notes
+-----
+If pyperclip is not available, the module falls back to typing each character
+individually, which may fail for some special characters in certain text fields.
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)

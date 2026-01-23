@@ -150,6 +150,19 @@ When the script is running, you can forget it, the model will remain loaded, and
 
 The script automatically saves your settings to `~/.config/faster_whisper_hotkey/transcriber_settings.json`.
 
+## Architecture
+
+For developers interested in understanding the codebase structure, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for:
+
+- Module dependency diagram
+- Architectural overview
+- Dependency rules and patterns
+
+You can regenerate the dependency diagram with:
+```bash
+make diagram
+```
+
 ## Limitations
 
 - **voxtral**: because of some limitations, and to keep the automatic language recognition capabilities, we are splitting the audio by chunks of 30s. So even if we can still transcribe long speech, best results are when audio is shorter than this.

@@ -1,3 +1,33 @@
+"""
+Model and language configuration for faster-whisper-hotkey.
+
+This module loads and provides access to available ASR models, languages, and
+model-specific configuration data. Configuration is loaded from a JSON file
+packaged with the module.
+
+Data
+----
+accepted_models_whisper
+    List of supported Whisper model names.
+
+accepted_languages_whisper
+    List of supported language codes for Whisper.
+
+english_only_models_whisper
+    Set of Whisper model names that only support English.
+
+canary_source_target_languages
+    List of language codes supported by Canary model.
+
+canary_allowed_language_pairs
+    List of allowed source-target language pairs for Canary translation.
+
+Functions
+---------
+get_resource_path
+    Return a filesystem path to a packaged resource.
+"""
+
 import json
 import logging
 from importlib.resources import files

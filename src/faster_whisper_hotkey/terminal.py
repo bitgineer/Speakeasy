@@ -1,3 +1,30 @@
+"""
+Terminal window detection for faster-whisper-hotkey.
+
+This module provides functions to detect whether the currently focused window
+is a terminal emulator. This is necessary because terminals typically use
+Ctrl+Shift+V for pasting, while most applications use Ctrl+V.
+
+Functions
+---------
+get_active_window_class_x11
+    Get the window class of the active window on X11.
+
+is_terminal_window_x11
+    Check if a window class list indicates a terminal emulator on X11.
+
+get_focused_container_wayland
+    Get the focused container node from the Wayland tree.
+
+is_terminal_window_wayland
+    Check if a container is a terminal emulator on Wayland.
+
+Notes
+-----
+Uses xdotool and xprop for X11 detection.
+Uses swaymsg for Wayland (Sway) detection.
+"""
+
 import json
 import re
 import subprocess

@@ -1,7 +1,33 @@
 # src/faster_whisper_hotkey/transcribe.py
+"""
+Interactive setup wizard for faster-whisper-hotkey.
+
+This module provides a curses-based interactive configuration wizard for
+first-time setup and settings configuration. It guides users through
+selecting audio devices, ASR models, languages, and hotkey options.
+
+Functions
+---------
+main
+    Run the interactive setup wizard and launch the transcriber.
+
+Supported Models
+----------------
+- faster-whisper: Whisper models with various sizes (tiny to large-v3)
+- parakeet-tdt-0.6b-v3: NVIDIA's Parakeet model
+- canary-1b-v2: NVIDIA's Canary translation model
+- Voxtral-Mini-3B-2507: Mistral's Voxtral model (GPU only)
+
+Notes
+-----
+Uses curses for terminal UI. On Windows, audio device selection is
+skipped (uses system default). On Linux/macOS, PulseAudio devices
+are listed when available.
+"""
 import logging
 import curses
 import warnings
+import sys
 
 warnings.filterwarnings(
     "ignore",
@@ -130,7 +156,9 @@ def main():
                         continue
 
                     language = (
-                        "en" if english_only else curses.wrapper(
+                        "en"
+                        if english_only
+                        else curses.wrapper(
                             lambda stdscr: curses_menu(
                                 stdscr, "", accepted_languages_whisper
                             )
@@ -139,7 +167,7 @@ def main():
                     if not language:
                         continue
 
-                    hotkey_options = ["Pause", "F4", "F8", "INSERT"]
+                    hotkey_options = ["Pause", "F1", "F4", "F8", "INSERT"]
                     selected_hotkey = curses.wrapper(
                         lambda stdscr: curses_menu(
                             stdscr, "Select Hotkey", hotkey_options
@@ -195,7 +223,10 @@ def main():
 
                     # Build allowed target languages based on the selected source
                     allowed_targets = {
-                        tgt for src, tgt in (p.split("-") for p in canary_allowed_language_pairs)
+                        tgt
+                        for src, tgt in (
+                            p.split("-") for p in canary_allowed_language_pairs
+                        )
                         if src == source_language
                     }
                     target_options = sorted(allowed_targets)
@@ -210,7 +241,7 @@ def main():
                     if not target_language:
                         continue
 
-                    hotkey_options = ["Pause", "F4", "F8", "INSERT"]
+                    hotkey_options = ["Pause", "F1", "F4", "F8", "INSERT"]
                     selected_hotkey = curses.wrapper(
                         lambda stdscr: curses_menu(stdscr, "Hotkey", hotkey_options)
                     )
@@ -257,7 +288,7 @@ def main():
 
                     language = ""  # Parakeet does not require a language flag
 
-                    hotkey_options = ["Pause", "F4", "F8", "INSERT"]
+                    hotkey_options = ["Pause", "F1", "F4", "F8", "INSERT"]
                     selected_hotkey = curses.wrapper(
                         lambda stdscr: curses_menu(stdscr, "Hotkey", hotkey_options)
                     )
@@ -304,7 +335,9 @@ def main():
 
                     available_compute_types = ["float16", "int8", "int4"]
                     compute_type = curses.wrapper(
-                        lambda stdscr: curses_menu(stdscr, "Precision", available_compute_types)
+                        lambda stdscr: curses_menu(
+                            stdscr, "Precision", available_compute_types
+                        )
                     )
                     if not compute_type:
                         continue
@@ -322,7 +355,7 @@ def main():
 
                     language = "auto"
 
-                    hotkey_options = ["Pause", "F4", "F8", "INSERT"]
+                    hotkey_options = ["Pause", "F1", "F4", "F8", "INSERT"]
                     selected_hotkey = curses.wrapper(
                         lambda stdscr: curses_menu(stdscr, "Hotkey", hotkey_options)
                     )
