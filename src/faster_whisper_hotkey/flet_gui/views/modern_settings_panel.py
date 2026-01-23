@@ -428,6 +428,7 @@ class ModernSettingsPanel:
         self._current_category: SettingsCategory = SettingsCategory.GENERAL
         self._search_query: str = ""
         self._pending_changes: Dict[str, Any] = {}
+        self._special_settings: Dict[str, Any] = {}
 
         # Setting definitions
         self._definitions: List[SettingDefinition] = self._build_definitions()
@@ -871,6 +872,15 @@ class ModernSettingsPanel:
                 type="toggle",
                 default=True,
                 search_keywords=["clipboard", "paste"],
+            ),
+            SettingDefinition(
+                key="tray_notifications_enabled",
+                title="Tray notifications",
+                description="Show system tray notifications for transcription events",
+                category=SettingsCategory.ADVANCED,
+                type="toggle",
+                default=True,
+                search_keywords=["systray", "notification", "balloon", "popup"],
             ),
         ]
 
@@ -1388,6 +1398,9 @@ class ModernSettingsPanel:
         # Get accessibility manager for accessibility settings
         a11y_manager = get_accessibility_manager()
 
+        # Store special settings that aren't part of Settings object
+        special_settings = {}
+
         # Apply changes
         for key, value in self._pending_changes.items():
             # Handle text processing sub-settings
@@ -1399,6 +1412,9 @@ class ModernSettingsPanel:
             # Handle accessibility sub-settings
             elif key.startswith("a11y_"):
                 self._apply_accessibility_setting(key, value, a11y_manager)
+            # Handle special settings that aren't in Settings object
+            elif key == "tray_notifications_enabled":
+                special_settings[key] = value
             else:
                 # Direct setting
                 setattr(settings, key, value)
@@ -1407,6 +1423,8 @@ class ModernSettingsPanel:
         success = self.settings_service.save()
 
         if success:
+            # Store special settings to be retrieved after save
+            self._special_settings = special_settings
             self._pending_changes.clear()
 
         return success
@@ -1475,6 +1493,10 @@ class ModernSettingsPanel:
     def get_changes(self) -> Dict[str, Any]:
         """Get pending changes."""
         return self._pending_changes.copy()
+
+    def get_special_settings(self) -> Dict[str, Any]:
+        """Get special settings that were applied during save."""
+        return self._special_settings.copy()
 
     @property
     def page(self) -> Optional[ft.Page]:

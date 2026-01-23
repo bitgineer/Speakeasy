@@ -24,7 +24,7 @@ from .app_state import AppState, RecordingState
 from .settings_service import SettingsService
 from .transcription_service import TranscriptionService
 from .hotkey_manager import HotkeyManager
-from .tray_manager import TrayManager, RecentItem
+from .tray_manager import TrayManager, RecentItem, ModelInfo, TrayIconState
 from .views.transcription_panel import TranscriptionPanel
 from .views.modern_transcription_panel import ModernTranscriptionPanel
 from .views.settings_panel import SettingsPanel
@@ -545,6 +545,13 @@ class FletApp:
         if self._hotkey_display:
             self._hotkey_display.text = f"Hotkey: {self.settings_service.get_hotkey().upper()}"
 
+        # Update tray notification setting
+        if self.tray_manager and self._modern_settings_panel:
+            # Check if the tray notifications setting was changed
+            special_settings = self._modern_settings_panel.get_special_settings()
+            if "tray_notifications_enabled" in special_settings:
+                self.tray_manager.set_tray_notifications_enabled(special_settings["tray_notifications_enabled"])
+
         # Switch back to transcription view
         self._switch_view("transcription")
 
@@ -708,12 +715,16 @@ class FletApp:
         self.hotkey_manager.on("hotkey_release", self._on_hotkey_release)
         self.hotkey_manager.start()
 
-        # Initialize tray manager
+        # Initialize tray manager with enhanced callbacks
         self.tray_manager = TrayManager(
             on_show=self.restore_from_tray,
             on_record_toggle=self._handle_tray_record_toggle,
             on_exit=self._handle_tray_exit,
             on_recent_item_click=self._on_tray_recent_item_click,
+            on_open_history=self._open_history_from_tray,
+            on_open_settings=self._open_settings_from_tray,
+            on_model_selected=self._on_tray_model_selected,
+            on_double_click=self._handle_tray_double_click,
         )
         self.tray_manager.start()
 
@@ -729,6 +740,9 @@ class FletApp:
 
         # Initialize tray with recent items from history
         self._update_tray_recent_items()
+
+        # Initialize tray with available models
+        self._update_tray_models()
 
     def _create_default_settings(self):
         """Create default settings when loading fails."""
@@ -900,6 +914,10 @@ class FletApp:
         # Update tray with recent items
         self._update_tray_recent_items()
 
+        # Reset tray transcribing state
+        if self.tray_manager:
+            self.tray_manager.update_transcribing_state(False)
+
         # Refresh recent transcriptions for modern panel
         if self._use_modern_ui and self._modern_transcription_panel:
             self._modern_transcription_panel.refresh_recent_transcriptions()
@@ -916,6 +934,16 @@ class FletApp:
         self.app_state.recording_state = RecordingState.TRANSCRIBING
         if self._status_text:
             self._status_text.text = f"Transcribing ({duration:.1f}s)"
+
+        # Update panel
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.update_state(RecordingState.TRANSCRIBING)
+        elif self._transcription_panel:
+            self._transcription_panel.update_state(RecordingState.TRANSCRIBING)
+
+        # Update tray transcribing state
+        if self.tray_manager:
+            self.tray_manager.update_transcribing_state(True)
 
     def _on_audio_level(self, level: float):
         """Handle audio level updates."""
@@ -1118,6 +1146,81 @@ class FletApp:
         self._is_shutting_down = True
         if self.page:
             self.page.window_close()
+
+    def _open_history_from_tray(self):
+        """Handle view history from tray menu."""
+        # Restore window if minimized
+        if not self.app_state.window_visible:
+            self.restore_from_tray()
+        # Open history panel
+        self._open_history(None)
+
+    def _open_settings_from_tray(self):
+        """Handle settings from tray menu."""
+        # Restore window if minimized
+        if not self.app_state.window_visible:
+            self.restore_from_tray()
+        # Open settings panel
+        self._open_settings(None)
+
+    def _on_tray_model_selected(self, model_name: str):
+        """Handle model selection from tray menu."""
+        # Restore window if minimized
+        if not self.app_state.window_visible:
+            self.restore_from_tray()
+
+        # Update the model in settings
+        if self.settings_service.settings:
+            self.settings_service.settings.model_name = model_name
+
+            # Reinitialize transcription service with new model
+            if self.transcription_service:
+                self.transcription_service.reinitialize(self.settings_service.settings)
+
+            # Update app state
+            self.app_state.model = model_name
+
+            # Update tray to show new current model
+            self._update_tray_models()
+
+            # Show notification
+            self._show_snackbar(f"Model changed to {model_name}")
+
+    def _handle_tray_double_click(self):
+        """Handle double-click on tray icon (start recording)."""
+        # Restore window if minimized
+        if not self.app_state.window_visible:
+            self.restore_from_tray()
+
+        # Start recording if idle
+        if self.app_state.recording_state == RecordingState.IDLE:
+            self.transcription_service.start_recording()
+        elif self.app_state.recording_state == RecordingState.RECORDING:
+            # If already recording, stop it
+            self.transcription_service.stop_recording()
+
+    def _update_tray_models(self):
+        """Update the system tray with available models."""
+        if not self.tray_manager:
+            return
+
+        # Get available models from config
+        from ..config import accepted_models_whisper
+
+        models = []
+        for model in accepted_models_whisper:
+            # Create display name (capitalize first letter, replace hyphens with spaces)
+            display_name = model.replace("-", " ").replace("_", " ").title()
+            models.append(ModelInfo(
+                name=model,
+                display_name=display_name,
+            ))
+
+        # Get current model
+        current_model = self.app_state.model or "large-v3"
+
+        # Update tray manager
+        self.tray_manager.set_available_models(models, current_model)
 
     def shutdown(self):
         """Shutdown the application and cleanup resources."""

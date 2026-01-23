@@ -117,7 +117,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Add tooltip help on complex settings
   - Completed: Created `help_panel.py` with HelpPanel class featuring overview, FAQ (12 questions with expandable answers), keyboard shortcuts reference (categorized), troubleshooting guide (7 common issues with solutions), and interactive tutorial (8-step walkthrough). Added Help button to main controls toolbar. Integrated help panel into main app with navigation. Added tooltip property to SettingDefinition dataclass and tooltip icons to SettingsItem components. Added helpful tooltips to 15+ key settings including theme, language, hotkeys, activation mode, streaming, models, device, compute type, and text processing options.
 
-- [ ] Polish system tray integration:
+- [x] Polish system tray integration:
   - Enhanced tray menu with:
     - Transcription status indicator
     - Quick actions (Record, View History, Settings)
@@ -127,6 +127,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Tray icon animation during recording
   - Tray notification on transcription completion (toggleable)
   - Single-click to show window, double-click to record
+  - Completed: Enhanced `tray_manager.py` with TrayIconState enum, ModelInfo dataclass, animated icon with pulse effect during recording, color-coded states (green=idle, red=recording, orange=transcribing, grey=error), enhanced menu with status indicator, View History and Settings actions, model selector submenu with current model indicator, and Recent Transcriptions submenu. Added `update_transcribing_state()`, `set_available_models()`, `set_current_model()`, `update_tooltip()`, and `set_tray_notifications_enabled()` methods. Integrated with `app.py` via callbacks for double-click to record, history/settings/model selection from tray, and transcribing state updates. Added "Tray notifications" toggle setting in Advanced category of modern_settings_panel.py with default enabled.
 
 - [ ] Add responsive design considerations:
   - Ensure UI works at minimum resolution (1024x768)
