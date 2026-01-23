@@ -218,6 +218,9 @@ class SlashSearch:
         # If no operators found, use the whole query as text
         if not (text_match or model_match or lang_match or date_match or tag_matches):
             command.text_query = query
+        elif not text_match:
+            # If filter operators were found but no /text:, clear text_query
+            command.text_query = ""
 
         # Clean up remaining text
         remaining_text = re.sub(r'\s+/', ' /', remaining_text).strip()

@@ -29,7 +29,7 @@ from dataclasses import dataclass, field, asdict
 
 from ..app_detector import AppMatcher, MatchType, get_active_window_info
 from ..settings import settings_dir
-from .auto_paste import PasteMethod
+from .paste_types import PasteMethod
 
 logger = logging.getLogger(__name__)
 

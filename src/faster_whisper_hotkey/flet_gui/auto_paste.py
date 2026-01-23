@@ -27,7 +27,6 @@ import logging
 import time
 import threading
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Optional, Callable, Dict, Any
 
 import platform
@@ -41,15 +40,9 @@ from ..terminal import (
 )
 from ..app_rules_manager import get_app_rules_manager
 from .app_paste_rules import get_app_paste_rules_manager
+from .paste_types import PasteMethod
 
 logger = logging.getLogger(__name__)
-
-
-class PasteMethod(Enum):
-    """Available paste methods."""
-    CLIPBOARD = "clipboard"  # Use Ctrl+V / Ctrl+Shift+V
-    TYPING = "typing"  # Character-by-character typing
-    DIRECT = "direct"  # Direct clipboard paste (no restore)
 
 
 @dataclass
