@@ -3,22 +3,26 @@
 Build script for faster-whisper-hotkey Windows distribution.
 
 This script orchestrates the complete build process:
-1. Cleans previous build artifacts
-2. Generates the app icon
-3. Builds the executable with PyInstaller
-4. Packages the NSIS installer
-5. Creates portable ZIP package
-6. Generates checksums
-7. Creates release notes
+1. Runs test suite (by default, use --skip-tests to disable)
+2. Cleans previous build artifacts
+3. Generates the app icon
+4. Builds the executable with PyInstaller
+5. Packages the NSIS installer
+6. Creates portable ZIP package
+7. Generates checksums
+8. Creates release notes
 
 Usage:
     python scripts/build.py [options]
 
 Options:
+    --skip-tests     Skip running tests (tests run by default)
+    --test-only      Only run tests, don't build
     --clean-only     Only clean build artifacts
     --no-installer   Skip NSIS installer creation
     --no-portable    Skip portable ZIP creation
     --no-checksums   Skip checksum generation
+    --spec           Build spec (flet or qt, default: flet)
 """
 
 import argparse
@@ -501,11 +505,11 @@ def main() -> int:
     parser.add_argument("--spec", choices=["flet", "qt"], default="flet",
                        help="Which spec file to build (default: flet)")
     parser.add_argument("--run-tests", action="store_true",
-                       help="Run tests before building")
+                       help="[Deprecated] Tests now run by default, use --skip-tests to disable")
     parser.add_argument("--test-only", action="store_true",
                        help="Only run tests, don't build")
     parser.add_argument("--skip-tests", action="store_true",
-                       help="Skip tests even if available")
+                       help="Skip tests (tests run by default)")
 
     args = parser.parse_args()
 
@@ -514,10 +518,22 @@ def main() -> int:
     print(f"\nBuilding faster-whisper-hotkey version {version}")
     print(f"Project root: {PROJECT_ROOT}")
 
-    # Run tests if requested
-    if args.run_tests or args.test_only:
+    # Run tests (default for builds, skip with --skip-tests, --clean-only, or --test-only)
+    # Note: --test-only runs tests and exits, --skip-tests bypasses tests
+    should_run_tests = (
+        not args.skip_tests and
+        not args.clean_only
+    )
+
+    if args.run_tests or args.test_only or should_run_tests:
+        print("\n" + "=" * 60)
+        print("Running test suite before build...")
+        print("Use --skip-tests to bypass.")
+        print("=" * 60)
+
         if not run_tests():
             print("\nTests failed! Aborting build.")
+            print("Use --skip-tests to build anyway.")
             return 1
         if args.test_only:
             return 0

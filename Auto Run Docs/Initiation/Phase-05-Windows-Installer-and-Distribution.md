@@ -202,7 +202,7 @@ This phase creates a streamlined Windows installation experience that eliminates
 - [x] Set up release build pipeline:
   - [x] Create `scripts/build.py`:
     - [x] Clean build artifacts
-    - [ ] Run tests
+    - [x] Run tests
     - [x] Build executable with PyInstaller
     - [x] Package NSIS installer
     - [x] Generate portable zip
@@ -217,11 +217,15 @@ This phase creates a streamlined Windows installation experience that eliminates
 
 **Implementation Notes:**
 - Created `scripts/build.py` with command-line options for flexible building
-- Supports: `--clean-only`, `--no-installer`, `--no-portable`, `--no-checksums`, `--spec (flet|qt)`
+- Supports: `--skip-tests`, `--test-only`, `--clean-only`, `--no-installer`, `--no-portable`, `--no-checksums`, `--spec (flet|qt)`
+- Tests now run **by default** before building (use `--skip-tests` to bypass)
 - Automatically detects version from `pyproject.toml`
 - Generates SHA256 checksums for all distribution files
 - Creates RELEASE_NOTES.md with git log history
 - Portable package includes START-portable.bat launcher for local settings storage
+- Test files exist in `tests/` directory:
+  - `test_history_system.py` - 10 tests covering history management, search, clipboard, privacy mode, etc.
+  - `test_model_management.py` - 12 tests covering hardware detection, model download, selector, maintenance, loader, etc.
 
 - [ ] Add telemetry and crash reporting (optional):
   - Create `src/faster_whisper_hotkey/flet_gui/telemetry.py`:
