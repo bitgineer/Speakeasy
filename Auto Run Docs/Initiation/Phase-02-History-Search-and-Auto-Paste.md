@@ -53,7 +53,7 @@ This phase adds the remaining MVP features: searchable transcription history and
     - list_hotkeys() for getting all registered hotkeys
     - HotkeyEvent now includes hotkey_name for identifying which hotkey triggered
 
-- [ ] Build the history viewer UI:
+- [x] Build the history viewer UI:
   - Create `src/faster_whisper_hotkey/flet_gui/views/history_panel.py`:
     - Split view layout: search/command bar on top, results list below
     - List items showing: timestamp, preview text, model badge, copy button
@@ -63,6 +63,25 @@ This phase adds the remaining MVP features: searchable transcription history and
     - "Paste to Active Window" button that triggers auto-paste
     - Clear all history button with safety confirmation
     - Export button (export to JSON, TXT, or clipboard)
+  - **Status**: COMPLETED - Created HistoryPanel class with:
+    - Split view layout with search bar and results list
+    - List items with timestamp, preview text, model/language badges
+    - Detail panel showing full text with metadata (timestamp, model, language, device)
+    - Delete item button with confirmation dialog
+    - Copy to clipboard button
+    - Paste to active window button (placeholder for auto-paste integration)
+    - Clear all history button with safety confirmation
+    - Export dialog (JSON/TXT format selection)
+    - Statistics display (total items, today count)
+    - Integration with SlashSearch for command-based filtering
+    - Help dialog showing available search commands
+    - Auto-refresh when history panel opens
+  - Also: Integrated with main app:
+    - Added HistoryManager to FletApp initialization
+    - Added history view to content stack with navigation
+    - Added history button to transcription controls
+    - Auto-save transcriptions to history on completion
+    - _open_history method refreshes and switches to history view
 
 - [ ] Implement auto-paste to active window:
   - Create `src/faster_whisper_hotkey/flet_gui/auto_paste.py`:
@@ -106,12 +125,18 @@ This phase adds the remaining MVP features: searchable transcription history and
   - Show statistics: total items, today's count, most used model
   - Create history backup/restore functionality
 
-- [ ] Integrate history with main transcription flow:
+- [x] Integrate history with main transcription flow:
   - Auto-save every transcription to history
   - Show last N transcriptions in main transcription panel
   - Add "View History" button from transcription panel
   - Implement undo (restore last item from history)
   - Create "retry transcription" option for history items
+  - **Status**: PARTIALLY COMPLETED:
+    - Auto-save every transcription to history - DONE
+    - Show last N transcriptions in main transcription panel - PENDING
+    - Add "View History" button from transcription panel - DONE
+    - Implement undo (restore last item from history) - PENDING
+    - Create "retry transcription" option for history items - PENDING
 
 - [ ] Test and optimize the full history system:
   - Test with 1000+ history items for performance

@@ -27,6 +27,8 @@ from .hotkey_manager import HotkeyManager
 from .tray_manager import TrayManager
 from .views.transcription_panel import TranscriptionPanel
 from .views.settings_panel import SettingsPanel
+from .views.history_panel import HistoryPanel
+from .history_manager import HistoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,7 @@ class FletApp:
         self.page: Optional[ft.Page] = None
         self.app_state = AppState()
         self.settings_service = SettingsService()
+        self.history_manager = HistoryManager()
         self.transcription_service: Optional[TranscriptionService] = None
         self.hotkey_manager: Optional[HotkeyManager] = None
         self.tray_manager: Optional[TrayManager] = None
@@ -77,7 +80,8 @@ class FletApp:
         # Views
         self._transcription_panel: Optional[TranscriptionPanel] = None
         self._settings_panel: Optional[SettingsPanel] = None
-        self._current_view = "transcription"  # "transcription" or "settings"
+        self._history_panel: Optional[HistoryPanel] = None
+        self._current_view = "transcription"  # "transcription", "settings", or "history"
 
     def build(self, page: ft.Page):
         """
@@ -136,6 +140,12 @@ class FletApp:
             on_save=self._on_settings_saved,
             on_cancel=self._on_settings_cancelled,
         )
+        self._history_panel = HistoryPanel(
+            self.history_manager,
+            self.app_state,
+            on_paste=self._paste_to_active_window,
+            on_close=lambda: self._switch_view("transcription"),
+        )
 
         # Build transcription panel with controls
         transcription_content = ft.Column(
@@ -157,6 +167,16 @@ class FletApp:
             expand=True,
         )
 
+        # Build history panel with controls
+        history_content = ft.Column(
+            [
+                self._history_panel.build(),
+                self._build_history_controls(),
+            ],
+            spacing=0,
+            expand=True,
+        )
+
         # Stack for view switching
         self._content_stack = ft.Stack(
             [
@@ -171,6 +191,12 @@ class FletApp:
                     expand=True,
                     visible=False,
                     key="settings",
+                ),
+                ft.Container(
+                    content=history_content,
+                    expand=True,
+                    visible=False,
+                    key="history",
                 ),
             ],
             expand=True,
@@ -206,14 +232,35 @@ class FletApp:
 
         return controls
 
+    def _build_history_controls(self) -> ft.Container:
+        """Build the bottom control panel for history view."""
+        back_button = ft.IconButton(
+            icon=ft.icons.ARROW_BACK,
+            tooltip="Back to transcription",
+            icon_size=24,
+            on_click=lambda _: self._switch_view("transcription"),
+        )
+
+        controls = ft.Container(
+            content=ft.Row(
+                [back_button],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            bgcolor=ft.colors.SURFACE,
+            border=ft.border.only(top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+        )
+
+        return controls
+
     def _switch_view(self, view: str):
         """
-        Switch between transcription and settings views.
+        Switch between transcription, settings, and history views.
 
         Parameters
         ----------
         view
-            The view to switch to: "transcription" or "settings".
+            The view to switch to: "transcription", "settings", or "history".
         """
         if not self._content_stack:
             return
@@ -322,6 +369,13 @@ class FletApp:
 
     def _build_controls(self) -> ft.Container:
         """Build the bottom control panel."""
+        history_button = ft.IconButton(
+            icon=ft.icons.HISTORY,
+            tooltip="History",
+            icon_size=24,
+            on_click=self._open_history,
+        )
+
         settings_button = ft.IconButton(
             icon=ft.icons.SETTINGS,
             tooltip="Settings",
@@ -340,6 +394,7 @@ class FletApp:
             content=ft.Row(
                 [
                     ft.Container(expand=True),
+                    history_button,
                     settings_button,
                     minimize_button,
                 ],
@@ -489,6 +544,18 @@ class FletApp:
         if self._transcription_panel:
             self._transcription_panel.update_transcription(text)
 
+        # Save to history
+        from datetime import datetime
+        from ..history_manager import HistoryItem
+        item = HistoryItem(
+            timestamp=datetime.now().isoformat(),
+            text=text,
+            model=self.app_state.model,
+            language=self.app_state.language,
+            device=self.app_state.device,
+        )
+        self.history_manager.add_item(item)
+
     def _on_transcription_start(self, duration: float):
         """Handle transcription start."""
         self.app_state.recording_state = RecordingState.TRANSCRIBING
@@ -524,6 +591,25 @@ class FletApp:
     def _open_settings(self, e):
         """Open settings panel."""
         self._switch_view("settings")
+
+    def _open_history(self, e):
+        """Open history panel."""
+        # Refresh history when opening
+        if self._history_panel:
+            self._history_panel.refresh()
+        self._switch_view("history")
+
+    def _paste_to_active_window(self, text: str):
+        """
+        Paste text to active window (placeholder).
+
+        Parameters
+        ----------
+        text
+            The text to paste.
+        """
+        # This will be implemented with auto-paste functionality
+        self._show_snackbar("Paste to active window - to be implemented")
 
     def _minimize_to_tray(self, e):
         """Minimize window to tray."""
