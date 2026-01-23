@@ -21,6 +21,9 @@ from ..settings import (
     load_settings,
     save_settings,
     TextProcessingSettings,
+    create_default_settings,
+    SettingsCorruptedError,
+    validate_settings,
 )
 from ..config import (
     accepted_models_whisper,
@@ -93,36 +96,60 @@ class SettingsService:
                 return False
 
             try:
-                settings_dict = {
-                    "device_name": self._settings.device_name,
-                    "model_type": self._settings.model_type,
-                    "model_name": self._settings.model_name,
-                    "compute_type": self._settings.compute_type,
-                    "device": self._settings.device,
-                    "language": self._settings.language,
-                    "hotkey": self._settings.hotkey,
-                    "history_hotkey": self._settings.history_hotkey,
-                    "activation_mode": self._settings.activation_mode,
-                    "history_max_items": self._settings.history_max_items,
-                    "privacy_mode": self._settings.privacy_mode,
-                    "onboarding_completed": self._settings.onboarding_completed,
-                    "text_processing": self._settings.text_processing,
-                    "enable_streaming": self._settings.enable_streaming,
-                    "auto_copy_on_release": self._settings.auto_copy_on_release,
-                    "confidence_threshold": self._settings.confidence_threshold,
-                    "stream_chunk_duration": self._settings.stream_chunk_duration,
-                    "voice_commands": self._settings.voice_commands,
-                    "theme_mode": self._settings.theme_mode,
-                    "update_check_frequency": self._settings.update_check_frequency,
-                    "update_include_prereleases": self._settings.update_include_prereleases,
-                    "update_auto_download": self._settings.update_auto_download,
-                }
-                save_settings(settings_dict)
-                logger.info("Settings saved successfully")
-                self._notify()
-                return True
+                # Use dataclasses.asdict to convert Settings to dictionary
+                # This ensures all fields are included, including new ones
+                settings_dict = asdict(self._settings)
+                result = save_settings(settings_dict)
+                if result:
+                    logger.info("Settings saved successfully")
+                    self._notify()
+                return result
             except Exception as e:
                 logger.error(f"Failed to save settings: {e}")
+                return False
+
+    def load_or_create_default(self) -> Settings:
+        """
+        Load settings from disk, or create defaults if loading fails.
+
+        Returns
+        -------
+        Settings
+            Always returns a Settings object (never None).
+        """
+        with self._lock:
+            settings = self.load()
+            if settings is None:
+                logger.info("Could not load settings, creating defaults")
+                settings = create_default_settings()
+                self._settings = settings
+                # Try to save the defaults
+                self.save()
+            return settings
+
+    def validate_and_apply(self, settings_dict: dict) -> bool:
+        """
+        Validate a settings dictionary and apply it to the current settings.
+
+        This is useful when receiving settings from UI or external sources.
+
+        Parameters
+        ----------
+        settings_dict
+            Dictionary of settings to validate and apply.
+
+        Returns
+        -------
+        bool
+            True if validation passed and settings were applied, False otherwise.
+        """
+        with self._lock:
+            try:
+                validated = validate_settings(settings_dict)
+                self._settings = Settings(**validated)
+                return True
+            except (ValueError, TypeError) as e:
+                logger.error(f"Settings validation failed: {e}")
                 return False
 
     def subscribe(self, callback: Callable[[Settings], None]) -> Callable[[], None]:

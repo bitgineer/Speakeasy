@@ -108,7 +108,7 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
       - Added `gc.collect()` call after transcription completes
       - CUDA cache clearing when GPU is available
 
-- [ ] Fix clipboard and paste issues:
+- [x] Fix clipboard and paste issues:
   - Test clipboard operations on various applications
   - Fix character-by-character typing fallback:
     - Timing issues (too fast/slow)
@@ -121,13 +121,60 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - VS Code, terminals, browsers, Discord
     - Fullscreen apps
     - Admin/elevated windows
+  - **COMPLETED NOTES:**
+    - Created new `typing_util.py` module with `SmartTyper` class:
+      - Configurable delays: char_delay (0.01s), pre_delay (0.05s), post_delay (0.05s)
+      - Proper shift key handling for special characters (!@#$%, etc.)
+      - Proper uppercase letter handling with shift key
+      - Unicode character detection and clipboard fallback
+      - Newline, tab, and special key handling (Enter, Tab)
+    - Enhanced `clipboard.py` module:
+      - Added type hints to all functions
+      - Better non-text content handling with try/except for TypeError/AttributeError
+      - Added `ClipboardBackup` context manager for automatic backup/restore
+      - Added `safe_set_and_restore` helper for temporary clipboard operations
+      - Functions now return success/failure status
+    - Updated `transcriber.py`:
+      - Added `PYPERCLIP_AVAILABLE` check for proper fallback detection
+      - Integrated `SmartTyper` for improved typing fallback
+      - Better error logging with TypingResult details
+    - Created comprehensive unit tests in `test_typing_util.py`:
+      - Tests for initialization, character typing, Unicode handling
+      - Tests for shift characters, edge cases, error handling
+      - Tests for singleton pattern and TypingResult dataclass
 
-- [ ] Fix settings and configuration issues:
+- [x] Fix settings and configuration issues:
   - Validate all settings on load (handle corrupted JSON)
   - Fix settings not persisting in certain scenarios
   - Ensure settings migration from old versions works
   - Fix default value handling for new settings
   - Test settings across user profiles (roaming profiles)
+  - **COMPLETED NOTES:**
+    - Added comprehensive `validate_settings()` function with:
+      - Type checking and conversion for all fields
+      - Range validation (e.g., history_max_items: 1-10000, confidence_threshold: 0.0-1.0)
+      - Choice validation for enum-like fields (activation_mode, theme_mode, etc.)
+      - Automatic default application for missing values
+      - Nested dictionary validation for text_processing and voice_commands
+    - Enhanced `load_settings()` with corrupted JSON recovery:
+      - Automatic backup of corrupted files before recovery
+      - `SettingsCorruptedError` exception with backup path
+      - `raise_on_error` parameter for optional error raising
+    - Enhanced `save_settings()` with validation and atomic writes:
+      - Validates settings before saving
+      - Automatic backup on save (optional)
+      - Atomic write using temporary file
+    - Added backup/restore functionality:
+      - `backup_settings_file()` - creates timestamped backups
+      - `restore_settings_backup()` - restores from backup
+      - `SettingsBackup` context manager for transactional operations
+      - Automatic cleanup of old backups (keeps 5 most recent)
+    - Updated `SettingsService.save()` to use `dataclasses.asdict()` for complete serialization
+    - Added `SettingsService.load_or_create_default()` for guaranteed settings availability
+    - Added `SettingsService.validate_and_apply()` for UI-provided settings
+    - Enhanced history functions with corrupted file handling
+    - Created `tests/unit/test_settings_validation.py` with 40+ tests
+    - Updated known-issues.md to mark H3 as fixed
 
 - [ ] Performance optimization:
   - Profile application startup time:

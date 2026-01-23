@@ -99,24 +99,21 @@ Manually paste with Ctrl+V after transcription completes.
 
 ---
 
-### H3: Settings Corruption Not Handled Gracefully
+### H3: ~~Settings Corruption Not Handled Gracefully~~
 
-**Status:** Known Issue | **Workaround:** Delete settings file
+**Status:** FIXED | **Fixed in:** Phase 6
 
 **Description:**
 If the settings JSON file becomes corrupted, the application may not provide clear error messages or recovery options.
 
-**Symptoms:**
-- Settings not loading
-- Application uses defaults silently
-- No user-facing error for corrupted settings
+**Resolution:**
+- Added comprehensive settings validation with automatic correction
+- Corrupted files are automatically backed up before recovery
+- `SettingsCorruptedError` exception provides backup file location
+- Type checking and range validation for all settings
+- Automatic default application for missing/invalid values
 
-**Location:** `settings.py:277-313` (`load_settings` function)
-
-**Workaround:**
-Delete the corrupted settings file:
-- **Installed:** `%APPDATA%\faster_whisper_hotkey\transcriber_settings.json`
-- **Portable:** `settings\transcriber_settings.json` next to executable
+**Location:** `settings.py:987-1066` (`load_settings` function)
 
 **Affected Components:** `settings.py`
 
@@ -370,9 +367,9 @@ HISTORY_FILE = get_history_file()
 
 ### Missing Validation
 
-1. **Settings values** - No range validation (e.g., negative history retention days)
-2. **Model names** - Typos not caught until load time
-3. **Language codes** - Invalid codes passed through to model
+1. ~~**Settings values**~~ - Range validation now implemented via `validate_settings()`
+2. **Model names** - Typos not caught until load time (use `SettingsService.validate_model()`)
+3. **Language codes** - Invalid codes passed through to model (use `SettingsService.validate_language()`)
 
 ---
 
@@ -383,9 +380,8 @@ The following issues are being addressed in Phase 6:
 - [ ] Thread safety improvements for state variables
 - [ ] Audio buffer overflow handling with user notification
 - [ ] Model download retry logic
-- [ ] Settings corruption graceful handling
-- [ ] Comprehensive error logging
-- [ ] Input validation for all settings
+- [x] Settings corruption graceful handling
+- [x] Input validation for all settings
 
 ---
 
