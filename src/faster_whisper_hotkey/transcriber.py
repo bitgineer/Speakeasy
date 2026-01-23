@@ -21,6 +21,7 @@ Notes
 - Complex hotkey combinations with modifiers are supported.
 - Audio recording uses sounddevice with a 16kHz sample rate.
 - On Linux (non-Windows), uses pulsectl for audio device management.
+- Heavy optional imports are lazy-loaded for faster startup.
 """
 
 import time
@@ -43,6 +44,22 @@ from .snippets_manager import get_snippets_manager
 from .app_rules_manager import get_app_rules_manager
 from .app_detector import AppDetector
 
+logger = logging.getLogger(__name__)
+
+# Lazy loading flags - set to True on first import attempt
+_VOICE_COMMAND_LOADED = False
+_VOICE_COMMAND_AVAILABLE = False
+_ANALYTICS_LOADED = False
+_ANALYTICS_AVAILABLE = False
+_ACCURACY_TRACKING_LOADED = False
+_ACCURACY_TRACKING_AVAILABLE = False
+
+# Lazy-loaded modules cache
+_voice_command_parser = None
+_voice_command_executor = None
+_analytics_tracker_module = None
+_accuracy_tracker_module = None
+
 # Check if pyperclip is available for clipboard operations
 try:
     import pyperclip as _pyperclip_check
@@ -50,38 +67,11 @@ try:
 except ImportError:
     PYPERCLIP_AVAILABLE = False
 
-# Voice command import
-try:
-    from .voice_command import (
-        VoiceCommandParser,
-        VoiceCommandExecutor,
-        VoiceCommandConfig,
-        process_with_commands
-    )
-    VOICE_COMMAND_AVAILABLE = True
-except ImportError:
-    VOICE_COMMAND_AVAILABLE = False
-
-# Analytics import (optional - may not be available in all contexts)
-try:
-    from .analytics import get_analytics_tracker
-    ANALYTICS_AVAILABLE = True
-except ImportError:
-    ANALYTICS_AVAILABLE = False
-
-# Accuracy tracking import (optional - may not be available in all contexts)
-try:
-    from .accuracy_tracker import load_accuracy_tracker, AccuracyEntry
-    ACCURACY_TRACKING_AVAILABLE = True
-except ImportError:
-    ACCURACY_TRACKING_AVAILABLE = False
-
+# pulsectl is only needed on Linux
 if platform.system() != "Windows":
     import pulsectl
 else:
     pulsectl = None
-
-logger = logging.getLogger(__name__)
 
 accepted_compute_types = ["float16", "int8"]
 accepted_devices = ["cuda", "cpu"]
@@ -158,20 +148,44 @@ class MicrophoneTranscriber:
         self.app_detector = AppDetector()
         self._current_app_info = None  # Store app info when recording starts
 
-        # Accuracy tracking (optional)
+        # Accuracy tracking (optional, lazy-loaded)
         self.accuracy_tracker = None
-        if ACCURACY_TRACKING_AVAILABLE:
+        if _get_accuracy_tracking_available():
             try:
-                self.accuracy_tracker = load_accuracy_tracker()
+                load_fn = _get_load_accuracy_tracker()
+                self.accuracy_tracker = load_fn()
                 logger.info("Accuracy tracking enabled")
             except Exception as e:
                 logger.warning(f"Failed to initialize accuracy tracker: {e}")
                 self.accuracy_tracker = None
 
     def _init_voice_commands(self):
-        """Initialize voice command parser and executor from settings."""
-        if not VOICE_COMMAND_AVAILABLE:
+        """Initialize voice command parser and executor from settings (lazy-loaded)."""
+        global _VOICE_COMMAND_LOADED, _VOICE_COMMAND_AVAILABLE, _voice_command_parser, _voice_command_executor
+
+        if _VOICE_COMMAND_LOADED and not _VOICE_COMMAND_AVAILABLE:
             logger.debug("Voice command module not available")
+            return
+
+        # Lazy import voice command module
+        if not _VOICE_COMMAND_LOADED:
+            _VOICE_COMMAND_LOADED = True
+            try:
+                from .voice_command import (
+                    VoiceCommandParser,
+                    VoiceCommandExecutor,
+                    VoiceCommandConfig,
+                    process_with_commands
+                )
+                _voice_command_parser = VoiceCommandParser
+                _voice_command_executor = VoiceCommandExecutor
+                _VOICE_COMMAND_AVAILABLE = True
+            except ImportError:
+                logger.debug("Voice command module not available")
+                _VOICE_COMMAND_AVAILABLE = False
+                return
+
+        if not _VOICE_COMMAND_AVAILABLE:
             return
 
         try:
@@ -186,8 +200,8 @@ class MicrophoneTranscriber:
                 case_sensitive=voice_settings.get('case_sensitive', False),
                 fuzzy_matching=voice_settings.get('fuzzy_matching', True),
             )
-            self.voice_command_parser = VoiceCommandParser(config)
-            self.voice_command_executor = VoiceCommandExecutor(config)
+            self.voice_command_parser = _voice_command_parser(config)
+            self.voice_command_executor = _voice_command_executor(config)
             logger.info(f"Voice commands initialized (enabled: {config.enabled})")
         except Exception as e:
             logger.warning(f"Failed to initialize voice commands: {e}")
@@ -608,9 +622,9 @@ class MicrophoneTranscriber:
                     logger.debug(f"Processed text: {text_to_send}")
 
                 # ---------- record analytics data ----------
-                if ANALYTICS_AVAILABLE:
+                if _get_analytics_available():
                     try:
-                        analytics_tracker = get_analytics_tracker()
+                        analytics_tracker = _get_analytics_tracker()
                         if self._current_app_info:
                             analytics_tracker.record_transcription(
                                 text=text_to_send,
@@ -626,10 +640,10 @@ class MicrophoneTranscriber:
                         logger.debug(f"Analytics recording error: {e}")
 
                 # ---------- record accuracy tracking data ----------
-                if ACCURACY_TRACKING_AVAILABLE and self.accuracy_tracker:
+                if _get_accuracy_tracking_available() and self.accuracy_tracker:
                     try:
                         # Convert text_processor.Correction to accuracy_tracker.Correction
-                        from .accuracy_tracker import Correction as AccuracyCorrection
+                        AccuracyCorrection = _get_accuracy_correction_class()
                         accuracy_corrections = [
                             AccuracyCorrection(
                                 correction_type=c.correction_type,
@@ -643,6 +657,7 @@ class MicrophoneTranscriber:
                         ]
 
                         # Create accuracy entry
+                        AccuracyEntry = _get_accuracy_entry_class()
                         accuracy_entry = AccuracyEntry(
                             raw_text=transcribed_text,
                             processed_text=processed_text,
@@ -951,4 +966,70 @@ class MicrophoneTranscriber:
             logger.info("Program terminated by user")
         finally:
             self._notify_state("idle")
+
+
+# -----------------------------------------------------------------------------
+# Lazy-loading helper functions for optional modules
+# These functions defer heavy imports until actually needed, improving startup time
+# -----------------------------------------------------------------------------
+
+def _get_analytics_available() -> bool:
+    """Check if analytics module is available (lazy-loaded)."""
+    global _ANALYTICS_LOADED, _ANALYTICS_AVAILABLE
+    if not _ANALYTICS_LOADED:
+        _ANALYTICS_LOADED = True
+        try:
+            from .analytics import get_analytics_tracker
+            _analytics_tracker_module = get_analytics_tracker
+            _ANALYTICS_AVAILABLE = True
+        except ImportError:
+            _ANALYTICS_AVAILABLE = False
+    return _ANALYTICS_AVAILABLE
+
+
+def _get_analytics_tracker():
+    """Get analytics tracker function (lazy-loaded)."""
+    global _analytics_tracker_module
+    if _get_analytics_available() and _analytics_tracker_module:
+        return _analytics_tracker_module()
+    return None
+
+
+def _get_accuracy_tracking_available() -> bool:
+    """Check if accuracy tracking module is available (lazy-loaded)."""
+    global _ACCURACY_TRACKING_LOADED, _ACCURACY_TRACKING_AVAILABLE
+    if not _ACCURACY_TRACKING_LOADED:
+        _ACCURACY_TRACKING_LOADED = True
+        try:
+            from .accuracy_tracker import load_accuracy_tracker, AccuracyEntry
+            _accuracy_tracker_module = (load_accuracy_tracker, AccuracyEntry)
+            _ACCURACY_TRACKING_AVAILABLE = True
+        except ImportError:
+            _ACCURACY_TRACKING_AVAILABLE = False
+    return _ACCURACY_TRACKING_AVAILABLE
+
+
+def _get_load_accuracy_tracker():
+    """Get load_accuracy_tracker function (lazy-loaded)."""
+    global _accuracy_tracker_module
+    if _accuracy_tracker_module:
+        return _accuracy_tracker_module[0]
+    raise ImportError("accuracy_tracker module not available")
+
+
+def _get_accuracy_entry_class():
+    """Get AccuracyEntry class (lazy-loaded)."""
+    global _accuracy_tracker_module
+    if _accuracy_tracker_module:
+        return _accuracy_tracker_module[1]
+    raise ImportError("accuracy_tracker module not available")
+
+
+def _get_accuracy_correction_class():
+    """Get AccuracyCorrection class from accuracy_tracker (lazy-loaded)."""
+    try:
+        from .accuracy_tracker import Correction as AccuracyCorrection
+        return AccuracyCorrection
+    except ImportError:
+        raise ImportError("accuracy_tracker module not available")
 

@@ -16,6 +16,7 @@ Notes
 - Canary requires source-target language pair specification.
 - Parakeet does not require language specification.
 - Whisper supports the widest range of languages.
+- Heavy model libraries are lazy-loaded for faster startup.
 """
 
 import os
@@ -26,14 +27,65 @@ import soundfile as sf
 
 from typing import Optional
 
-from transformers import (
-    VoxtralForConditionalGeneration,
-    AutoProcessor,
-    BitsAndBytesConfig,
-)
+# Lazy-load heavy model libraries
+_transformers_available = False
+_nemo_available = False
+_faster_whisper_available = False
 
-from nemo.collections.asr.models import ASRModel, EncDecMultiTaskModel
-from faster_whisper import WhisperModel
+# Cache for lazy-loaded modules
+_VoxtralForConditionalGeneration = None
+_AutoProcessor = None
+_BitsAndBytesConfig = None
+_ASRModel = None
+_EncDecMultiTaskModel = None
+_WhisperModel = None
+
+
+def _ensure_transformers():
+    """Lazy-load transformers library."""
+    global _transformers_available, _VoxtralForConditionalGeneration, _AutoProcessor, _BitsAndBytesConfig
+    if not _transformers_available:
+        try:
+            from transformers import (
+                VoxtralForConditionalGeneration,
+                AutoProcessor,
+                BitsAndBytesConfig,
+            )
+            _VoxtralForConditionalGeneration = VoxtralForConditionalGeneration
+            _AutoProcessor = AutoProcessor
+            _BitsAndBytesConfig = BitsAndBytesConfig
+            _transformers_available = True
+        except ImportError:
+            _transformers_available = False
+    return _transformers_available
+
+
+def _ensure_nemo():
+    """Lazy-load nemo library."""
+    global _nemo_available, _ASRModel, _EncDecMultiTaskModel
+    if not _nemo_available:
+        try:
+            from nemo.collections.asr.models import ASRModel, EncDecMultiTaskModel
+            _ASRModel = ASRModel
+            _EncDecMultiTaskModel = EncDecMultiTaskModel
+            _nemo_available = True
+        except ImportError:
+            _nemo_available = False
+    return _nemo_available
+
+
+def _ensure_faster_whisper():
+    """Lazy-load faster_whisper library."""
+    global _faster_whisper_available, _WhisperModel
+    if not _faster_whisper_available:
+        try:
+            from faster_whisper import WhisperModel
+            _WhisperModel = WhisperModel
+            _faster_whisper_available = True
+        except ImportError:
+            _faster_whisper_available = False
+    return _faster_whisper_available
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +113,9 @@ class ModelWrapper:
 
         try:
             if mt == "whisper":
-                self.model = WhisperModel(
+                if not _ensure_faster_whisper():
+                    raise ImportError("faster_whisper library not available")
+                self.model = _WhisperModel(
                     model_size_or_path=self.settings.model_name,
                     device=device,
                     compute_type=compute_type,
@@ -69,8 +123,10 @@ class ModelWrapper:
                 logger.info(f"Whisper model loaded successfully")
 
             elif mt == "parakeet":
+                if not _ensure_nemo():
+                    raise ImportError("nemo library not available")
                 logger.info(f"Loading Parakeet model from {self.settings.model_name}...")
-                self.model = ASRModel.from_pretrained(
+                self.model = _ASRModel.from_pretrained(
                     model_name=self.settings.model_name,
                     map_location=self.settings.device,
                 ).eval()
@@ -78,14 +134,18 @@ class ModelWrapper:
                 logger.info(f"Parakeet model loaded successfully")
 
             elif mt == "canary":
+                if not _ensure_nemo():
+                    raise ImportError("nemo library not available")
                 logger.info(f"Loading Canary model from {self.settings.model_name}...")
-                self.model = EncDecMultiTaskModel.from_pretrained(
+                self.model = _EncDecMultiTaskModel.from_pretrained(
                     self.settings.model_name, map_location=self.settings.device
                 ).eval()
                 self._model_ref = self.model
                 logger.info(f"Canary model loaded successfully")
 
             elif mt == "voxtral":
+                if not _ensure_transformers():
+                    raise ImportError("transformers library not available")
                 from typing import Optional
                 from mistral_common.protocol.transcription.request import (
                     TranscriptionRequest as _TR,
@@ -99,22 +159,22 @@ class ModelWrapper:
                 logger.info(f"Loading Voxtral model from {repo_id}...")
 
                 try:
-                    self.processor = AutoProcessor.from_pretrained(repo_id)
+                    self.processor = _AutoProcessor.from_pretrained(repo_id)
                 except Exception as e:
                     logger.error(f"Failed to load Voxtral processor: {e}")
                     raise RuntimeError(f"Voxtral processor loading failed: {e}")
 
                 if self.settings.compute_type == "int8":
-                    quant_cfg = BitsAndBytesConfig(load_in_8bit=True)
-                    self.model = VoxtralForConditionalGeneration.from_pretrained(
+                    quant_cfg = _BitsAndBytesConfig(load_in_8bit=True)
+                    self.model = _VoxtralForConditionalGeneration.from_pretrained(
                         repo_id,
                         quantization_config=quant_cfg,
                         device_map="cuda",
                     ).eval()
 
                 elif self.settings.compute_type == "int4":
-                    quant_cfg = BitsAndBytesConfig(load_in_4bit=True)
-                    self.model = VoxtralForConditionalGeneration.from_pretrained(
+                    quant_cfg = _BitsAndBytesConfig(load_in_4bit=True)
+                    self.model = _VoxtralForConditionalGeneration.from_pretrained(
                         repo_id,
                         quantization_config=quant_cfg,
                         device_map="cuda",
@@ -126,7 +186,7 @@ class ModelWrapper:
                         "bfloat16": torch.bfloat16,
                     }.get(self.settings.compute_type, torch.float16)
 
-                    self.model = VoxtralForConditionalGeneration.from_pretrained(
+                    self.model = _VoxtralForConditionalGeneration.from_pretrained(
                         repo_id,
                         dtype=compute_dtype,
                         device_map="cuda",
