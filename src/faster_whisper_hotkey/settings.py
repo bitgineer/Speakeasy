@@ -229,6 +229,11 @@ class Settings:
     history_confirm_clear: bool = True  # Confirm before clearing history
     history_backup_enabled: bool = False  # Auto-backup history before clearing
 
+    # Update settings
+    update_check_frequency: str = "weekly"  # "daily", "weekly", "manually"
+    update_include_prereleases: bool = False  # Include beta/preview versions
+    update_auto_download: bool = False  # Automatically download updates when available
+
     def __post_init__(self):
         if self.text_processing is None:
             self.text_processing = {}
@@ -293,6 +298,10 @@ def load_settings() -> Settings | None:
             data.setdefault("history_retention_days", 30)
             data.setdefault("history_confirm_clear", True)
             data.setdefault("history_backup_enabled", False)
+            # Update settings with defaults
+            data.setdefault("update_check_frequency", "weekly")
+            data.setdefault("update_include_prereleases", False)
+            data.setdefault("update_auto_download", False)
             return Settings(**data)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load settings: {e}")

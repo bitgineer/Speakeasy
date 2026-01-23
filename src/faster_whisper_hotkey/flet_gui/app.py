@@ -44,6 +44,7 @@ from .accessibility import get_accessibility_manager
 from .theme import get_theme_manager
 from .responsive import get_responsive_manager, ResponsiveManager
 from .wizards.setup_wizard import SetupWizard, WizardState
+from .updater import UpdateManager, UpdateDialog, get_update_manager
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,10 @@ class FletApp:
         self._model_manager_panel = None  # Will be initialized when needed
         self._current_view = "transcription"  # "transcription", "settings", "history", "help", or "models"
         self._setup_wizard: Optional[SetupWizard] = None
+
+        # Update manager
+        self.update_manager: Optional[UpdateManager] = None
+        self._update_dialog: Optional[UpdateDialog] = None
 
     def build(self, page: ft.Page):
         """
@@ -203,6 +208,8 @@ class FletApp:
                 on_save=self._on_settings_saved,
                 on_cancel=self._on_settings_cancelled,
                 on_open_model_manager=self._on_model_manager_selected,
+                on_check_updates=self._on_check_updates_from_settings,
+                app_instance=self,
             )
         else:
             self._settings_panel = SettingsPanel(
@@ -758,6 +765,67 @@ class FletApp:
 
         # Check for first-run and show setup wizard
         self._check_first_run()
+
+        # Initialize update manager
+        self._initialize_update_manager()
+
+    def _initialize_update_manager(self):
+        """Initialize the auto-update manager."""
+        self.update_manager = get_update_manager()
+
+        if self.update_manager and settings:
+            # Configure update manager from settings
+            self.update_manager.check_frequency = settings.update_check_frequency
+            self.update_manager.include_prereleases = settings.update_include_prereleases
+            self.update_manager.auto_download = settings.update_auto_download
+
+            # Create update dialog
+            self._update_dialog = UpdateDialog(self.update_manager)
+
+            # Check for updates if it's time
+            if self.update_manager.should_check_for_updates():
+                def on_update_available(update_info):
+                    """Show update notification when available."""
+                    if self.page and self._update_dialog:
+                        self._update_dialog.show_update_available(self.page, update_info)
+
+                # Check in background after a short delay
+                self.page.run_thread(
+                    lambda: self.update_manager.check_for_updates(on_update_available),
+                    delay=3000  # Wait 3 seconds after startup
+                )
+
+    def check_for_updates_now(self):
+        """
+        Manually trigger an update check.
+
+        This can be called from the settings UI when user clicks "Check for Updates".
+        """
+        if self.update_manager:
+            def on_update_available(update_info):
+                """Show update notification when available."""
+                if self.page and self._update_dialog:
+                    self._update_dialog.show_update_available(self.page, update_info)
+                else:
+                    self._show_snackbar(f"Update available: {update_info.version}")
+
+            def on_no_update():
+                """Notify that no updates are available."""
+                self._show_snackbar("No updates available")
+
+            # Check in background
+            import threading
+            def check_and_notify():
+                self.update_manager.check_for_updates(on_update_available)
+                # If no update found after check, notify
+                if not self.update_manager.available_update:
+                    self.page.run_thread(on_no_update)
+
+            threading.Thread(target=check_and_notify, daemon=True).start()
+
+    def _on_check_updates_from_settings(self):
+        """Callback from settings panel to check for updates."""
+        self.check_for_updates_now()
 
     def _check_first_run(self):
         """Check if this is a first run and show setup wizard if needed."""

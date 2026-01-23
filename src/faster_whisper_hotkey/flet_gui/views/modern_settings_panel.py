@@ -53,6 +53,7 @@ class SettingsCategory(Enum):
     HISTORY = "history"
     SHORTCUTS = "shortcuts"
     ACCESSIBILITY = "accessibility"
+    UPDATES = "updates"
     ADVANCED = "advanced"
 
 
@@ -396,6 +397,11 @@ class ModernSettingsPanel:
             ft.icons.ACCESSIBILITY_NEW,
             "Display, navigation, and screen reader options",
         ),
+        SettingsCategory.UPDATES: (
+            "Updates",
+            ft.icons.SYSTEM_UPDATE_ALT,
+            "Automatic update checking and installation",
+        ),
         SettingsCategory.ADVANCED: (
             "Advanced",
             ft.icons.SETTINGS,
@@ -410,6 +416,8 @@ class ModernSettingsPanel:
         on_save: Optional[Callable[[], None]] = None,
         on_cancel: Optional[Callable[[], None]] = None,
         on_open_model_manager: Optional[Callable[[], None]] = None,
+        on_check_updates: Optional[Callable[[], None]] = None,
+        app_instance: Optional[Any] = None,
     ):
         """Initialize the modern settings panel."""
         self.settings_service = settings_service
@@ -417,6 +425,8 @@ class ModernSettingsPanel:
         self._on_save = on_save
         self._on_cancel = on_cancel
         self._on_open_model_manager = on_open_model_manager
+        self._on_check_updates = on_check_updates
+        self._app_instance = app_instance
 
         self._theme = get_theme_manager()
 
@@ -439,6 +449,7 @@ class ModernSettingsPanel:
         self._search_field: Optional[ft.TextField] = None
         self._content_area: Optional[ft.Column] = None
         self._results_count: Optional[ft.Text] = None
+        self._current_version_display: Optional[ft.Text] = None
 
     def _build_definitions(self) -> List[SettingDefinition]:
         """Build setting definitions for all categories."""
@@ -892,6 +903,40 @@ class ModernSettingsPanel:
                 default=True,
                 search_keywords=["systray", "notification", "balloon", "popup"],
             ),
+
+            # Update settings
+            SettingDefinition(
+                key="update_check_frequency",
+                title="Check for updates",
+                description="How often to check for new versions",
+                category=SettingsCategory.UPDATES,
+                type="dropdown",
+                options=[
+                    ("daily", "Daily"),
+                    ("weekly", "Weekly (Recommended)"),
+                    ("manually", "Manually Only"),
+                ],
+                default="weekly",
+                tooltip="Daily checks for updates every day. Weekly checks once a week. Manual only checks when you click 'Check Now'.",
+            ),
+            SettingDefinition(
+                key="update_include_prereleases",
+                title="Include pre-releases",
+                description="Also check for beta/preview versions",
+                category=SettingsCategory.UPDATES,
+                type="toggle",
+                default=False,
+                tooltip="Enable this to get early access to new features and bug fixes. Beta versions may be less stable.",
+            ),
+            SettingDefinition(
+                key="update_auto_download",
+                title="Auto-download updates",
+                description="Automatically download updates when available",
+                category=SettingsCategory.UPDATES,
+                type="toggle",
+                default=False,
+                tooltip="When enabled, updates will be downloaded in the background. You'll still be prompted before installation.",
+            ),
         ]
 
         return definitions
@@ -927,6 +972,7 @@ class ModernSettingsPanel:
             (SettingsCategory.HISTORY, "History", ft.icons.HISTORY),
             (SettingsCategory.SHORTCUTS, "Shortcuts", ft.icons.KEYBOARD),
             (SettingsCategory.ACCESSIBILITY, "Accessibility", ft.icons.ACCESSIBILITY_NEW),
+            (SettingsCategory.UPDATES, "Updates", ft.icons.SYSTEM_UPDATE_ALT),
             (SettingsCategory.ADVANCED, "Advanced", ft.icons.SETTINGS),
         ]
 
@@ -1099,6 +1145,10 @@ class ModernSettingsPanel:
         if self._current_category == SettingsCategory.MODELS and not self._search_query:
             self._add_hardware_status()
 
+        # Add update status for updates category
+        if self._current_category == SettingsCategory.UPDATES and not self._search_query:
+            self._add_update_status()
+
         for definition in filtered:
             item = self._create_settings_item(definition)
             self._content_area.controls.append(item)
@@ -1113,6 +1163,20 @@ class ModernSettingsPanel:
                         "Browse All Models \u2192",
                         icon=ft.icons.MODEL_TRAINING,
                         on_click=self._on_open_model_manager,
+                    ),
+                    padding=ft.padding.symmetric(horizontal=SPACING.lg, vertical=SPACING.sm),
+                )
+            )
+
+        # Add check for updates button for updates category
+        if (self._current_category == SettingsCategory.UPDATES and
+                not self._search_query and self._on_check_updates):
+            self._content_area.controls.append(
+                ft.Container(
+                    content=ft.FilledButton(
+                        "Check for Updates",
+                        icon=ft.icons.REFRESH,
+                        on_click=self._on_check_updates_click,
                     ),
                     padding=ft.padding.symmetric(horizontal=SPACING.lg, vertical=SPACING.sm),
                 )
@@ -1175,6 +1239,77 @@ class ModernSettingsPanel:
         )
 
         self._content_area.controls.append(status_card)
+
+    def _add_update_status(self):
+        """Add update status display."""
+        # Get current version
+        try:
+            from ...updater import get_current_version
+            current_version = get_current_version()
+        except Exception:
+            current_version = "0.4.3"
+
+        version_text = f"Current version: {current_version}"
+        if self._app_instance and self._app_instance.update_manager:
+            if self._app_instance.update_manager.available_update:
+                version_text += f"\nNew version available: {self._app_instance.update_manager.available_update.version}"
+            elif self._app_instance.update_manager.is_checking:
+                version_text += "\nChecking for updates..."
+            else:
+                version_text += "\nYou're up to date!"
+
+        self._current_version_display = ft.Text(
+            version_text,
+            size=12,
+            color=self._theme.colors.on_surface_variant,
+        )
+
+        status_card = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(ft.icons.INFO, size=16),
+                    ft.Text(
+                        "Update Status",
+                        size=13,
+                        weight=ft.FontWeight.MEDIUM,
+                    ),
+                ], spacing=SPACING.sm),
+                self._current_version_display,
+            ], spacing=SPACING.xs),
+            padding=SPACING.md,
+            bgcolor=self._theme.colors.surface_container_low,
+            border_radius=BORDER_RADIUS.md,
+            margin=ft.Margin(SPACING.md, SPACING.md, 0, SPACING.md),
+        )
+
+        self._content_area.controls.append(status_card)
+
+    def _on_check_updates_click(self, e):
+        """Handle check for updates button click."""
+        if self._app_instance and hasattr(self._app_instance, 'check_for_updates_now'):
+            # Trigger update check
+            self._app_instance.check_for_updates_now()
+
+            # Update display to show checking status
+            if self._current_version_display:
+                # Extract current version from display
+                current_text = self._current_version_display.value
+                try:
+                    current_version = current_text.split(':')[1].split('\n')[0].strip()
+                except (IndexError, AttributeError):
+                    current_version = "Unknown"
+                self._current_version_display.value = f"Current version: {current_version}\nChecking for updates..."
+                if self.page:
+                    self.page.update()
+        else:
+            # No update manager available (likely running from source)
+            if self.page:
+                self.page.show_snack_bar(
+                    ft.SnackBar(
+                        content=ft.Text("Updates are only available for the installed executable version."),
+                        duration=3000,
+                    )
+                )
 
     def _create_settings_item(self, definition: SettingDefinition) -> ft.Container:
         """Create a settings item UI."""
@@ -1444,6 +1579,15 @@ class ModernSettingsPanel:
         success = self.settings_service.save()
 
         if success:
+            # Update update manager if settings changed
+            if self._app_instance and self._app_instance.update_manager:
+                if "update_check_frequency" in self._pending_changes:
+                    self._app_instance.update_manager.check_frequency = settings.update_check_frequency
+                if "update_include_prereleases" in self._pending_changes:
+                    self._app_instance.update_manager.include_prereleases = settings.update_include_prereleases
+                if "update_auto_download" in self._pending_changes:
+                    self._app_instance.update_manager.auto_download = settings.update_auto_download
+
             # Store special settings to be retrieved after save
             self._special_settings = special_settings
             self._pending_changes.clear()

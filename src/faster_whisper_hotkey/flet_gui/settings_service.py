@@ -113,6 +113,9 @@ class SettingsService:
                     "stream_chunk_duration": self._settings.stream_chunk_duration,
                     "voice_commands": self._settings.voice_commands,
                     "theme_mode": self._settings.theme_mode,
+                    "update_check_frequency": self._settings.update_check_frequency,
+                    "update_include_prereleases": self._settings.update_include_prereleases,
+                    "update_auto_download": self._settings.update_auto_download,
                 }
                 save_settings(settings_dict)
                 logger.info("Settings saved successfully")

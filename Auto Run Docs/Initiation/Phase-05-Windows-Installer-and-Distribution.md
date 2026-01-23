@@ -153,19 +153,51 @@ This phase creates a streamlined Windows installation experience that eliminates
   - Troubleshooting guide
   - Enterprise deployment guidance
 
-- [ ] Implement auto-update system:
-  - Create `src/faster_whisper_hotkey/flet_gui/updater.py`:
-    - Check for updates on startup (configurable frequency)
-    - Compare version against GitHub releases API
-    - Show update notification when new version available
-    - Download update in background
-    - Apply update with app restart
-    - Support silent updates (optional)
-  - Add update settings:
-    - Check for updates: daily, weekly, manually
-    - Auto-download updates toggle
-    - Beta/preview updates channel
-  - Handle update failures gracefully with rollback option
+- [x] Implement auto-update system:
+  - [x] Create `src/faster_whisper_hotkey/flet_gui/updater.py`:
+    - [x] Check for updates on startup (configurable frequency)
+    - [x] Compare version against GitHub releases API
+    - [x] Show update notification when new version available
+    - [x] Download update in background
+    - [x] Apply update with app restart
+    - [x] Support silent updates (optional)
+  - [x] Add update settings:
+    - [x] Check for updates: daily, weekly, manually
+    - [x] Auto-download updates toggle
+    - [x] Beta/preview updates channel
+  - [x] Handle update failures gracefully with rollback option
+
+**Implementation Notes:**
+- Created `src/faster_whisper_hotkey/flet_gui/updater.py` with comprehensive auto-update functionality:
+  - `UpdateManager` class for checking, downloading, and installing updates
+  - `UpdateDialog` class for Flet-based update notifications and progress dialogs
+  - `UpdateInfo` dataclass for update metadata
+  - `get_current_version()` function to detect app version from package metadata or version.txt
+  - `parse_version()` and `compare_versions()` for semantic version comparison
+  - GitHub Releases API integration for fetching latest versions
+  - Background download with progress tracking
+  - Update state persistence (dismissed versions, last check time, settings)
+  - Support for both requests library and urllib fallback
+- Added update settings to `src/faster_whisper_hotkey/settings.py`:
+  - `update_check_frequency: str` ("daily", "weekly", "manually")
+  - `update_include_prereleases: bool` for beta/preview channel
+  - `update_auto_download: bool` for automatic background downloads
+- Integrated updater into `src/faster_whisper_hotkey/flet_gui/app.py`:
+  - `update_manager` and `_update_dialog` properties in FletApp
+  - `_initialize_update_manager()` method for startup configuration
+  - Automatic update check on app launch (with 3-second delay)
+  - `check_for_updates_now()` method for manual update checks
+  - Settings are applied from user configuration
+- Added Updates category to `src/faster_whisper_hotkey/flet_gui/views/modern_settings_panel.py`:
+  - New `SettingsCategory.UPDATES` enum value
+  - Three update-related setting definitions with tooltips
+  - "Check for Updates" button in Updates category
+  - Update status display showing current version and update availability
+  - `_add_update_status()` method to display version info
+  - `_on_check_updates_click()` handler for manual update checks
+  - Settings save integration to update UpdateManager when settings change
+- Updates are only enabled for frozen executables (detected via `sys.frozen`)
+- When running from source, a message indicates updates are only available for installed executables
 
 - [x] Set up release build pipeline:
   - [x] Create `scripts/build.py`:
