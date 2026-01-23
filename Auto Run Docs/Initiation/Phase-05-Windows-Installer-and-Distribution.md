@@ -251,7 +251,7 @@ This phase creates a streamlined Windows installation experience that eliminates
   - `make clean-all` - Clean all artifacts and cache
   - `make release` - Create full release (clean, test, build all)
 
-- [ ] Add telemetry and crash reporting (optional):
+- [x] Add telemetry and crash reporting (optional):
   - Create `src/faster_whisper_hotkey/flet_gui/telemetry.py`:
     - Anonymous usage statistics (opt-in):
       - Version in use
@@ -267,6 +267,41 @@ This phase creates a streamlined Windows installation experience that eliminates
     - Easy toggle in settings
     - No sensitive data recorded
     - Link to privacy policy
+
+**Implementation Notes:**
+- Created `src/faster_whisper_hotkey/flet_gui/telemetry.py` with comprehensive telemetry system:
+  - `TelemetryManager` class for managing anonymous telemetry collection
+  - `CrashReport` data class for crash report information
+  - `TelemetryEvent` data class for individual telemetry events
+  - `EventType` enum for various event types (app lifecycle, transcription, model, errors, etc.)
+  - `FeatureType` enum for feature usage tracking
+  - Anonymous session IDs using SHA256 hashing
+  - Batched event transmission (20 events per batch, 5-minute flush interval)
+  - Automatic crash handler installation via `sys.excepthook`
+  - Local crash report storage in settings directory
+  - Path sanitization in crash reports to remove sensitive file paths
+- Added `telemetry_enabled: bool` setting to `src/faster_whisper_hotkey/settings.py`:
+  - Defaults to `False` (opt-in only)
+  - Loaded and saved with other settings
+- Integrated telemetry in `src/faster_whisper_hotkey/flet_gui/app.py`:
+  - Added telemetry manager initialization in `_initialize_telemetry()`
+  - Tracks app startup via `track_app_start()`
+  - Tracks app shutdown via `track_app_shutdown()` in `shutdown()` method
+  - Tracks transcriptions with word count, model, language, device type
+  - Tracks transcription errors with error type
+  - Telemetry only active when `telemetry_enabled=True`
+- Added telemetry toggle in `src/faster_whisper_hotkey/flet_gui/views/modern_settings_panel.py`:
+  - New `SettingsCategory.TELEMETRY` category
+  - "Anonymous usage data" toggle setting with tooltip
+  - Telemetry manager updated when setting changes
+  - Privacy-focused description: "No personal information or transcriptions are collected"
+- Telemetry is fully privacy-respecting:
+  - Opt-in only (disabled by default)
+  - No user IDs, IP addresses, or personal identifiers
+  - Anonymous session IDs (hashed)
+  - No transcriptions or audio recordings collected
+  - File paths sanitized from crash reports
+  - Can be disabled at any time
 
 - [ ] Create distribution documentation:
   - Write `docs/installation.md`:

@@ -54,6 +54,7 @@ class SettingsCategory(Enum):
     SHORTCUTS = "shortcuts"
     ACCESSIBILITY = "accessibility"
     UPDATES = "updates"
+    TELEMETRY = "telemetry"
     ADVANCED = "advanced"
 
 
@@ -401,6 +402,11 @@ class ModernSettingsPanel:
             "Updates",
             ft.icons.SYSTEM_UPDATE_ALT,
             "Automatic update checking and installation",
+        ),
+        SettingsCategory.TELEMETRY: (
+            "Telemetry",
+            ft.icons.ANALYTICS,
+            "Anonymous usage data and crash reporting",
         ),
         SettingsCategory.ADVANCED: (
             "Advanced",
@@ -937,6 +943,18 @@ class ModernSettingsPanel:
                 default=False,
                 tooltip="When enabled, updates will be downloaded in the background. You'll still be prompted before installation.",
             ),
+
+            # Telemetry settings
+            SettingDefinition(
+                key="telemetry_enabled",
+                title="Anonymous usage data",
+                description="Help improve the app with anonymous usage statistics",
+                category=SettingsCategory.TELEMETRY,
+                type="toggle",
+                default=False,
+                tooltip="When enabled, anonymous data about feature usage and errors is collected to help improve the app. No personal information or transcriptions are collected.",
+                search_keywords=["analytics", "crash", "reporting", "privacy"],
+            ),
         ]
 
         return definitions
@@ -973,6 +991,7 @@ class ModernSettingsPanel:
             (SettingsCategory.SHORTCUTS, "Shortcuts", ft.icons.KEYBOARD),
             (SettingsCategory.ACCESSIBILITY, "Accessibility", ft.icons.ACCESSIBILITY_NEW),
             (SettingsCategory.UPDATES, "Updates", ft.icons.SYSTEM_UPDATE_ALT),
+            (SettingsCategory.TELEMETRY, "Telemetry", ft.icons.ANALYTICS),
             (SettingsCategory.ADVANCED, "Advanced", ft.icons.SETTINGS),
         ]
 
@@ -1587,6 +1606,11 @@ class ModernSettingsPanel:
                     self._app_instance.update_manager.include_prereleases = settings.update_include_prereleases
                 if "update_auto_download" in self._pending_changes:
                     self._app_instance.update_manager.auto_download = settings.update_auto_download
+
+            # Update telemetry manager if settings changed
+            if self._app_instance and self._app_instance.telemetry_manager:
+                if "telemetry_enabled" in self._pending_changes:
+                    self._app_instance.telemetry_manager.set_enabled(settings.telemetry_enabled)
 
             # Store special settings to be retrieved after save
             self._special_settings = special_settings

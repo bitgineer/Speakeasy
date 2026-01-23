@@ -45,6 +45,13 @@ from .theme import get_theme_manager
 from .responsive import get_responsive_manager, ResponsiveManager
 from .wizards.setup_wizard import SetupWizard, WizardState
 from .updater import UpdateManager, UpdateDialog, get_update_manager
+from .telemetry import (
+    get_telemetry_manager,
+    init_telemetry,
+    shutdown_telemetry,
+    EventType,
+    FeatureType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +133,9 @@ class FletApp:
         # Update manager
         self.update_manager: Optional[UpdateManager] = None
         self._update_dialog: Optional[UpdateDialog] = None
+
+        # Telemetry manager
+        self.telemetry_manager = get_telemetry_manager()
 
     def build(self, page: ft.Page):
         """
@@ -769,6 +779,24 @@ class FletApp:
         # Initialize update manager
         self._initialize_update_manager()
 
+        # Initialize telemetry manager
+        self._initialize_telemetry()
+
+    def _initialize_telemetry(self):
+        """Initialize the telemetry manager based on user settings."""
+        from ..settings import get_settings_dir
+
+        # Get telemetry enabled setting from settings (opt-in only)
+        telemetry_enabled = False
+        if settings and hasattr(settings, 'telemetry_enabled'):
+            telemetry_enabled = settings.telemetry_enabled
+
+        # Initialize telemetry with settings directory
+        self.telemetry_manager = init_telemetry(
+            enabled=telemetry_enabled,
+            settings_dir=get_settings_dir(),
+        )
+
     def _initialize_update_manager(self):
         """Initialize the auto-update manager."""
         self.update_manager = get_update_manager()
@@ -1114,6 +1142,19 @@ class FletApp:
         )
         self.history_manager.add_item(item)
 
+        # Track transcription in telemetry (anonymous - word count only)
+        if self.telemetry_manager and self.telemetry_manager.is_enabled():
+            import re
+            word_count = len(re.findall(r'\S+', text)) if text else 0
+            device_type = "cuda" if self.app_state.device == "cuda" else "cpu"
+            self.telemetry_manager.track_transcription(
+                model_name=self.app_state.model or "unknown",
+                language=self.app_state.language or "en",
+                duration_ms=0,  # Duration is not directly available here
+                word_count=word_count,
+                device_type=device_type,
+            )
+
         # Update tray with recent items
         self._update_tray_recent_items()
 
@@ -1161,6 +1202,18 @@ class FletApp:
     def _on_error(self, error: str):
         """Handle transcription errors."""
         logger.error(f"Transcription error: {error}")
+
+        # Track error in telemetry (anonymous - error type only)
+        if self.telemetry_manager and self.telemetry_manager.is_enabled():
+            device_type = "cuda" if self.app_state.device == "cuda" else "cpu"
+            # Extract error type (first word or common pattern)
+            error_type = error.split()[0] if error else "unknown"
+            self.telemetry_manager.track_transcription_error(
+                error_type=error_type,
+                model_name=self.app_state.model or "unknown",
+                device_type=device_type,
+            )
+
         self._show_error(error)
 
         # Play error sound notification
@@ -1428,6 +1481,11 @@ class FletApp:
     def shutdown(self):
         """Shutdown the application and cleanup resources."""
         self._is_shutting_down = True
+
+        # Track app shutdown in telemetry
+        if self.telemetry_manager:
+            self.telemetry_manager.track_app_shutdown()
+            self.telemetry_manager.shutdown()
 
         if self.transcription_service:
             self.transcription_service.shutdown()

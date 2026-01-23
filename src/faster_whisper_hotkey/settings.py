@@ -234,6 +234,9 @@ class Settings:
     update_include_prereleases: bool = False  # Include beta/preview versions
     update_auto_download: bool = False  # Automatically download updates when available
 
+    # Telemetry settings
+    telemetry_enabled: bool = False  # Anonymous usage statistics and crash reporting (opt-in)
+
     def __post_init__(self):
         if self.text_processing is None:
             self.text_processing = {}
@@ -302,6 +305,8 @@ def load_settings() -> Settings | None:
             data.setdefault("update_check_frequency", "weekly")
             data.setdefault("update_include_prereleases", False)
             data.setdefault("update_auto_download", False)
+            # Telemetry settings with defaults
+            data.setdefault("telemetry_enabled", False)
             return Settings(**data)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logger.warning(f"Failed to load settings: {e}")
