@@ -94,13 +94,14 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Add sound notifications (optional, with volume control)
   - Completed: Enhanced `notifications.py` with NotificationHistoryPanel component featuring filter chips, notification count, clear history, and timestamp display. Added SoundNotificationManager with platform-specific sound playback (Windows winsound, macOS afplay, Linux paplay/aplay), volume control, per-event sound settings, and JSON persistence. Integrated system tray notifications via NotificationManager.set_tray_manager() for important events (success, error, warning). Integrated sound notifications into FletApp for transcription complete, errors, and settings saved events.
 
-- [ ] Add accessibility features:
+- [x] Add accessibility features:
   - Implement keyboard navigation for all UI elements
   - Add high contrast mode option
   - Support screen reader announcements for state changes
   - Add font size scaling option
   - Ensure color contrast meets WCAG standards
   - Add focus indicators for keyboard navigation
+  - Completed: Created `accessibility.py` with AccessibilityManager, FontSize, ContrastMode, FocusStyle, and WCAG compliance checking functions (check_contrast_ratio, is_wcag_aa_compliant, is_wcag_aaa_compliant). Created `keyboard_navigation.py` with FocusRing, KeyboardNavigator, and accessible control components (AccessibleDropdown, AccessibleSwitch, AccessibleSlider). Integrated accessibility manager into FletApp with screen reader announcements for state changes (idle, recording, transcribing, error), transcription completion, and errors. Accessibility settings added to modern settings panel with font size scaling (small/normal/large/extra_large), high contrast mode (normal/high/extra high), focus indicators toggle, screen reader announcements toggle, and reduce motion toggle. Theme manager linked to accessibility manager for adaptive theming.
 
 - [ ] Create onboarding and help documentation:
   - Build in-app tutorial for first-time users:

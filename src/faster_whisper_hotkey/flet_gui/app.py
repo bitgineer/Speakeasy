@@ -38,6 +38,8 @@ from .notifications import (
     get_sound_manager,
     SoundNotificationManager,
 )
+from .accessibility import get_accessibility_manager
+from .theme import get_theme_manager
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,10 @@ class FletApp:
         self._use_modern_ui = use_modern_ui
         self._use_modern_settings = use_modern_settings
 
+        # Accessibility and theme managers
+        self.accessibility_manager = get_accessibility_manager()
+        self.theme_manager = get_theme_manager()
+
         # UI references
         self._status_indicator: Optional[ft.Container] = None
         self._status_text: Optional[ft.Text] = None
@@ -125,6 +131,13 @@ class FletApp:
         page.window_min_height = 500
         page.padding = 0
         page.bgcolor = ft.colors.SURFACE_CONTAINER_LOWEST if hasattr(ft.colors, 'SURFACE_CONTAINER_LOWEST') else ft.colors.GREY_50
+
+        # Apply accessibility settings
+        # Link accessibility manager to theme manager for adaptive theming
+        self.theme_manager.set_accessibility_manager(self.accessibility_manager)
+
+        # Apply theme with accessibility adaptations
+        self.theme_manager.apply_to_page(page)
 
         # Handle window events
         page.window_prevent_close = True
@@ -801,6 +814,16 @@ class FletApp:
         if self.tray_manager:
             self.tray_manager.update_recording_state(state_enum == RecordingState.RECORDING)
 
+        # Screen reader announcements for state changes
+        state_messages = {
+            RecordingState.IDLE: "Ready",
+            RecordingState.RECORDING: "Recording started",
+            RecordingState.TRANSCRIBING: "Processing audio",
+            RecordingState.ERROR: "An error occurred",
+        }
+        if state_enum in state_messages:
+            self.accessibility_manager.announce(state_messages[state_enum], priority="high")
+
     def _on_transcription(self, text: str):
         """Handle completed transcription."""
         self.app_state.latest_transcription = text
@@ -834,6 +857,9 @@ class FletApp:
         if self.sound_manager:
             self.sound_manager.play(SoundNotificationManager.EVENT_TRANSCRIPTION_COMPLETE)
 
+        # Screen reader announcement for transcription completion
+        self.accessibility_manager.announce(f"Transcription complete: {text[:100]}{'...' if len(text) > 100 else ''}", priority="medium")
+
     def _on_transcription_start(self, duration: float):
         """Handle transcription start."""
         self.app_state.recording_state = RecordingState.TRANSCRIBING
@@ -858,6 +884,9 @@ class FletApp:
         # Play error sound notification
         if self.sound_manager:
             self.sound_manager.play(SoundNotificationManager.EVENT_ERROR)
+
+        # Screen reader announcement for errors
+        self.accessibility_manager.announce(f"Error: {error}", priority="high")
 
     def _copy_transcription(self, e):
         """Copy transcription to clipboard."""

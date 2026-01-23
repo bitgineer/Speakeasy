@@ -8,6 +8,7 @@ This module provides a comprehensive theme system with:
 - Elevation/shadow system
 - Theme persistence
 - System theme detection
+- Accessibility integration (high contrast, font scaling)
 
 Classes
 -------
@@ -25,9 +26,12 @@ import platform
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 
 import flet as ft
+
+if TYPE_CHECKING:
+    from .accessibility import AccessibilityManager
 
 logger = logging.getLogger(__name__)
 
@@ -710,11 +714,33 @@ class ThemeManager:
         # Set page background color
         page.bgcolor = theme.palette.surface_container_lowest
 
+    # Accessibility manager reference
+    _accessibility_manager: Optional["AccessibilityManager"] = None
+
+    def set_accessibility_manager(self, manager: "AccessibilityManager"):
+        """
+        Set the accessibility manager for adaptive theming.
+
+        Parameters
+        ----------
+        manager
+            The accessibility manager instance.
+        """
+        self._accessibility_manager = manager
+
     # Convenience methods for accessing theme values
     @property
     def colors(self) -> ColorPalette:
-        """Get the current color palette."""
-        return self.get_current_theme().palette
+        """Get the current color palette, adapted for accessibility."""
+        base_palette = self.get_current_theme().palette
+
+        # Apply accessibility adaptations
+        if self._accessibility_manager:
+            adapted = self._accessibility_manager.get_adapted_colors()
+            if adapted is not base_palette:
+                return adapted
+
+        return base_palette
 
     @property
     def type(self) -> TypographyScale:
@@ -738,8 +764,32 @@ class ThemeManager:
 
     @property
     def duration(self) -> AnimationDuration:
-        """Get the animation duration tokens."""
-        return ANIMATION_DURATION
+        """Get the animation duration tokens, adapted for reduced motion."""
+        base_duration = ANIMATION_DURATION
+
+        # Apply reduced motion if enabled
+        if self._accessibility_manager and self._accessibility_manager.settings.reduce_motion:
+            return AnimationDuration(fast=0, normal=0, slow=0)
+
+        return base_duration
+
+    def get_font_size(self, base_size: float) -> float:
+        """
+        Get font size scaled for accessibility.
+
+        Parameters
+        ----------
+        base_size
+            Base font size in pixels.
+
+        Returns
+        -------
+        float
+            Scaled font size.
+        """
+        if self._accessibility_manager:
+            return self._accessibility_manager.get_font_size(base_size)
+        return base_size
 
 
 # Global theme manager instance

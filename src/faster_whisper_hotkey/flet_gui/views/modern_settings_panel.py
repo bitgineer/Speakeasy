@@ -33,6 +33,12 @@ from ..hardware_detector import HardwareDetector, HardwareInfo, format_vram_size
 from ..theme import get_theme_manager, SPACING, BORDER_RADIUS, ANIMATION_DURATION
 from ..components import Card, Button
 from ..notifications import NotificationManager, NotificationType
+from ..accessibility import (
+    get_accessibility_manager,
+    FontSize,
+    ContrastMode,
+    AccessibilitySettings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +52,7 @@ class SettingsCategory(Enum):
     TEXT_PROCESSING = "text_processing"
     HISTORY = "history"
     SHORTCUTS = "shortcuts"
+    ACCESSIBILITY = "accessibility"
     ADVANCED = "advanced"
 
 
@@ -365,6 +372,11 @@ class ModernSettingsPanel:
             "Shortcuts",
             ft.icons.KEYBOARD,
             "Keyboard shortcuts and gestures",
+        ),
+        SettingsCategory.ACCESSIBILITY: (
+            "Accessibility",
+            ft.icons.ACCESSIBILITY_NEW,
+            "Display, navigation, and screen reader options",
         ),
         SettingsCategory.ADVANCED: (
             "Advanced",
@@ -751,6 +763,72 @@ class ModernSettingsPanel:
                 default=False,
             ),
 
+            # Accessibility settings
+            SettingDefinition(
+                key="a11y_font_size",
+                title="Font size",
+                description="Scale text size for better readability",
+                category=SettingsCategory.ACCESSIBILITY,
+                type="dropdown",
+                options=[
+                    ("small", "Small (85%)"),
+                    ("normal", "Normal (100%)"),
+                    ("large", "Large (115%)"),
+                    ("extra_large", "Extra Large (130%)"),
+                ],
+                default="normal",
+                search_keywords=["text", "readability", "scale"],
+            ),
+            SettingDefinition(
+                key="a11y_high_contrast",
+                title="High contrast mode",
+                description="Increase contrast for better visibility",
+                category=SettingsCategory.ACCESSIBILITY,
+                type="toggle",
+                default=False,
+                search_keywords=["visibility", "colors", "contrast"],
+            ),
+            SettingDefinition(
+                key="a11y_contrast_mode",
+                title="Contrast level",
+                description="Select contrast intensity",
+                category=SettingsCategory.ACCESSIBILITY,
+                type="dropdown",
+                options=[
+                    ("high_contrast", "High Contrast"),
+                    ("extra_high_contrast", "Extra High (Black/White)"),
+                ],
+                default="high_contrast",
+                search_keywords=["colors", "theme", "visibility"],
+            ),
+            SettingDefinition(
+                key="a11y_focus_indicators",
+                title="Focus indicators",
+                description="Show visual indicators for keyboard navigation",
+                category=SettingsCategory.ACCESSIBILITY,
+                type="toggle",
+                default=True,
+                search_keywords=["keyboard", "navigation", "focus"],
+            ),
+            SettingDefinition(
+                key="a11y_screen_reader",
+                title="Screen reader announcements",
+                description="Announce state changes for screen readers",
+                category=SettingsCategory.ACCESSIBILITY,
+                type="toggle",
+                default=True,
+                search_keywords=["announcements", "audio", "blind"],
+            ),
+            SettingDefinition(
+                key="a11y_reduce_motion",
+                title="Reduce motion",
+                description="Minimize animations for reduced motion preference",
+                category=SettingsCategory.ACCESSIBILITY,
+                type="toggle",
+                default=False,
+                search_keywords=["animation", "transitions", "vestibular"],
+            ),
+
             # Advanced settings
             SettingDefinition(
                 key="auto_copy_on_release",
@@ -795,6 +873,7 @@ class ModernSettingsPanel:
             (SettingsCategory.TEXT_PROCESSING, "Text", ft.icons.TEXT_FIELDS),
             (SettingsCategory.HISTORY, "History", ft.icons.HISTORY),
             (SettingsCategory.SHORTCUTS, "Shortcuts", ft.icons.KEYBOARD),
+            (SettingsCategory.ACCESSIBILITY, "Accessibility", ft.icons.ACCESSIBILITY_NEW),
             (SettingsCategory.ADVANCED, "Advanced", ft.icons.SETTINGS),
         ]
 
@@ -1073,6 +1152,39 @@ class ModernSettingsPanel:
             attr_name = key[3:]  # Remove "tp_" prefix
             return getattr(tp_settings, attr_name, None)
 
+        # Handle accessibility sub-settings
+        if key.startswith("a11y_"):
+            a11y_manager = get_accessibility_manager()
+            a11y_settings = a11y_manager.settings
+            setting_name = key[5:]  # Remove "a11y_" prefix
+
+            if setting_name == "font_size":
+                # Map font size scale to string
+                scale = a11y_settings.font_size_scale
+                if scale <= 0.9:
+                    return "small"
+                elif scale <= 1.05:
+                    return "normal"
+                elif scale <= 1.2:
+                    return "large"
+                else:
+                    return "extra_large"
+
+            elif setting_name == "high_contrast":
+                return a11y_settings.enable_high_contrast
+
+            elif setting_name == "contrast_mode":
+                return a11y_settings.contrast_mode.value
+
+            elif setting_name == "focus_indicators":
+                return a11y_settings.enable_focus_indicators
+
+            elif setting_name == "screen_reader":
+                return a11y_settings.enable_screen_reader
+
+            elif setting_name == "reduce_motion":
+                return a11y_settings.reduce_motion
+
         # Direct settings
         return getattr(settings, key, None)
 
@@ -1240,6 +1352,9 @@ class ModernSettingsPanel:
         if not settings:
             return False
 
+        # Get accessibility manager for accessibility settings
+        a11y_manager = get_accessibility_manager()
+
         # Apply changes
         for key, value in self._pending_changes.items():
             # Handle text processing sub-settings
@@ -1248,6 +1363,9 @@ class ModernSettingsPanel:
                 attr_name = key[3:]  # Remove "tp_" prefix
                 tp_dict[attr_name] = value
                 settings.text_processing = tp_dict
+            # Handle accessibility sub-settings
+            elif key.startswith("a11y_"):
+                self._apply_accessibility_setting(key, value, a11y_manager)
             else:
                 # Direct setting
                 setattr(settings, key, value)
@@ -1259,6 +1377,63 @@ class ModernSettingsPanel:
             self._pending_changes.clear()
 
         return success
+
+    def _apply_accessibility_setting(self, key: str, value: Any, a11y_manager):
+        """
+        Apply an accessibility setting.
+
+        Parameters
+        ----------
+        key
+            Setting key (with a11y_ prefix).
+        value
+            Setting value.
+        a11y_manager
+            Accessibility manager instance.
+        """
+        setting_name = key[5:]  # Remove "a11y_" prefix
+
+        if setting_name == "font_size":
+            # Map string to FontSize enum
+            font_size_map = {
+                "small": FontSize.SMALL,
+                "normal": FontSize.NORMAL,
+                "large": FontSize.LARGE,
+                "extra_large": FontSize.EXTRA_LARGE,
+            }
+            a11y_manager.set_font_size(font_size_map.get(value, FontSize.NORMAL))
+
+        elif setting_name == "high_contrast":
+            # Get contrast mode value or default to high_contrast
+            contrast_mode_key = self._pending_changes.get("a11y_contrast_mode", "high_contrast")
+            contrast_mode_map = {
+                "high_contrast": ContrastMode.HIGH_CONTRAST,
+                "extra_high_contrast": ContrastMode.EXTRA_HIGH_CONTRAST,
+            }
+            a11y_manager.set_high_contrast(
+                value,
+                contrast_mode_map.get(contrast_mode_key, ContrastMode.HIGH_CONTRAST)
+            )
+
+        elif setting_name == "contrast_mode":
+            # Only apply if high contrast is enabled
+            if self._pending_changes.get("a11y_high_contrast", False):
+                contrast_mode_map = {
+                    "high_contrast": ContrastMode.HIGH_CONTRAST,
+                    "extra_high_contrast": ContrastMode.EXTRA_HIGH_CONTRAST,
+                }
+                a11y_manager.set_high_contrast(True, contrast_mode_map.get(value, ContrastMode.HIGH_CONTRAST))
+
+        elif setting_name == "focus_indicators":
+            a11y_manager._settings.enable_focus_indicators = value
+            a11y_manager._save_settings()
+
+        elif setting_name == "screen_reader":
+            a11y_manager._settings.enable_screen_reader = value
+            a11y_manager._save_settings()
+
+        elif setting_name == "reduce_motion":
+            a11y_manager.set_reduce_motion(value)
 
     def has_changes(self) -> bool:
         """Check if there are pending changes."""
