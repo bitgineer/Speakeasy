@@ -30,6 +30,7 @@ from .views.modern_transcription_panel import ModernTranscriptionPanel
 from .views.settings_panel import SettingsPanel
 from .views.modern_settings_panel import ModernSettingsPanel
 from .views.history_panel import HistoryPanel
+from .views.help_panel import HelpPanel
 from .history_manager import HistoryManager
 from .auto_paste import get_auto_paste, AutoPasteResult
 from .notifications import (
@@ -110,8 +111,9 @@ class FletApp:
         self._settings_panel: Optional[SettingsPanel] = None
         self._modern_settings_panel: Optional[ModernSettingsPanel] = None
         self._history_panel: Optional[HistoryPanel] = None
+        self._help_panel: Optional[HelpPanel] = None
         self._model_manager_panel = None  # Will be initialized when needed
-        self._current_view = "transcription"  # "transcription", "settings", "history", or "models"
+        self._current_view = "transcription"  # "transcription", "settings", "history", "help", or "models"
 
     def build(self, page: ft.Page):
         """
@@ -206,6 +208,13 @@ class FletApp:
             on_close=lambda: self._switch_view("transcription"),
         )
 
+        # Create help panel
+        self._help_panel = HelpPanel(
+            on_close=lambda: self._switch_view("transcription"),
+            hotkey=self.app_state.hotkey,
+            history_hotkey=self.app_state.history_hotkey if hasattr(self.app_state, 'history_hotkey') else "ctrl+shift+h",
+        )
+
         # Build transcription panel with controls
         if self._use_modern_ui:
             transcription_content = ft.Column(
@@ -277,6 +286,19 @@ class FletApp:
                     expand=True,
                     visible=False,
                     key="history",
+                ),
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            self._help_panel.build(),
+                            self._build_help_controls(),
+                        ],
+                        spacing=0,
+                        expand=True,
+                    ),
+                    expand=True,
+                    visible=False,
+                    key="help",
                 ),
             ],
             expand=True,
@@ -457,14 +479,35 @@ class FletApp:
 
         return controls
 
+    def _build_help_controls(self) -> ft.Container:
+        """Build the bottom control panel for help view."""
+        back_button = ft.IconButton(
+            icon=ft.icons.ARROW_BACK,
+            tooltip="Back to transcription",
+            icon_size=24,
+            on_click=lambda _: self._switch_view("transcription"),
+        )
+
+        controls = ft.Container(
+            content=ft.Row(
+                [back_button],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            bgcolor=ft.colors.SURFACE,
+            border=ft.border.only(top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+        )
+
+        return controls
+
     def _switch_view(self, view: str):
         """
-        Switch between transcription, settings, history, and models views.
+        Switch between transcription, settings, history, help, and models views.
 
         Parameters
         ----------
         view
-            The view to switch to: "transcription", "settings", "history", or "models".
+            The view to switch to: "transcription", "settings", "history", "help", or "models".
         """
         if not self._content_stack:
             return
@@ -588,6 +631,13 @@ class FletApp:
             on_click=self._open_history,
         )
 
+        help_button = ft.IconButton(
+            icon=ft.icons.HELP_OUTLINE,
+            tooltip="Help",
+            icon_size=24,
+            on_click=self._open_help,
+        )
+
         settings_button = ft.IconButton(
             icon=ft.icons.SETTINGS,
             tooltip="Settings",
@@ -607,6 +657,7 @@ class FletApp:
                 [
                     ft.Container(expand=True),
                     history_button,
+                    help_button,
                     settings_button,
                     minimize_button,
                 ],
@@ -919,6 +970,10 @@ class FletApp:
     def _open_settings(self, e):
         """Open settings panel."""
         self._switch_view("settings")
+
+    def _open_help(self, e):
+        """Open help panel."""
+        self._switch_view("help")
 
     def _open_history(self, e):
         """Open history panel."""

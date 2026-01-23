@@ -103,7 +103,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Add focus indicators for keyboard navigation
   - Completed: Created `accessibility.py` with AccessibilityManager, FontSize, ContrastMode, FocusStyle, and WCAG compliance checking functions (check_contrast_ratio, is_wcag_aa_compliant, is_wcag_aaa_compliant). Created `keyboard_navigation.py` with FocusRing, KeyboardNavigator, and accessible control components (AccessibleDropdown, AccessibleSwitch, AccessibleSlider). Integrated accessibility manager into FletApp with screen reader announcements for state changes (idle, recording, transcribing, error), transcription completion, and errors. Accessibility settings added to modern settings panel with font size scaling (small/normal/large/extra_large), high contrast mode (normal/high/extra high), focus indicators toggle, screen reader announcements toggle, and reduce motion toggle. Theme manager linked to accessibility manager for adaptive theming.
 
-- [ ] Create onboarding and help documentation:
+- [x] Create onboarding and help documentation:
   - Build in-app tutorial for first-time users:
     - Interactive walkthrough of main features
     - Practice push-to-talk session
@@ -115,6 +115,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
     - Troubleshooting guide
     - Link to online documentation
   - Add tooltip help on complex settings
+  - Completed: Created `help_panel.py` with HelpPanel class featuring overview, FAQ (12 questions with expandable answers), keyboard shortcuts reference (categorized), troubleshooting guide (7 common issues with solutions), and interactive tutorial (8-step walkthrough). Added Help button to main controls toolbar. Integrated help panel into main app with navigation. Added tooltip property to SettingDefinition dataclass and tooltip icons to SettingsItem components. Added helpful tooltips to 15+ key settings including theme, language, hotkeys, activation mode, streaming, models, device, compute type, and text processing options.
 
 - [ ] Polish system tray integration:
   - Enhanced tray menu with:

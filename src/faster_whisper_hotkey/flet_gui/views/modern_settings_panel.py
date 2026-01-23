@@ -81,6 +81,8 @@ class SettingDefinition:
         Whether changing this requires restart.
     search_keywords
         Additional search keywords.
+    tooltip
+        Optional tooltip text for additional help.
     """
 
     key: str
@@ -92,6 +94,7 @@ class SettingDefinition:
     default: Any = None
     requires_restart: bool = False
     search_keywords: List[str] = None
+    tooltip: str = ""
 
     def __post_init__(self):
         if self.options is None:
@@ -140,11 +143,26 @@ class SettingsItem(ft.Container):
     def _build_content(self) -> ft.Control:
         """Build the settings item content."""
         # Create label and description
-        label_parts = [ft.Text(
+        label_row_parts = [ft.Text(
             self._definition.title,
             size=14,
             weight=ft.FontWeight.MEDIUM,
             color=self._theme.colors.on_surface,
+        )]
+
+        # Add tooltip icon if tooltip text exists
+        if self._definition.tooltip:
+            label_row_parts.append(ft.Icon(
+                ft.icons.HELP_OUTLINE,
+                size=14,
+                color=self._theme.colors.primary,
+                tooltip=self._definition.tooltip,
+            ))
+
+        label_parts = [ft.Row(
+            label_row_parts,
+            spacing=SPACING.xs,
+            alignment=ft.MainAxisAlignment.START,
         )]
 
         if self._definition.description:
@@ -529,6 +547,7 @@ class ModernSettingsPanel:
                 type="dropdown",
                 options=theme_options,
                 default="system",
+                tooltip="Light: bright colors, Dark: easy on eyes, System: follows Windows setting",
             ),
             SettingDefinition(
                 key="language",
@@ -540,6 +559,7 @@ class ModernSettingsPanel:
                 default="en",
                 requires_restart=True,
                 search_keywords=["transcription", "speech", "input"],
+                tooltip="Select 'Auto-detect' to let the AI identify the language automatically",
             ),
             SettingDefinition(
                 key="onboarding_completed",
@@ -549,6 +569,7 @@ class ModernSettingsPanel:
                 type="toggle",
                 default=False,
                 search_keywords=["tutorial", "help", "guide"],
+                tooltip="Enable this to see the interactive tutorial again next time you start the app",
             ),
 
             # Recording settings
@@ -560,6 +581,7 @@ class ModernSettingsPanel:
                 type="hotkey",
                 default="pause",
                 search_keywords=["keyboard", "shortcut", "trigger"],
+                tooltip="Choose a key that doesn't conflict with other applications. PAUSE is a good default.",
             ),
             SettingDefinition(
                 key="history_hotkey",
@@ -569,6 +591,7 @@ class ModernSettingsPanel:
                 type="hotkey",
                 default="ctrl+shift+h",
                 search_keywords=["keyboard", "shortcut", "log"],
+                tooltip="Press this to quickly open the history panel from anywhere",
             ),
             SettingDefinition(
                 key="activation_mode",
@@ -578,6 +601,7 @@ class ModernSettingsPanel:
                 type="dropdown",
                 options=activation_mode_options,
                 default="hold",
+                tooltip="Hold: Press and hold to record, release to stop. Toggle: Press once to start, press again to stop.",
             ),
             SettingDefinition(
                 key="enable_streaming",
@@ -586,6 +610,7 @@ class ModernSettingsPanel:
                 category=SettingsCategory.RECORDING,
                 type="toggle",
                 default=False,
+                tooltip="Shows text as you speak. May be less accurate than waiting until you finish speaking.",
             ),
             SettingDefinition(
                 key="stream_chunk_duration",
@@ -594,6 +619,7 @@ class ModernSettingsPanel:
                 category=SettingsCategory.RECORDING,
                 type="slider",
                 default=3.0,
+                tooltip="Smaller values = faster updates but may reduce accuracy. Larger values = more accurate but slower.",
             ),
             SettingDefinition(
                 key="confidence_threshold",
@@ -602,6 +628,7 @@ class ModernSettingsPanel:
                 category=SettingsCategory.RECORDING,
                 type="slider",
                 default=0.5,
+                tooltip="Higher values filter out uncertain text but may miss some words. Lower values capture more but may include errors.",
             ),
 
             # Model settings
@@ -615,6 +642,7 @@ class ModernSettingsPanel:
                 default="large-v3",
                 requires_restart=True,
                 search_keywords=["whisper", "ai", "transcription", "accuracy"],
+                tooltip="Large-v3: best accuracy, slow. Medium: good balance. Small/Tiny: fastest, less accurate.",
             ),
             SettingDefinition(
                 key="device",
@@ -626,6 +654,7 @@ class ModernSettingsPanel:
                 default="cpu",
                 requires_restart=True,
                 search_keywords=["gpu", "cuda", "hardware"],
+                tooltip="CUDA GPU: Much faster if you have an NVIDIA GPU. CPU: Slower but works on any computer.",
             ),
             SettingDefinition(
                 key="compute_type",
@@ -636,6 +665,7 @@ class ModernSettingsPanel:
                 options=compute_type_options,
                 default="float16",
                 requires_restart=True,
+                tooltip="Float16: Good balance of speed and accuracy. Int8: Fastest, slightly less accurate.",
             ),
 
             # Text processing settings
@@ -647,6 +677,7 @@ class ModernSettingsPanel:
                 type="toggle",
                 default=True,
                 search_keywords=["capitalization", "formatting"],
+                tooltip="Automatically capitalizes the first letter of each sentence for proper formatting.",
             ),
             SettingDefinition(
                 key="tp_capitalization_style",
@@ -656,6 +687,7 @@ class ModernSettingsPanel:
                 type="dropdown",
                 options=capitalization_options,
                 default="sentence",
+                tooltip="Sentence case: Only first letter capitalized. Title Case: First Letter Of Each Word Capitalized.",
             ),
             SettingDefinition(
                 key="tp_auto_punctuate",
@@ -665,6 +697,7 @@ class ModernSettingsPanel:
                 type="toggle",
                 default=True,
                 search_keywords=["punctuation", "grammar"],
+                tooltip="Uses AI to add appropriate punctuation (periods, commas, etc.) to your transcription.",
             ),
             SettingDefinition(
                 key="tp_punctuation_style",
