@@ -50,7 +50,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Implement smooth scrolling for history items
   - Completed: Created `animations.py` with PulseAnimation, FadeInAnimation, SlideAnimation, LoadingIndicator, ButtonPressAnimation classes and TransitionType enum; also created `notifications.py` with NotificationType, Notification, Toast, and NotificationManager classes for toast notifications
 
-- [ ] Redesign the main transcription interface:
+- [x] Redesign the main transcription interface:
   - Create a more intuitive main view layout:
     - Large, centered transcription result display
     - Floating action button for push-to-talk
@@ -62,6 +62,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
     - Time elapsed counter
   - Show recent transcriptions (last 3-5) as quick-access cards
   - Add keyboard shortcut hints in UI
+  - Completed: Created `modern_transcription_panel.py` with ModernTranscriptionPanel, RecentTranscriptionCard, and ShortcutHint classes. Created `collapsible_sidebar.py` with CollapsibleSidebar and SidebarItem classes. Integrated modern panel into main app with `use_modern_ui` flag. Features include: large centered transcription display, floating push-to-talk button with pulse animation, recording timer, recent transcriptions cards (up to 3), and keyboard shortcut hints.
 
 - [ ] Create a comprehensive settings redesign:
   - Reorganize settings into logical categories:

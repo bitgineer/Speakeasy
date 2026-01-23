@@ -26,6 +26,7 @@ from .transcription_service import TranscriptionService
 from .hotkey_manager import HotkeyManager
 from .tray_manager import TrayManager, RecentItem
 from .views.transcription_panel import TranscriptionPanel
+from .views.modern_transcription_panel import ModernTranscriptionPanel
 from .views.settings_panel import SettingsPanel
 from .views.history_panel import HistoryPanel
 from .history_manager import HistoryManager
@@ -60,8 +61,15 @@ class FletApp:
         Hotkey detection manager.
     """
 
-    def __init__(self):
-        """Initialize the Flet application."""
+    def __init__(self, use_modern_ui: bool = True):
+        """
+        Initialize the Flet application.
+
+        Parameters
+        ----------
+        use_modern_ui
+            Whether to use the modern UI design.
+        """
         self.page: Optional[ft.Page] = None
         self.app_state = AppState()
         self.settings_service = SettingsService()
@@ -71,6 +79,7 @@ class FletApp:
         self.hotkey_manager: Optional[HotkeyManager] = None
         self.tray_manager: Optional[TrayManager] = None
         self._is_shutting_down = False
+        self._use_modern_ui = use_modern_ui
 
         # UI references
         self._status_indicator: Optional[ft.Container] = None
@@ -81,6 +90,7 @@ class FletApp:
 
         # Views
         self._transcription_panel: Optional[TranscriptionPanel] = None
+        self._modern_transcription_panel: Optional[ModernTranscriptionPanel] = None
         self._settings_panel: Optional[SettingsPanel] = None
         self._history_panel: Optional[HistoryPanel] = None
         self._model_manager_panel = None  # Will be initialized when needed
@@ -98,7 +108,7 @@ class FletApp:
         self.page = page
         page.title = "faster-whisper-hotkey"
         page.theme_mode = ft.ThemeMode.SYSTEM
-        page.window_width = 500
+        page.window_width = 500 if not self._use_modern_ui else 450
         page.window_height = 700
         page.window_min_width = 400
         page.window_min_height = 500
@@ -132,11 +142,21 @@ class FletApp:
     def _build_content_area(self) -> ft.Container:
         """Build the main content area that switches between views."""
         # Create panels
-        self._transcription_panel = TranscriptionPanel(
-            self.app_state,
-            on_copy=self._copy_transcription,
-            on_paste=self._paste_transcription,
-        )
+        if self._use_modern_ui:
+            self._modern_transcription_panel = ModernTranscriptionPanel(
+                self.app_state,
+                self.history_manager,
+                on_copy=self._copy_transcription,
+                on_paste=self._paste_transcription,
+                on_recent_click=self._on_recent_transcription_click,
+            )
+        else:
+            self._transcription_panel = TranscriptionPanel(
+                self.app_state,
+                on_copy=self._copy_transcription,
+                on_paste=self._paste_transcription,
+            )
+
         self._settings_panel = SettingsPanel(
             self.settings_service,
             self.app_state,
@@ -152,14 +172,24 @@ class FletApp:
         )
 
         # Build transcription panel with controls
-        transcription_content = ft.Column(
-            [
-                self._transcription_panel.build(),
-                self._build_controls(),
-            ],
-            spacing=0,
-            expand=True,
-        )
+        if self._use_modern_ui:
+            transcription_content = ft.Column(
+                [
+                    self._modern_transcription_panel.build(),
+                    self._build_controls(),
+                ],
+                spacing=0,
+                expand=True,
+            )
+        else:
+            transcription_content = ft.Column(
+                [
+                    self._transcription_panel.build(),
+                    self._build_controls(),
+                ],
+                spacing=0,
+                expand=True,
+            )
 
         # Build settings panel with controls
         settings_content = ft.Column(
@@ -207,8 +237,16 @@ class FletApp:
         )
 
         # Wire up the transcription panel's record button
-        if self._transcription_panel.record_button:
-            self._transcription_panel.record_button.on_click = self._on_record_button_click
+        if self._use_modern_ui:
+            if self._modern_transcription_panel.record_button:
+                self._modern_transcription_panel.record_button.on_click = self._on_record_button_click
+        else:
+            if self._transcription_panel.record_button:
+                self._transcription_panel.record_button.on_click = self._on_record_button_click
+
+        # Refresh recent transcriptions for modern panel
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.refresh_recent_transcriptions()
 
         return ft.Container(
             content=self._content_stack,
@@ -591,7 +629,9 @@ class FletApp:
             self._status_indicator.bgcolor = color_map.get(state_enum, ft.colors.GREY)
 
         # Update panel
-        if self._transcription_panel:
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.update_state(state_enum)
+        elif self._transcription_panel:
             self._transcription_panel.update_state(state_enum)
 
         # Update tray recording state
@@ -601,7 +641,11 @@ class FletApp:
     def _on_transcription(self, text: str):
         """Handle completed transcription."""
         self.app_state.latest_transcription = text
-        if self._transcription_panel:
+
+        # Update the appropriate panel
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.update_transcription(text)
+        elif self._transcription_panel:
             self._transcription_panel.update_transcription(text)
 
         # Save to history
@@ -619,6 +663,10 @@ class FletApp:
         # Update tray with recent items
         self._update_tray_recent_items()
 
+        # Refresh recent transcriptions for modern panel
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.refresh_recent_transcriptions()
+
     def _on_transcription_start(self, duration: float):
         """Handle transcription start."""
         self.app_state.recording_state = RecordingState.TRANSCRIBING
@@ -628,7 +676,11 @@ class FletApp:
     def _on_audio_level(self, level: float):
         """Handle audio level updates."""
         self.app_state.audio_level = level
-        if self._transcription_panel:
+
+        # Update the appropriate panel
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.update_audio_level(level)
+        elif self._transcription_panel:
             self._transcription_panel.update_audio_level(level)
 
     def _on_error(self, error: str):
@@ -638,20 +690,31 @@ class FletApp:
 
     def _copy_transcription(self, e):
         """Copy transcription to clipboard."""
-        if self._transcription_panel:
+        if self._use_modern_ui and self._modern_transcription_panel:
+            text = self._modern_transcription_panel.get_transcription_text()
+        elif self._transcription_panel:
             text = self._transcription_panel.get_transcription_text()
-            if text:
-                self.page.set_clipboard(text)
-                self._show_snackbar("Copied to clipboard")
+        else:
+            text = ""
+
+        if text:
+            self.page.set_clipboard(text)
+            self._show_snackbar("Copied to clipboard")
 
     def _paste_transcription(self, e):
         """Paste transcription to active window."""
-        if self._transcription_panel:
+        # Get text from the appropriate panel
+        if self._use_modern_ui and self._modern_transcription_panel:
+            text = self._modern_transcription_panel.get_transcription_text()
+        elif self._transcription_panel:
             text = self._transcription_panel.get_transcription_text()
-            if text:
-                self._paste_to_active_window(text)
-            else:
-                self._show_snackbar("No transcription to paste")
+        else:
+            text = ""
+
+        if text:
+            self._paste_to_active_window(text)
+        else:
+            self._show_snackbar("No transcription to paste")
 
     def _open_settings(self, e):
         """Open settings panel."""
@@ -663,6 +726,27 @@ class FletApp:
         if self._history_panel:
             self._history_panel.refresh()
         self._switch_view("history")
+
+    def _on_recent_transcription_click(self, item):
+        """
+        Handle click on a recent transcription card.
+
+        Loads the transcription text into the display and copies to clipboard.
+
+        Parameters
+        ----------
+        item
+            The HistoryItem that was clicked.
+        """
+        # Load the text into transcription display
+        if self._use_modern_ui and self._modern_transcription_panel:
+            self._modern_transcription_panel.update_transcription(item.text)
+        elif self._transcription_panel:
+            self._transcription_panel.update_transcription(item.text)
+
+        # Copy to clipboard
+        self.page.set_clipboard(item.text)
+        self._show_snackbar("Copied to clipboard")
 
     def _paste_to_active_window(self, text: str):
         """

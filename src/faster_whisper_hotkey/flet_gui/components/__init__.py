@@ -30,6 +30,7 @@ from .input_field import InputField
 from .toggle_switch import ToggleSwitch
 from .status_badge import StatusBadge, StatusType
 from .audio_visualizer import AudioVisualizer
+from .collapsible_sidebar import CollapsibleSidebar, SidebarItem, SidebarPosition
 
 __all__ = [
     "Card",
@@ -40,4 +41,7 @@ __all__ = [
     "StatusBadge",
     "StatusType",
     "AudioVisualizer",
+    "CollapsibleSidebar",
+    "SidebarItem",
+    "SidebarPosition",
 ]
