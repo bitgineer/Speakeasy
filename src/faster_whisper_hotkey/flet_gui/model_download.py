@@ -2,7 +2,7 @@
 Model download manager with progress tracking for faster-whisper-hotkey.
 
 This module provides on-demand model downloading with progress visualization,
-pause/resume capability, and checksum verification.
+pause/resume capability, checksum verification, and automatic retry logic.
 
 Classes
 -------
@@ -11,6 +11,12 @@ DownloadProgress
 
 ModelDownloadManager
     Manages model downloads with progress callbacks and error handling.
+
+Notes
+-----
+- Downloads are automatically retried with exponential backoff on network failures
+- User-friendly error messages are provided for common download issues
+- Progress tracking includes speed calculation and ETA estimation
 """
 
 import hashlib
@@ -25,6 +31,23 @@ from pathlib import Path
 from typing import Optional, Callable, Dict, List
 
 logger = logging.getLogger(__name__)
+
+# Import error handling for user-friendly messages
+try:
+    from ..error_handling import (
+        ErrorCategory,
+        ModelDownloadError,
+        get_error_recovery,
+        get_error_reporter,
+        get_error_message,
+    )
+except ImportError:
+    # Fallback if error_handling module is not available
+    ErrorCategory = None
+    ModelDownloadError = None
+    def get_error_recovery(): return None
+    def get_error_reporter(): return None
+    def get_error_message(e): return str(e), []
 
 
 @dataclass
@@ -47,11 +70,17 @@ class DownloadProgress:
     eta_seconds
         Estimated time remaining in seconds.
     status
-        Current status: "downloading", "paused", "completed", "error", "cancelled".
+        Current status: "downloading", "paused", "completed", "error", "cancelled", "retrying".
     error_message
         Error message if status is "error".
     start_time
         Timestamp when download started.
+    retry_count
+        Number of retry attempts made.
+    max_retries
+        Maximum number of retry attempts allowed.
+    user_friendly_error
+        User-friendly error message with suggestions.
     """
     model_name: str
     downloaded_bytes: int = 0
@@ -62,6 +91,10 @@ class DownloadProgress:
     status: str = "downloading"
     error_message: Optional[str] = None
     start_time: datetime = field(default_factory=datetime.now)
+    retry_count: int = 0
+    max_retries: int = 3
+    user_friendly_error: Optional[str] = None
+    user_suggestions: List[str] = field(default_factory=list)
 
     @property
     def elapsed_seconds(self) -> float:
@@ -469,59 +502,190 @@ class ModelDownloadManager:
         return progress
 
     def _download_worker(self, model_name: str) -> None:
-        """Worker thread for downloading a model."""
+        """
+        Worker thread for downloading a model with automatic retry.
+
+        Implements exponential backoff retry logic for network failures.
+        Provides user-friendly error messages and suggestions.
+        """
         progress = self._active_downloads.get(model_name)
         if not progress:
             return
 
-        try:
-            # Use faster-whisper's built-in download mechanism
-            from faster_whisper import WhisperModel
+        max_retries = progress.max_retries
+        retry_delay = 2.0  # Initial delay in seconds
+        last_error = None
 
-            # Update status
-            progress.status = "downloading"
-            self._notify_callbacks(progress)
+        for attempt in range(max_retries + 1):
+            try:
+                # Use faster-whisper's built-in download mechanism
+                from faster_whisper import WhisperModel
 
-            # Simulate progress (faster-whisper doesn't provide progress callbacks)
-            # In a real implementation, we'd need to hook into huggingface_hub's download
-            start_time = time.time()
-            model_info = self.AVAILABLE_MODELS.get(model_name)
+                # Update status
+                if attempt > 0:
+                    progress.status = "retrying"
+                    progress.retry_count = attempt
+                    logger.info(f"Retry attempt {attempt}/{max_retries} for model {model_name}")
+                else:
+                    progress.status = "downloading"
 
-            # The actual download happens here
-            # Note: faster-whisper downloads synchronously without progress
-            model = WhisperModel(
-                model_size_or_path=model_name,
-                device="cpu",
-                compute_type="int8",
-                download_root=self._cache_dir,
-            )
+                self._notify_callbacks(progress)
 
-            # Clean up test model
-            del model
+                # Simulate progress (faster-whisper doesn't provide progress callbacks)
+                # In a real implementation, we'd need to hook into huggingface_hub's download
+                start_time = time.time()
+                model_info = self.AVAILABLE_MODELS.get(model_name)
 
-            # Mark as complete
-            progress.status = "completed"
-            progress.percentage = 100.0
-            progress.downloaded_bytes = progress.total_bytes
+                # The actual download happens here
+                # Note: faster-whisper downloads synchronously without progress
+                model = WhisperModel(
+                    model_size_or_path=model_name,
+                    device="cpu",
+                    compute_type="int8",
+                    download_root=self._cache_dir,
+                )
 
-            elapsed = time.time() - start_time
-            if elapsed > 0:
-                progress.speed_bps = progress.total_bytes / elapsed
+                # Clean up test model
+                del model
 
-            self._notify_callbacks(progress)
-            logger.info(f"Model {model_name} downloaded successfully")
+                # Mark as complete
+                progress.status = "completed"
+                progress.percentage = 100.0
+                progress.downloaded_bytes = progress.total_bytes
 
-        except Exception as e:
-            logger.error(f"Failed to download model {model_name}: {e}")
-            progress.status = "error"
-            progress.error_message = str(e)
-            self._notify_callbacks(progress)
+                elapsed = time.time() - start_time
+                if elapsed > 0:
+                    progress.speed_bps = progress.total_bytes / elapsed
+
+                self._notify_callbacks(progress)
+                logger.info(f"Model {model_name} downloaded successfully")
+                return  # Success - exit the retry loop
+
+            except Exception as e:
+                last_error = e
+                is_network_error = self._is_network_error(e)
+                is_retryable = is_network_error and attempt < max_retries
+
+                if is_retryable:
+                    # Calculate backoff delay with jitter
+                    jitter = retry_delay * 0.1 * (2 * (attempt % 2) - 1)  # ±10% jitter
+                    delay = max(1.0, retry_delay + jitter)
+
+                    logger.warning(
+                        f"Download attempt {attempt + 1}/{max_retries + 1} failed "
+                        f"({type(e).__name__}: {e}). Retrying in {delay:.1f}s..."
+                    )
+
+                    # Update progress for retry
+                    progress.error_message = f"Download failed: {e}. Retrying ({attempt + 1}/{max_retries})..."
+                    self._notify_callbacks(progress)
+
+                    time.sleep(delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    # Final failure - set up user-friendly error
+                    logger.error(f"Failed to download model {model_name} after {attempt + 1} attempts: {e}")
+
+                    # Get user-friendly error message
+                    if ErrorCategory and ModelDownloadError:
+                        model_info = self.AVAILABLE_MODELS.get(model_name)
+                        user_error = ModelDownloadError(
+                            model_name=model_name,
+                            url=model_info.url if model_info else "",
+                            original_exception=e,
+                            can_retry=False,
+                        )
+                        progress.user_friendly_error = user_error.title + ": " + user_error.user_message
+                        progress.user_suggestions = user_error.suggestions
+                    else:
+                        # Fallback messages
+                        if is_network_error:
+                            progress.user_friendly_error = "Network Error: Could not download the model."
+                            progress.user_suggestions = [
+                                "Check your internet connection",
+                                "Try downloading again later",
+                                "Check if a firewall is blocking the download",
+                                "Try downloading the model manually from HuggingFace",
+                            ]
+                        else:
+                            progress.user_friendly_error = "Download Error: Failed to download the model."
+                            progress.user_suggestions = [
+                                "Check available disk space",
+                                "Check if you have write permissions",
+                                "Try downloading the model manually from HuggingFace",
+                            ]
+
+                    progress.status = "error"
+                    progress.error_message = str(e)
+                    progress.retry_count = attempt
+                    self._notify_callbacks(progress)
+
+                    # Create error report if reporter is available
+                    reporter = get_error_reporter()
+                    if reporter:
+                        try:
+                            reporter.create_report(
+                                exception=e,
+                                category=ErrorCategory.MODEL_DOWNLOAD if ErrorCategory else "model_download",
+                                message=progress.user_friendly_error,
+                                suggestions=progress.user_suggestions,
+                                recovery_attempted=True,
+                                recovery_successful=False,
+                            )
+                        except Exception:
+                            pass  # Don't fail if error reporting fails
+
+                    break  # Exit retry loop
 
         finally:
             # Clean up thread reference
             with self._lock:
                 if model_name in self._download_threads:
                     del self._download_threads[model_name]
+
+    def _is_network_error(self, exception: Exception) -> bool:
+        """
+        Check if an exception is related to network issues.
+
+        Parameters
+        ----------
+        exception
+            The exception to check.
+
+        Returns
+        -------
+        bool
+            True if this is a retryable network error.
+        """
+        error_message = str(exception).lower()
+        error_type = type(exception).__name__.lower()
+
+        # Common network error indicators
+        network_indicators = [
+            "connection",
+            "network",
+            "timeout",
+            "dns",
+            "resolve",
+            "unreachable",
+            "refused",
+            "reset",
+            "broken pipe",
+            "ssl",
+            "tls",
+            "certificate",
+            "http",
+            "httperror",
+            "urlerror",
+            "download",
+        ]
+
+        # Check error type
+        if any(indicator in error_type for indicator in ["connection", "timeout", "http"]):
+            return True
+
+        # Check error message
+        return any(indicator in error_message for indicator in network_indicators)
 
     def cancel_download(self, model_name: str) -> bool:
         """

@@ -22,6 +22,7 @@ Notes
 - Audio recording uses sounddevice with a 16kHz sample rate.
 - On Linux (non-Windows), uses pulsectl for audio device management.
 - Heavy optional imports are lazy-loaded for faster startup.
+- Audio device errors automatically attempt reconnection with fallback devices.
 """
 
 import time
@@ -45,6 +46,20 @@ from .app_rules_manager import get_app_rules_manager
 from .app_detector import AppDetector
 
 logger = logging.getLogger(__name__)
+
+# Import error handling for user-friendly messages
+try:
+    from .error_handling import (
+        ErrorCategory,
+        AudioDeviceError,
+        get_error_reporter,
+    )
+    ERROR_HANDLING_AVAILABLE = True
+except ImportError:
+    ERROR_HANDLING_AVAILABLE = False
+    ErrorCategory = None
+    AudioDeviceError = None
+    def get_error_reporter(): return None
 
 # Lazy loading flags - set to True on first import attempt
 _VOICE_COMMAND_LOADED = False
@@ -711,6 +726,12 @@ class MicrophoneTranscriber:
             time.sleep(0.05)  # Update at 20 FPS
 
     def start_recording(self):
+        """
+        Start audio recording with automatic device fallback on error.
+
+        If the configured device fails, attempts to use alternative devices.
+        Reports user-friendly errors for all device issues.
+        """
         if not self.is_recording:
             logger.info("Starting recording...")
             self.stop_event.clear()
@@ -733,28 +754,135 @@ class MicrophoneTranscriber:
             )
             self._audio_level_thread.start()
 
-            device_to_use = None
-            if self.device_name and self.device_name != "default":
-                try:
-                    devices = sd.query_devices()
-                    for i, device_info in enumerate(devices):
-                        if (
-                            device_info.get("name") == self.device_name
-                            and device_info.get("max_input_channels", 0) > 0
-                        ):
-                            device_to_use = i
-                            break
-                except Exception as e:
-                    logger.warning(f"Could not find device '{self.device_name}': {e}")
+            # Try to start recording with device fallback
+            self._start_audio_stream_with_fallback()
 
-            self.stream = sd.InputStream(
-                callback=self.audio_callback,
-                channels=1,
-                samplerate=self.sample_rate,
-                blocksize=4000,
-                device=device_to_use,  # None will use system default
-            )
-            self.stream.start()
+    def _start_audio_stream_with_fallback(self):
+        """
+        Start audio stream with automatic device fallback on error.
+
+        Tries the configured device first, then falls back to system default
+        and other available devices if the primary device fails.
+        """
+        devices_to_try = self._get_audio_device_fallback_list()
+        last_error = None
+
+        for device_info in devices_to_try:
+            try:
+                device_to_use = device_info["index"]
+                device_name = device_info["name"]
+
+                logger.debug(f"Attempting to use audio device: {device_name}")
+
+                self.stream = sd.InputStream(
+                    callback=self.audio_callback,
+                    channels=1,
+                    samplerate=self.sample_rate,
+                    blocksize=4000,
+                    device=device_to_use,
+                )
+                self.stream.start()
+
+                # Successfully started
+                if device_name != "System Default":
+                    logger.info(f"Recording with audio device: {device_name}")
+                else:
+                    logger.info("Recording with system default audio device")
+                return
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Failed to use audio device '{device_info['name']}': {e}")
+                continue
+
+        # All devices failed - report the error
+        self._report_audio_device_error(last_error)
+
+        # Reset recording state since we couldn't start
+        self.is_recording = False
+        self._stop_audio_level_thread = True
+        raise last_error
+
+    def _get_audio_device_fallback_list(self) -> list:
+        """
+        Get list of audio devices to try, in order of preference.
+
+        Returns
+        -------
+        list
+            List of device dicts with 'name' and 'index' keys.
+        """
+        devices_to_try = [{"name": "System Default", "index": None}]
+
+        try:
+            all_devices = sd.query_devices()
+            input_devices = []
+
+            # First, try to find the configured device
+            if self.device_name and self.device_name != "default":
+                for i, device_info in enumerate(all_devices):
+                    if device_info.get("max_input_channels", 0) > 0:
+                        device_name = device_info.get("name", "")
+                        if device_name == self.device_name:
+                            # Insert configured device at the front
+                            devices_to_try.insert(0, {"name": device_name, "index": i})
+                            break
+
+            # Get all input devices as fallbacks
+            for i, device_info in enumerate(all_devices):
+                if device_info.get("max_input_channels", 0) > 0:
+                    device_name = device_info.get("name", f"Device {i}")
+                    if device_name != self.device_name:
+                        input_devices.append({"name": device_name, "index": i})
+
+            # Add fallback devices (limit to first 5 to avoid excessive attempts)
+            devices_to_try.extend(input_devices[:5])
+
+        except Exception as e:
+            logger.warning(f"Error querying audio devices: {e}")
+
+        return devices_to_try
+
+    def _report_audio_device_error(self, error: Exception):
+        """
+        Report audio device error with user-friendly message.
+
+        Parameters
+        ----------
+        error
+            The error that occurred.
+        """
+        logger.error(f"Failed to start audio recording: {error}")
+
+        # Get list of available devices for user reference
+        available_devices = []
+        try:
+            all_devices = sd.query_devices()
+            for i, device_info in enumerate(all_devices):
+                if device_info.get("max_input_channels", 0) > 0:
+                    available_devices.append(device_info.get("name", f"Device {i}"))
+        except Exception:
+            pass
+
+        # Create user-friendly error report
+        reporter = get_error_reporter()
+        if reporter and ERROR_HANDLING_AVAILABLE:
+            try:
+                reporter.create_report(
+                    exception=error,
+                    category=ErrorCategory.AUDIO_DEVICE,
+                    message="Could not access the audio recording device.",
+                    suggestions=[
+                        "Check if your microphone is connected",
+                        "Verify microphone permissions in system settings",
+                        "Try selecting a different audio device",
+                        "Check if another application is using the microphone",
+                    ] + ([f"Available devices: {', '.join(available_devices[:5])}"] if available_devices else []),
+                    recovery_attempted=True,
+                    recovery_successful=False,
+                )
+            except Exception:
+                pass  # Don't fail if error reporting fails
 
     def stop_recording_and_transcribe(self):
         if hasattr(self, "timer") and self.timer:

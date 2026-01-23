@@ -171,26 +171,23 @@ Keep recordings under 10 minutes.
 
 ---
 
-### M3: Model Download No Retry Logic
+### M3: ~~Model Download No Retry Logic~~
 
-**Status:** Known Issue | **Workaround:** Manual download
+**Status:** FIXED | **Fixed in:** Phase 6
 
 **Description:**
-Model downloads from HuggingFace do not implement automatic retry on network failures.
+Model downloads from HuggingFace did not implement automatic retry on network failures.
 
-**Symptoms:**
-- Download fails on network interruption
-- No automatic retry
-- User must manually retry
+**Resolution:**
+- Added exponential backoff retry logic with jitter (default 3 retries)
+- Network error detection identifies retryable failures
+- User-friendly error messages with suggestions for non-retryable errors
+- Progress tracking includes retry count and status ("retrying")
+- Error reports generated for failed downloads after all retries
 
-**Location:** Model download code (referenced but implementation location varies)
+**Location:** `flet_gui/model_download.py:504-688` (_download_worker method)
 
-**Workaround:**
-Retry the download manually, or download the model directly from HuggingFace and place in:
-- **Installed:** `%USERPROFILE%\.cache\huggingface\hub\`
-- **Portable:** `models\` next to executable
-
-**Affected Components:** Model management system
+**Affected Components:** Model download system
 
 ---
 
@@ -360,10 +357,42 @@ HISTORY_FILE = get_history_file()
 
 ### Unhandled Exception Scenarios
 
-1. **Audio device disconnect during recording** - May crash or hang
-2. **GPU out of memory** - Falls back to CPU without clear notification
+1. **Audio device disconnect during recording** - ~~Automatic device fallback implemented~~
+2. **GPU out of memory** - ~~Automatic CPU fallback with user notification~~
 3. **Model file corruption** - No verification or recovery
 4. **Hotkey already registered** - May fail to register silently
+
+### User-Friendly Error Messages
+
+A new `error_handling.py` module has been added providing:
+- **ErrorCategory**: Constants for error types (MODEL_DOWNLOAD, AUDIO_DEVICE, GPU_INIT, etc.)
+- **UserFriendlyError**: Base exception class with user-friendly messages
+- **ModelDownloadError**: Specific error for model download failures
+- **AudioDeviceError**: Specific error for audio device issues
+- **GPUInitializationError**: Specific error for GPU failures
+- **HotkeyConflictError**: Specific error for hotkey conflicts
+- **ClipboardAccessError**: Specific error for clipboard issues
+
+Each error type includes:
+- User-friendly title and description
+- Actionable suggestions for resolution
+- Technical details for diagnostics
+- Optional recovery actions
+
+### Error Recovery System
+
+The `ErrorRecovery` class provides:
+- **retry_with_backoff**: Automatic retry with exponential backoff
+- **gpu_fallback_recovery**: Try GPU, fall back to CPU on failure
+- **audio_device_fallback**: Try alternative audio devices
+
+### Error Reporting
+
+The `ErrorReporter` class provides:
+- Detailed error reports with system information
+- Error history tracking
+- Export to JSON and markdown formats
+- Automatic recovery attempt logging
 
 ### Missing Validation
 
@@ -377,11 +406,15 @@ HISTORY_FILE = get_history_file()
 
 The following issues are being addressed in Phase 6:
 
-- [ ] Thread safety improvements for state variables
-- [ ] Audio buffer overflow handling with user notification
-- [ ] Model download retry logic
-- [x] Settings corruption graceful handling
-- [x] Input validation for all settings
+- [x] Thread safety improvements for state variables (completed in earlier task)
+- [x] Audio buffer overflow handling with user notification (completed in earlier task)
+- [x] Model download retry logic (completed in this task)
+- [x] Settings corruption graceful handling (completed in earlier task)
+- [x] Input validation for all settings (completed in earlier task)
+- [x] GPU to CPU fallback on initialization failure (completed in this task)
+- [x] Audio device fallback on failure (completed in this task)
+- [x] User-friendly error messages for common errors (completed in this task)
+- [x] Error reporting and recovery system (completed in this task)
 
 ---
 

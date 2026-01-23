@@ -17,6 +17,7 @@ Notes
 - Parakeet does not require language specification.
 - Whisper supports the widest range of languages.
 - Heavy model libraries are lazy-loaded for faster startup.
+- GPU initialization failures automatically fall back to CPU with user notification.
 """
 
 import os
@@ -89,6 +90,21 @@ def _ensure_faster_whisper():
 
 logger = logging.getLogger(__name__)
 
+# Import error handling for user-friendly messages
+try:
+    from .error_handling import (
+        ErrorCategory,
+        GPUInitializationError,
+        get_error_recovery,
+        get_error_reporter,
+    )
+except ImportError:
+    # Fallback if error_handling module is not available
+    ErrorCategory = None
+    GPUInitializationError = None
+    def get_error_recovery(): return None
+    def get_error_reporter(): return None
+
 
 class ModelWrapper:
     """
@@ -111,114 +127,286 @@ class ModelWrapper:
 
         logger.info(f"Loading model: type={mt}, name={self.settings.model_name}, device={device}, compute_type={compute_type}")
 
+        # For Whisper, try GPU first, fall back to CPU on error
+        if mt == "whisper":
+            self._load_whisper_with_fallback(device, compute_type)
+        elif mt == "parakeet":
+            self._load_parakeet_model(device)
+        elif mt == "canary":
+            self._load_canary_model(device)
+        elif mt == "voxtral":
+            self._load_voxtral_model()
+        else:
+            error_msg = f"Unknown model type: {self.model_type}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+    def _load_whisper_with_fallback(self, device: str, compute_type: str):
+        """
+        Load Whisper model with automatic CPU fallback on GPU error.
+
+        If GPU initialization fails, automatically falls back to CPU
+        and notifies the user with a friendly message.
+
+        Parameters
+        ----------
+        device
+            Requested device ("cuda" or "cpu").
+        compute_type
+            Requested compute type (float16, int8, etc.).
+        """
+        if not _ensure_faster_whisper():
+            raise ImportError("faster_whisper library not available")
+
+        original_device = device
+        cpu_fallback = False
+
         try:
-            if mt == "whisper":
-                if not _ensure_faster_whisper():
-                    raise ImportError("faster_whisper library not available")
-                self.model = _WhisperModel(
-                    model_size_or_path=self.settings.model_name,
-                    device=device,
-                    compute_type=compute_type,
-                )
-                logger.info(f"Whisper model loaded successfully")
+            self.model = _WhisperModel(
+                model_size_or_path=self.settings.model_name,
+                device=device,
+                compute_type=compute_type,
+            )
+            logger.info(f"Whisper model loaded successfully on {device}")
 
-            elif mt == "parakeet":
-                if not _ensure_nemo():
-                    raise ImportError("nemo library not available")
-                logger.info(f"Loading Parakeet model from {self.settings.model_name}...")
-                self.model = _ASRModel.from_pretrained(
-                    model_name=self.settings.model_name,
-                    map_location=self.settings.device,
-                ).eval()
-                self._model_ref = self.model
-                logger.info(f"Parakeet model loaded successfully")
+        except Exception as e:
+            # Check if this is a GPU-related error
+            is_gpu_error = self._is_gpu_error(e)
 
-            elif mt == "canary":
-                if not _ensure_nemo():
-                    raise ImportError("nemo library not available")
-                logger.info(f"Loading Canary model from {self.settings.model_name}...")
-                self.model = _EncDecMultiTaskModel.from_pretrained(
-                    self.settings.model_name, map_location=self.settings.device
-                ).eval()
-                self._model_ref = self.model
-                logger.info(f"Canary model loaded successfully")
+            if is_gpu_error and device == "cuda":
+                logger.warning(f"GPU initialization failed: {e}. Falling back to CPU...")
+                cpu_fallback = True
 
-            elif mt == "voxtral":
-                if not _ensure_transformers():
-                    raise ImportError("transformers library not available")
-                from typing import Optional
-                from mistral_common.protocol.transcription.request import (
-                    TranscriptionRequest as _TR,
-                )
-                from pydantic_extra_types.language_code import LanguageAlpha2
-
-                class TranscriptionRequest(_TR):
-                    language: Optional[LanguageAlpha2] = None
-
-                repo_id = self.settings.model_name
-                logger.info(f"Loading Voxtral model from {repo_id}...")
+                # Try CPU fallback with appropriate compute type
+                cpu_compute_type = "int8" if compute_type in ("float16", "int8") else compute_type
 
                 try:
-                    self.processor = _AutoProcessor.from_pretrained(repo_id)
-                except Exception as e:
-                    logger.error(f"Failed to load Voxtral processor: {e}")
-                    raise RuntimeError(f"Voxtral processor loading failed: {e}")
+                    self.model = _WhisperModel(
+                        model_size_or_path=self.settings.model_name,
+                        device="cpu",
+                        compute_type=cpu_compute_type,
+                    )
+                    logger.info(f"Whisper model loaded successfully on CPU (fallback from GPU)")
 
-                if self.settings.compute_type == "int8":
-                    quant_cfg = _BitsAndBytesConfig(load_in_8bit=True)
-                    self.model = _VoxtralForConditionalGeneration.from_pretrained(
-                        repo_id,
-                        quantization_config=quant_cfg,
-                        device_map="cuda",
-                    ).eval()
+                    # Notify user about CPU fallback
+                    self._notify_gpu_fallback(original_device, "cpu", e)
 
-                elif self.settings.compute_type == "int4":
-                    quant_cfg = _BitsAndBytesConfig(load_in_4bit=True)
-                    self.model = _VoxtralForConditionalGeneration.from_pretrained(
-                        repo_id,
-                        quantization_config=quant_cfg,
-                        device_map="cuda",
-                    ).eval()
-
-                else:
-                    compute_dtype = {
-                        "float16": torch.float16,
-                        "bfloat16": torch.bfloat16,
-                    }.get(self.settings.compute_type, torch.float16)
-
-                    self.model = _VoxtralForConditionalGeneration.from_pretrained(
-                        repo_id,
-                        dtype=compute_dtype,
-                        device_map="cuda",
-                    ).eval()
-
-                self.TranscriptionRequest = TranscriptionRequest
-                logger.info(f"Voxtral model loaded successfully")
+                except Exception as cpu_error:
+                    # CPU fallback also failed
+                    logger.error(f"CPU fallback also failed: {cpu_error}")
+                    self._report_gpu_init_error(original_device, compute_type, cpu_error)
+                    raise RuntimeError(
+                        f"Failed to load model on both GPU and CPU. "
+                        f"GPU error: {e}. CPU error: {cpu_error}"
+                    ) from cpu_error
             else:
-                error_msg = f"Unknown model type: {self.model_type}"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+                # Not a GPU error or not using CUDA - report the error
+                self._report_gpu_init_error(device, compute_type, e)
+                raise
 
-        except FileNotFoundError as e:
-            logger.error(f"Model file not found: {e}")
-            raise RuntimeError(
-                f"Model '{self.settings.model_name}' not found. "
-                f"Please ensure the model is downloaded or check your network connection."
-            ) from e
-        except torch.cuda.OutOfMemoryError as e:
-            logger.error(f"GPU out of memory: {e}")
-            raise RuntimeError(
-                f"GPU out of memory while loading model. Try using a smaller model, "
-                f"reducing batch size, or using CPU/CPU with int8 quantization."
-            ) from e
-        except ImportError as e:
-            logger.error(f"Import error while loading model: {e}")
-            raise RuntimeError(
-                f"Missing dependencies for model type '{mt}'. {e}"
-            ) from e
+    def _is_gpu_error(self, exception: Exception) -> bool:
+        """
+        Check if an exception is related to GPU initialization.
+
+        Parameters
+        ----------
+        exception
+            The exception to check.
+
+        Returns
+        -------
+        bool
+            True if this is a GPU-related error.
+        """
+        error_message = str(exception).lower()
+        error_type = type(exception).__name__.lower()
+
+        gpu_error_indicators = [
+            "cuda",
+            "gpu",
+            "device",
+            "out of memory",
+            "oom",
+            "nvidia",
+            "cublas",
+            "cudnn",
+            "runtime error",
+            "driver",
+        ]
+
+        # Check for torch.cuda specific errors
+        if "cuda" in error_type or "outofmemory" in error_type:
+            return True
+
+        # Check error message for GPU-related terms
+        return any(indicator in error_message for indicator in gpu_error_indicators)
+
+    def _notify_gpu_fallback(self, from_device: str, to_device: str, error: Exception):
+        """
+        Notify user about GPU to CPU fallback.
+
+        Parameters
+        ----------
+        from_device
+            Original device that failed.
+        to_device
+            Fallback device being used.
+        error
+            The error that triggered the fallback.
+        """
+        # Log warning
+        logger.warning(
+            f"GPU initialization failed ({from_device}): {error}. "
+            f"Proceeding with CPU ({to_device}). Transcription will be slower."
+        )
+
+        # Create user-friendly error report if available
+        reporter = get_error_reporter()
+        if reporter and ErrorCategory:
+            try:
+                reporter.create_report(
+                    exception=error,
+                    category=ErrorCategory.GPU_INIT,
+                    message="GPU acceleration is unavailable. Using CPU instead.",
+                    suggestions=[
+                        "Update your GPU drivers",
+                        "Check if CUDA is properly installed",
+                        "Ensure your GPU has enough available memory",
+                        "Consider using a smaller model for better performance",
+                    ],
+                    recovery_attempted=True,
+                    recovery_successful=True,
+                )
+            except Exception:
+                pass  # Don't fail if error reporting fails
+
+    def _report_gpu_init_error(self, device: str, compute_type: str, error: Exception):
+        """
+        Report GPU initialization error with user-friendly message.
+
+        Parameters
+        ----------
+        device
+            Device that failed.
+        compute_type
+            Compute type that was attempted.
+        error
+            The error that occurred.
+        """
+        # Log error
+        logger.error(f"GPU initialization failed: device={device}, compute_type={compute_type}, error={error}")
+
+        # Create user-friendly error report if available
+        reporter = get_error_reporter()
+        if reporter and ErrorCategory:
+            try:
+                reporter.create_report(
+                    exception=error,
+                    category=ErrorCategory.GPU_INIT,
+                    message="Could not initialize GPU for transcription.",
+                    suggestions=[
+                        "Update your GPU drivers",
+                        "Check if CUDA is properly installed",
+                        "Ensure your GPU has enough available memory",
+                        "Try using CPU mode instead",
+                        "Consider using a smaller model",
+                    ],
+                    recovery_attempted=False,
+                    recovery_successful=False,
+                )
+            except Exception:
+                pass  # Don't fail if error reporting fails
+
+    def _load_parakeet_model(self, device: str):
+        """Load Parakeet model with error handling."""
+        if not _ensure_nemo():
+            raise ImportError("nemo library not available")
+        logger.info(f"Loading Parakeet model from {self.settings.model_name}...")
+
+        try:
+            self.model = _ASRModel.from_pretrained(
+                model_name=self.settings.model_name,
+                map_location=self.settings.device,
+            ).eval()
+            self._model_ref = self.model
+            logger.info(f"Parakeet model loaded successfully")
         except Exception as e:
-            logger.error(f"Unexpected error loading model: {e}")
-            raise RuntimeError(f"Failed to load model '{self.settings.model_name}': {e}") from e
+            self._report_gpu_init_error(device, "N/A", e)
+            raise
+
+    def _load_canary_model(self, device: str):
+        """Load Canary model with error handling."""
+        if not _ensure_nemo():
+            raise ImportError("nemo library not available")
+        logger.info(f"Loading Canary model from {self.settings.model_name}...")
+
+        try:
+            self.model = _EncDecMultiTaskModel.from_pretrained(
+                self.settings.model_name, map_location=self.settings.device
+            ).eval()
+            self._model_ref = self.model
+            logger.info(f"Canary model loaded successfully")
+        except Exception as e:
+            self._report_gpu_init_error(device, "N/A", e)
+            raise
+
+    def _load_voxtral_model(self):
+        """Load Voxtral model with error handling."""
+        if not _ensure_transformers():
+            raise ImportError("transformers library not available")
+        from typing import Optional
+        from mistral_common.protocol.transcription.request import (
+            TranscriptionRequest as _TR,
+        )
+        from pydantic_extra_types.language_code import LanguageAlpha2
+
+        class TranscriptionRequest(_TR):
+            language: Optional[LanguageAlpha2] = None
+
+        repo_id = self.settings.model_name
+        logger.info(f"Loading Voxtral model from {repo_id}...")
+
+        try:
+            self.processor = _AutoProcessor.from_pretrained(repo_id)
+        except Exception as e:
+            logger.error(f"Failed to load Voxtral processor: {e}")
+            raise RuntimeError(f"Voxtral processor loading failed: {e}")
+
+        try:
+            if self.settings.compute_type == "int8":
+                quant_cfg = _BitsAndBytesConfig(load_in_8bit=True)
+                self.model = _VoxtralForConditionalGeneration.from_pretrained(
+                    repo_id,
+                    quantization_config=quant_cfg,
+                    device_map="cuda",
+                ).eval()
+
+            elif self.settings.compute_type == "int4":
+                quant_cfg = _BitsAndBytesConfig(load_in_4bit=True)
+                self.model = _VoxtralForConditionalGeneration.from_pretrained(
+                    repo_id,
+                    quantization_config=quant_cfg,
+                    device_map="cuda",
+                ).eval()
+
+            else:
+                compute_dtype = {
+                    "float16": torch.float16,
+                    "bfloat16": torch.bfloat16,
+                }.get(self.settings.compute_type, torch.float16)
+
+                self.model = _VoxtralForConditionalGeneration.from_pretrained(
+                    repo_id,
+                    dtype=compute_dtype,
+                    device_map="cuda",
+                ).eval()
+
+            self.TranscriptionRequest = TranscriptionRequest
+            logger.info(f"Voxtral model loaded successfully")
+
+        except Exception as e:
+            self._report_gpu_init_error("cuda", self.settings.compute_type, e)
+            raise
 
     def transcribe(
         self, audio_data, sample_rate: int = 16000, language: Optional[str] = None
