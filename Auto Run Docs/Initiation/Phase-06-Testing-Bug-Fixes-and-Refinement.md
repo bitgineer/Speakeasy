@@ -299,7 +299,7 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
       - User-friendly error reporting for device issues
       - Automatic reconnection attempt with fallback devices
 
-- [ ] Documentation updates:
+- [x] Documentation updates:
   - Update `docs/troubleshooting.md` with:
     - Common error messages and solutions
     - Diagnostic steps for issues
@@ -311,6 +311,38 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - Performance tips
   - Update inline code documentation
   - Add docstrings to public APIs
+  - **COMPLETED NOTES:**
+    - Created comprehensive `docs/troubleshooting.md` with:
+      - Quick diagnostics section with debug logging instructions
+      - Common error messages for all error categories
+      - Model download errors (network issues, disk space)
+      - Audio device errors (no device, disconnected)
+      - GPU errors (CUDA OOM, not detected)
+      - Hotkey errors (registration failed, conflicts)
+      - Clipboard errors (access denied)
+      - Settings errors (corruption, not persisting)
+      - Performance issues (slow transcription, high memory)
+      - Application won't start diagnostics
+      - Log file analysis guide
+      - PowerShell diagnostic script
+      - Getting help section with bug reporting guidelines
+    - Created comprehensive `docs/faq.md` with:
+      - Getting started questions (what is it, how it works, requirements)
+      - Installation and setup questions (which method, GPU needs, model choice)
+      - Usage questions (hotkey changes, language, pasting issues)
+      - Performance tips (faster transcription, reducing memory)
+      - Troubleshooting basics (hotkey issues, audio errors)
+      - Advanced usage (dictation, coding, audio files, portable mode)
+      - Privacy and data questions (offline use, data collection)
+      - Tips and tricks section with keyboard shortcuts
+    - Reviewed inline code documentation:
+      - Core modules already have excellent docstrings (error_handling.py, clipboard.py, typing_util.py, models.py, transcriber.py, settings.py)
+      - All public APIs have comprehensive docstrings with:
+        - Function/class descriptions
+        - Parameters with types
+        - Return values with types
+        - Examples where appropriate
+        - Notes on behavior and limitations
 
 - [ ] Stability and reliability testing:
   - Long-running stability test (24+ hours continuous use)
