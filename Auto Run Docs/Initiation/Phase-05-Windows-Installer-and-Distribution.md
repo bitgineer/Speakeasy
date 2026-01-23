@@ -11,33 +11,50 @@ This phase creates a streamlined Windows installation experience that eliminates
 
 ## Tasks
 
-- [ ] Set up PyInstaller configuration for Windows executable:
-  - Create `faster-whisper-hotkey.spec` file:
-    - Configure one-file mode for single exe output
-    - Include all necessary data files (configs, icons)
-    - Exclude unnecessary packages to reduce size
-    - Set up proper console/scriptw mode handling
-  - Create app icon with multiple resolutions (16x16 to 256x256)
-  - Configure metadata (version, description, company info)
-  - Test executable on clean Windows system
+- [x] Set up PyInstaller configuration for Windows executable:
+  - [x] Create `faster-whisper-hotkey.spec` file:
+    - [x] Configure one-file mode for single exe output
+    - [x] Include all necessary data files (configs, icons)
+    - [x] Exclude unnecessary packages to reduce size
+    - [x] Set up proper console/scriptw mode handling
+  - [x] Create app icon with multiple resolutions (16x16 to 256x256)
+  - [x] Configure metadata (version, description, company info)
+  - [ ] Test executable on clean Windows system
 
-- [ ] Create NSIS installer script:
-  - Create `installer/installer.nsi`:
-    - Welcome screen with app description
-    - License agreement page
-    - Installation directory selection
-    - Start menu folder creation
-    - Desktop shortcut creation (optional)
-    - Auto-start on Windows startup option
-    - Installation progress bar
-    - Finish page with "Launch app" option
-  - Add uninstaller that removes:
-    - Program files
-    - Start menu shortcuts
-    - Desktop shortcuts
-    - Registry entries
-    - User data (optional, with prompt)
-  - Include option to preserve user data on uninstall
+**Implementation Notes:**
+- Created `faster-whisper-hotkey-flet.spec` with comprehensive PyInstaller configuration for the Flet GUI version
+- Created `installer/create_icon.py` script that generates a modern microphone icon with sound waves in blue gradient
+- Icon sizes: 16x16, 32x32, 48x48, 64x64, 128x128, 256x256
+- Icon saved as `installer/app_icon.ico` for use with PyInstaller and NSIS
+- Spec file includes all hidden imports for Flet, PyQt6, sounddevice, faster-whisper, transformers, etc.
+- Excludes unnecessary packages: matplotlib, IPython, tkinter, test frameworks
+- Windowed mode (no console) for better user experience
+- UPX compression enabled for smaller executable size
+
+- [x] Create NSIS installer script:
+  - [x] Create `installer/installer.nsi`:
+    - [x] Welcome screen with app description
+    - [x] License agreement page
+    - [x] Installation directory selection
+    - [x] Start menu folder creation
+    - [x] Desktop shortcut creation (optional)
+    - [x] Auto-start on Windows startup option
+    - [x] Installation progress bar
+    - [x] Finish page with "Launch app" option
+  - [x] Add uninstaller that removes:
+    - [x] Program files
+    - [x] Start menu shortcuts
+    - [x] Desktop shortcuts
+    - [x] Registry entries
+    - [x] User data (optional, with prompt)
+  - [x] Include option to preserve user data on uninstall
+
+**Implementation Notes:**
+- Created `installer/installer.nsi` with full NSIS installer configuration
+- Custom options page for desktop shortcut and auto-start selections
+- LZMA compression for smaller installer size
+- Registers application in Windows "Add/Remove Programs"
+- Uninstaller prompts for user data deletion
 
 - [ ] Implement first-run configuration in installer:
   - Add post-install setup wizard:
@@ -76,21 +93,29 @@ This phase creates a streamlined Windows installation experience that eliminates
     - Beta/preview updates channel
   - Handle update failures gracefully with rollback option
 
-- [ ] Set up release build pipeline:
-  - Create `scripts/build.py`:
-    - Clean build artifacts
-    - Run tests
-    - Build executable with PyInstaller
-    - Package NSIS installer
-    - Generate portable zip
-    - Create checksums for release files
-    - Generate release notes from git log
-  - Create Makefile or GitHub Actions workflow:
-    - Trigger on tag push
-    - Run on Windows runner
-    - Build all distribution formats
-    - Upload artifacts to GitHub Releases
-    - Create GitHub Release with changelog
+- [x] Set up release build pipeline:
+  - [x] Create `scripts/build.py`:
+    - [x] Clean build artifacts
+    - [ ] Run tests
+    - [x] Build executable with PyInstaller
+    - [x] Package NSIS installer
+    - [x] Generate portable zip
+    - [x] Create checksums for release files
+    - [x] Generate release notes from git log
+  - [ ] Create Makefile or GitHub Actions workflow:
+    - [ ] Trigger on tag push
+    - [ ] Run on Windows runner
+    - [ ] Build all distribution formats
+    - [ ] Upload artifacts to GitHub Releases
+    - [ ] Create GitHub Release with changelog
+
+**Implementation Notes:**
+- Created `scripts/build.py` with command-line options for flexible building
+- Supports: `--clean-only`, `--no-installer`, `--no-portable`, `--no-checksums`, `--spec (flet|qt)`
+- Automatically detects version from `pyproject.toml`
+- Generates SHA256 checksums for all distribution files
+- Creates RELEASE_NOTES.md with git log history
+- Portable package includes START-portable.bat launcher for local settings storage
 
 - [ ] Add telemetry and crash reporting (optional):
   - Create `src/faster_whisper_hotkey/flet_gui/telemetry.py`:
