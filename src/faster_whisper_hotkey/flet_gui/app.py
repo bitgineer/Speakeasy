@@ -29,6 +29,7 @@ from .views.transcription_panel import TranscriptionPanel
 from .views.settings_panel import SettingsPanel
 from .views.history_panel import HistoryPanel
 from .history_manager import HistoryManager
+from .auto_paste import get_auto_paste, AutoPasteResult
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class FletApp:
         self.app_state = AppState()
         self.settings_service = SettingsService()
         self.history_manager = HistoryManager()
+        self.auto_paste = get_auto_paste()
         self.transcription_service: Optional[TranscriptionService] = None
         self.hotkey_manager: Optional[HotkeyManager] = None
         self.tray_manager: Optional[TrayManager] = None
@@ -582,11 +584,13 @@ class FletApp:
                 self._show_snackbar("Copied to clipboard")
 
     def _paste_transcription(self, e):
-        """Paste transcription to active window (placeholder)."""
+        """Paste transcription to active window."""
         if self._transcription_panel:
             text = self._transcription_panel.get_transcription_text()
             if text:
-                self._show_snackbar("Paste functionality - to be implemented")
+                self._paste_to_active_window(text)
+            else:
+                self._show_snackbar("No transcription to paste")
 
     def _open_settings(self, e):
         """Open settings panel."""
@@ -601,15 +605,33 @@ class FletApp:
 
     def _paste_to_active_window(self, text: str):
         """
-        Paste text to active window (placeholder).
+        Paste text to active window using auto-paste.
 
         Parameters
         ----------
         text
             The text to paste.
         """
-        # This will be implemented with auto-paste functionality
-        self._show_snackbar("Paste to active window - to be implemented")
+        if not text:
+            self._show_snackbar("No text to paste")
+            return
+
+        def on_paste_result(result: AutoPasteResult):
+            """Handle paste result."""
+            if result.success:
+                # Determine app name for message
+                app_name = result.window_info.window_class or "window"
+                self._show_snackbar(f"Pasted to {app_name}")
+            else:
+                error_msg = result.error_message or "Unknown error"
+                self._show_snackbar(f"Paste failed: {error_msg}")
+
+        # Set callback and paste asynchronously
+        self.auto_paste.set_result_callback(on_paste_result)
+        self.auto_paste.paste_async(text)
+
+        # Show initial message
+        self._show_snackbar("Pasting to active window...")
 
     def _minimize_to_tray(self, e):
         """Minimize window to tray."""

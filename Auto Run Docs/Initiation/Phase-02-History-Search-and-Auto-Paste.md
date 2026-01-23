@@ -83,7 +83,7 @@ This phase adds the remaining MVP features: searchable transcription history and
     - Auto-save transcriptions to history on completion
     - _open_history method refreshes and switches to history view
 
-- [ ] Implement auto-paste to active window:
+- [x] Implement auto-paste to active window:
   - Create `src/faster_whisper_hotkey/flet_gui/auto_paste.py`:
     - Integrate existing `clipboard.py` and `paste.py` functionality
     - Use `app_detector.py` to get the active window title/class
@@ -93,8 +93,18 @@ This phase adds the remaining MVP features: searchable transcription history and
       - Detect if target supports direct clipboard paste (use Ctrl+V)
       - Add configurable delay between clipboard restore and paste
     - Handle edge cases: admin windows, UAC prompts, fullscreen apps
+  - **Status**: COMPLETED - Created AutoPaste class with:
+    - Clipboard backup before paste, restore after paste
+    - Three paste methods: CLIPBOARD (Ctrl+V/Ctrl+Shift+V), TYPING (character-by-character), DIRECT (no restore)
+    - App-specific paste method detection using AppPasteRulesManager
+    - Windows terminal detection (WindowsTerminal, ConsoleWindowClass, PuTTY, etc.)
+    - Linux terminal detection using existing terminal.py infrastructure
+    - Configurable delays: pre_paste_delay, post_paste_delay, typing_delay
+    - Async paste support with result callbacks
+    - Active app detection for debugging/configuration
+    - Platform-specific implementations (Windows pynput, Linux paste.py)
 
-- [ ] Create app-specific paste rules system:
+- [x] Create app-specific paste rules system:
   - Create `src/faster_whisper_hotkey/flet_gui/app_paste_rules.py`:
     - Define paste method per app (clipboard, typing, simulated Ctrl+V)
     - Build on existing `app_rules_manager.py` infrastructure
@@ -105,6 +115,17 @@ This phase adds the remaining MVP features: searchable transcription history and
       - Discord: clipboard paste
       - Browser: clipboard paste
     - Allow wildcard matching (e.g., `*chrome*` for any Chrome window)
+  - **Status**: COMPLETED - Created AppPasteRulesManager class with:
+    - AppPasteRule dataclass with matchers, paste_method, priority, enabled flags
+    - Pre-configured rules for common apps: VS Code, Windows Terminal, CMD, PuTTY, Discord, Slack, Chrome/Edge, Firefox, Notepad, etc.
+    - Matcher support: window_class, window_title, process_name, regex_title, regex_class
+    - Priority-based rule evaluation (higher priority checked first)
+    - CRUD operations: add, update, delete, get, get_all
+    - Active window matching with get_paste_method_for_active_window()
+    - Import/export rules as JSON
+    - Suggested rules list for common applications
+    - Wildcard pattern matching support
+    - Automatic reindex of priorities
 
 - [ ] Add global hotkey for quick history access:
   - Extend `src/faster_whisper_hotkey/flet_gui/hotkey_manager.py`:
