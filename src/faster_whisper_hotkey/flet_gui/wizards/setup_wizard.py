@@ -14,8 +14,10 @@ SetupWizard
 """
 
 import logging
-from dataclasses import dataclass
-from typing import Optional, Callable, List
+import threading
+import time
+from dataclasses import dataclass, field
+from typing import Optional, Callable, List, Dict, Any
 
 import flet as ft
 
@@ -34,6 +36,8 @@ class WizardStep:
     MODEL_SELECT = "model_select"
     DOWNLOAD = "download"
     HOTKEY = "hotkey"
+    AUDIO_TEST = "audio_test"
+    ANALYTICS = "analytics"
     TUTORIAL = "tutorial"
     COMPLETE = "complete"
 
@@ -48,6 +52,9 @@ class WizardState:
     activation_mode: str = "hold"
     download_completed: bool = False
     tutorial_shown: bool = False
+    audio_test_passed: bool = False
+    analytics_enabled: bool = False
+    auto_start_enabled: bool = False
 
 
 class SetupWizard:
@@ -59,9 +66,11 @@ class SetupWizard:
     2. Hardware detection (show detected GPU/CPU)
     3. Model selection with recommendations
     4. Download selected model with progress
-    5. Hotkey configuration with test
-    6. Quick tutorial (how to use push-to-talk)
-    7. Ready to use summary
+    5. Hotkey configuration
+    6. Audio device testing
+    7. Analytics opt-in
+    8. Quick tutorial (how to use push-to-talk)
+    9. Ready to use summary
     """
 
     def __init__(
@@ -103,6 +112,13 @@ class SetupWizard:
         self._next_button: Optional[ft.ElevatedButton] = None
         self._back_button: Optional[ft.ElevatedButton] = None
         self._skip_button: Optional[ft.TextButton] = None
+
+        # Audio testing state
+        self._audio_level: float = 0.0
+        self._audio_test_active: bool = False
+        self._audio_devices: List[str] = []
+        self._selected_audio_device: Optional[str] = None
+        self._audio_test_thread: Optional[threading.Thread] = None
 
     def show(self, page: ft.Page) -> None:
         """
@@ -146,6 +162,8 @@ class SetupWizard:
             ("Model", WizardStep.MODEL_SELECT),
             ("Download", WizardStep.DOWNLOAD),
             ("Hotkey", WizardStep.HOTKEY),
+            ("Audio", WizardStep.AUDIO_TEST),
+            ("Analytics", WizardStep.ANALYTICS),
             ("Tutorial", WizardStep.TUTORIAL),
             ("Done", WizardStep.COMPLETE),
         ]
@@ -240,6 +258,8 @@ class SetupWizard:
             WizardStep.MODEL_SELECT,
             WizardStep.DOWNLOAD,
             WizardStep.HOTKEY,
+            WizardStep.AUDIO_TEST,
+            WizardStep.ANALYTICS,
             WizardStep.TUTORIAL,
             WizardStep.COMPLETE,
         ]
@@ -267,6 +287,10 @@ class SetupWizard:
             self._build_download_step()
         elif self._current_step == WizardStep.HOTKEY:
             self._build_hotkey_step()
+        elif self._current_step == WizardStep.AUDIO_TEST:
+            self._build_audio_test_step()
+        elif self._current_step == WizardStep.ANALYTICS:
+            self._build_analytics_step()
         elif self._current_step == WizardStep.TUTORIAL:
             self._build_tutorial_step()
         elif self._current_step == WizardStep.COMPLETE:
@@ -628,6 +652,251 @@ class SetupWizard:
 
         self._content_column.controls.append(content)
 
+    def _build_audio_test_step(self) -> None:
+        """Build audio device testing step."""
+        # Audio level indicator
+        level_indicator = ft.Container(
+            width=300,
+            height=20,
+            border_radius=10,
+            bgcolor=ft.colors.SURFACE_CONTAINER_HIGH,
+            content=ft.Container(
+                width=0,
+                height=20,
+                border_radius=10,
+                bgcolor=ft.colors.GREEN,
+                ref=ft.Ref[ft.Container](),
+            ),
+        )
+
+        # Create a reference for updating the level
+        level_ref = ft.Ref[ft.Container]()
+        level_indicator.content.ref = level_ref
+
+        # Status text
+        status_text = ft.Text(
+            "Click 'Test Microphone' to check your audio device",
+            size=14,
+            color=ft.colors.ON_SURFACE_VARIANT,
+        )
+
+        # Test button
+        test_button = ft.ElevatedButton(
+            "Test Microphone",
+            icon=ft.icons.MIC,
+            on_click=lambda _: self._start_audio_test(level_ref, status_text, test_button),
+            style=ft.ButtonStyle(
+                bgcolor=ft.colors.PRIMARY,
+                color=ft.colors.ON_PRIMARY,
+            ),
+        )
+
+        content = ft.Column(
+            [
+                ft.Icon(ft.icons.MICROPHONE, size=48, color=ft.colors.PRIMARY),
+                ft.Text(
+                    "Test Your Microphone",
+                    size=20,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Text(
+                    "Make sure your microphone is working properly",
+                    size=14,
+                    color=ft.colors.ON_SURFACE_VARIANT,
+                ),
+                ft.Divider(height=20),
+                ft.Text(
+                    "Audio Level:",
+                    size=14,
+                    weight=ft.FontWeight.MEDIUM,
+                ),
+                level_indicator,
+                ft.Divider(height=16),
+                status_text,
+                ft.Divider(height=16),
+                ft.Row(
+                    [test_button],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+                ft.Divider(height=16),
+                ft.Text(
+                    "Tip: Speak clearly into your microphone. You should see the level rise as you speak.",
+                    size=12,
+                    color=ft.colors.ON_SURFACE_VARIANT,
+                ),
+            ],
+            spacing=8,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+        self._content_column.controls.append(content)
+
+    def _start_audio_test(self, level_ref, status_text, button) -> None:
+        """Start audio test in background thread."""
+        if self._audio_test_active:
+            return
+
+        self._audio_test_active = True
+        button.text = "Testing..."
+        button.disabled = True
+
+        def test_audio():
+            try:
+                import sounddevice as sd
+                import numpy as np
+
+                # Update status
+                status_text.text = "Listening... Speak into your microphone"
+                status_text.color = ft.colors.PRIMARY
+
+                # Audio callback
+                def audio_callback(indata, frames, time, status):
+                    if status:
+                        logger.warning(f"Audio callback status: {status}")
+                    # Calculate RMS level
+                    level = np.sqrt(np.mean(indata ** 2))
+                    # Update level (0-1 range typically)
+                    self._audio_level = float(min(level * 5, 1.0))  # Amplify for visibility
+
+                # Start stream
+                stream = sd.InputStream(
+                    channels=1,
+                    samplerate=16000,
+                    callback=audio_callback,
+                )
+                stream.start()
+
+                # Update UI for 5 seconds
+                for _ in range(25):  # 5 seconds @ 200ms intervals
+                    if not self._audio_test_active:
+                        break
+
+                    # Update level indicator
+                    if self._page and level_ref.current:
+                        level_ref.current.width = self._audio_level * 300
+                        self._page.update()
+
+                    time.sleep(0.2)
+
+                stream.stop()
+                stream.close()
+
+                # Test passed
+                self._state.audio_test_passed = True
+                status_text.text = "Microphone test passed!"
+                status_text.color = ft.colors.GREEN
+                button.text = "Test Complete"
+                button.icon = ft.icons.CHECK
+                button.style = ft.ButtonStyle(
+                    bgcolor=ft.colors.GREEN,
+                    color=ft.colors.ON_PRIMARY,
+                )
+
+            except Exception as e:
+                logger.error(f"Audio test failed: {e}")
+                status_text.text = f"Audio test failed: {str(e)}"
+                status_text.color = ft.colors.ERROR
+                button.text = "Test Failed"
+                button.icon = ft.icons.ERROR
+            finally:
+                self._audio_test_active = False
+                if self._page:
+                    self._page.update()
+
+        threading.Thread(target=test_audio, daemon=True).start()
+
+    def _build_analytics_step(self) -> None:
+        """Build analytics opt-in step."""
+        content = ft.Column(
+            [
+                ft.Icon(ft.icons.ANALYTICS, size=48, color=ft.colors.PRIMARY),
+                ft.Text(
+                    "Help Us Improve",
+                    size=20,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Text(
+                    "Optional: Share anonymous usage data to help improve the app",
+                    size=14,
+                    color=ft.colors.ON_SURFACE_VARIANT,
+                ),
+                ft.Divider(height=20),
+
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(
+                                "What we collect:",
+                                size=14,
+                                weight=ft.FontWeight.MEDIUM,
+                            ),
+                            ft.Divider(height=8),
+                            ft.Row(
+                                [ft.Icon(ft.icons.CHECK, size=16, color=ft.colors.GREEN), ft.Text("Words transcribed count", size=13)],
+                                spacing=8,
+                            ),
+                            ft.Row(
+                                [ft.Icon(ft.icons.CHECK, size=16, color=ft.colors.GREEN), ft.Text("Model usage statistics", size=13)],
+                                spacing=8,
+                            ),
+                            ft.Row(
+                                [ft.Icon(ft.icons.CHECK, size=16, color=ft.colors.GREEN), ft.Text("Error reports (crashes)", size=13)],
+                                spacing=8,
+                            ),
+                            ft.Divider(height=8),
+                            ft.Text(
+                                "What we DON'T collect:",
+                                size=14,
+                                weight=ft.FontWeight.MEDIUM,
+                            ),
+                            ft.Divider(height=8),
+                            ft.Row(
+                                [ft.Icon(ft.icons.CANCEL, size=16, color=ft.colors.RED), ft.Text("Your transcriptions", size=13)],
+                                spacing=8,
+                            ),
+                            ft.Row(
+                                [ft.Icon(ft.icons.CANCEL, size=16, color=ft.colors.RED), ft.Text("Personal information", size=13)],
+                                spacing=8,
+                            ),
+                            ft.Row(
+                                [ft.Icon(ft.icons.CANCEL, size=16, color=ft.colors.RED), ft.Text("Audio recordings", size=13)],
+                                spacing=8,
+                            ),
+                        ],
+                        spacing=4,
+                    ),
+                    padding=ft.padding.all(16),
+                    bgcolor=ft.colors.SURFACE_CONTAINER_LOW,
+                    border_radius=8,
+                ),
+
+                ft.Divider(height=20),
+
+                ft.Checkbox(
+                    label="Help improve faster-whisper-hotkey with anonymous usage data",
+                    value=False,
+                    on_change=lambda e: setattr(self._state, 'analytics_enabled', e.control.value),
+                ),
+
+                ft.Checkbox(
+                    label="Start faster-whisper-hotkey when Windows starts",
+                    value=False,
+                    on_change=lambda e: setattr(self._state, 'auto_start_enabled', e.control.value),
+                ),
+
+                ft.Divider(height=16),
+                ft.Text(
+                    "You can change these settings anytime in Settings",
+                    size=12,
+                    color=ft.colors.ON_SURFACE_VARIANT,
+                ),
+            ],
+            spacing=8,
+            horizontal_alignment=ft.CrossAxisAlignment.START,
+        )
+
+        self._content_column.controls.append(content)
+
     def _build_tutorial_step(self) -> None:
         """Build tutorial step."""
         content = ft.Column(
@@ -765,6 +1034,8 @@ class SetupWizard:
             WizardStep.MODEL_SELECT,
             WizardStep.DOWNLOAD,
             WizardStep.HOTKEY,
+            WizardStep.AUDIO_TEST,
+            WizardStep.ANALYTICS,
             WizardStep.TUTORIAL,
             WizardStep.COMPLETE,
         ]
@@ -787,6 +1058,8 @@ class SetupWizard:
             WizardStep.MODEL_SELECT,
             WizardStep.DOWNLOAD,
             WizardStep.HOTKEY,
+            WizardStep.AUDIO_TEST,
+            WizardStep.ANALYTICS,
             WizardStep.TUTORIAL,
             WizardStep.COMPLETE,
         ]

@@ -12,6 +12,7 @@ FletApp
 """
 
 import logging
+import sys
 import threading
 import time
 from typing import Optional
@@ -42,6 +43,7 @@ from .notifications import (
 from .accessibility import get_accessibility_manager
 from .theme import get_theme_manager
 from .responsive import get_responsive_manager, ResponsiveManager
+from .wizards.setup_wizard import SetupWizard, WizardState
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +120,7 @@ class FletApp:
         self._help_panel: Optional[HelpPanel] = None
         self._model_manager_panel = None  # Will be initialized when needed
         self._current_view = "transcription"  # "transcription", "settings", "history", "help", or "models"
+        self._setup_wizard: Optional[SetupWizard] = None
 
     def build(self, page: ft.Page):
         """
@@ -752,6 +755,129 @@ class FletApp:
 
         # Initialize tray with available models
         self._update_tray_models()
+
+        # Check for first-run and show setup wizard
+        self._check_first_run()
+
+    def _check_first_run(self):
+        """Check if this is a first run and show setup wizard if needed."""
+        settings = self.settings_service.settings
+        if settings and not settings.onboarding_completed:
+            # Delay showing wizard slightly to let UI fully load
+            self.page.run_thread(self._show_setup_wizard, delay=500)
+
+    def _show_setup_wizard(self):
+        """Show the first-run setup wizard."""
+        if not self.page:
+            return
+
+        def on_wizard_complete(state: WizardState):
+            """Handle wizard completion."""
+            # Update settings with wizard choices
+            if self.settings_service.settings:
+                # Update model
+                if state.selected_model:
+                    self.settings_service.settings.model_name = state.selected_model
+
+                # Update hotkey and activation mode
+                if state.hotkey:
+                    self.settings_service.settings.hotkey = state.hotkey
+                if state.activation_mode:
+                    self.settings_service.settings.activation_mode = state.activation_mode
+
+                # Update device/compute type based on hardware detection
+                if state.hardware_info:
+                    self.settings_service.settings.device = state.hardware_info.recommended_device
+                    self.settings_service.settings.compute_type = state.hardware_info.recommended_compute_type
+
+                # Handle analytics opt-in (privacy mode is opposite of analytics enabled)
+                self.settings_service.settings.privacy_mode = not state.analytics_enabled
+
+                # Mark onboarding as complete
+                self.settings_service.settings.onboarding_completed = True
+
+                # Save settings
+                self.settings_service.save()
+
+                # Reinitialize services with new settings
+                if self.transcription_service:
+                    self.transcription_service.reinitialize(self.settings_service.settings)
+
+                # Update hotkey manager
+                if self.hotkey_manager:
+                    self.hotkey_manager.set_hotkey(state.hotkey)
+
+                # Update app state
+                self.app_state.update_from_settings(self.settings_service.settings)
+                if self._hotkey_display:
+                    self._hotkey_display.text = f"Hotkey: {state.hotkey.upper()}"
+
+                # Handle auto-start option
+                if state.auto_start_enabled:
+                    self._enable_auto_start()
+
+            # Close wizard
+            if self._setup_wizard:
+                self._setup_wizard.close()
+
+        def on_wizard_skip():
+            """Handle wizard skip."""
+            # Mark onboarding as complete anyway
+            if self.settings_service.settings:
+                self.settings_service.settings.onboarding_completed = True
+                self.settings_service.save()
+
+        # Create and show wizard
+        self._setup_wizard = SetupWizard(
+            on_complete=on_wizard_complete,
+            on_skip=on_wizard_skip,
+            settings_service=self.settings_service,
+        )
+        self._setup_wizard.show(self.page)
+
+    def _enable_auto_start(self):
+        """Enable auto-start on Windows boot."""
+        try:
+            import os
+            import shutil
+
+            # Get startup folder path
+            startup_folder = os.path.join(
+                os.environ.get('APPDATA', ''),
+                'Microsoft',
+                'Windows',
+                'Start Menu',
+                'Programs',
+                'Startup'
+            )
+
+            # Get path to current executable
+            if getattr(sys, 'frozen', False):
+                # Running as compiled executable
+                exe_path = sys.executable
+            else:
+                # Running as script - skip auto-start for dev
+                logger.info("Skipping auto-start setup in development mode")
+                return
+
+            # Create shortcut
+            shortcut_path = os.path.join(startup_folder, 'faster-whisper-hotkey.lnk')
+
+            # Use PowerShell to create shortcut
+            import subprocess
+            ps_script = f'''
+            $WshShell = New-Object -ComObject WScript.Shell
+            $Shortcut = $WshShell.CreateShortcut("{shortcut_path}")
+            $Shortcut.TargetPath = "{exe_path}"
+            $Shortcut.WorkingDirectory = "{os.path.dirname(exe_path)}"
+            $Shortcut.Description = "faster-whisper-hotkey - Push-to-talk transcription"
+            $Shortcut.Save()
+            '''
+            subprocess.run(['powershell', '-Command', ps_script], check=True, capture_output=True)
+            logger.info(f"Auto-start shortcut created at {shortcut_path}")
+
+        except Exception as e:
+            logger.warning(f"Failed to enable auto-start: {e}")
 
     def _create_default_settings(self):
         """Create default settings when loading fails."""

@@ -47,6 +47,8 @@ InstallDirRegKey HKCU "Software\${APPNAME}" ""
 Var StartMenuFolder
 Var AutoStart
 Var CreateDesktopIcon
+Var DiskSpaceRequired
+Var InstallErrorOccurred
 
 ; Interface settings
 !include "MUI2.nsh"
@@ -91,16 +93,94 @@ Page custom OptionsPage OptionsPageLeave
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
 
+; Error Handling Functions
+Function .onInit
+    ; Initialize variables
+    StrCpy $InstallErrorOccurred "0"
+
+    ; Check if already running
+    System::Call 'kernel32::CreateMutexA(i 0, i 0, t "faster-whisper-hotkey-installer") i .r1 ?e'
+    Pop $1
+    ${If} $1 != 0
+        MessageBox MB_OK|MB_ICONEXCLAMATION "The installer is already running."
+        Abort
+    ${EndIf}
+
+    ; Check for Windows version (require Windows 10+)
+    ${IfNot} ${AtLeastWin10}
+        MessageBox MB_OK|MB_ICONSTOP "This application requires Windows 10 or later.$\n$\nYour Windows version is not supported."
+        Abort
+    ${EndIf}
+
+    ; Check required disk space (500MB)
+    StrCpy $DiskSpaceRequired 500000
+    ${If} ${FileExists} "$INSTDIR\*.*"
+        ; Check available disk space
+        ${GetDrives} "HDD+" GetDriveFreeSpace
+    ${EndIf}
+
+FunctionEnd
+
+Function GetDriveFreeSpace
+    ; Get free space on drive
+    ${DriveSpace} "$9  " $R0 $R1
+    ${If} $R0 < $DiskSpaceRequired
+        MessageBox MB_YESNO|MB_ICONEXCLAMATION "Warning: Less than ${DiskSpaceRequired} KB of disk space available on drive $9.$\n$\nDo you want to continue anyway?" IDYES +2
+        Abort
+    ${EndIf}
+    Push $0
+FunctionEnd
+
+Function OptionsPageLeave
+    ; Validate options before proceeding
+    ${If} $InstallErrorOccurred == "1"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "An error occurred. Please try again."
+        Abort
+    ${EndIf}
+FunctionEnd
+
+; Installation Error Handler
+Function CheckInstallError
+    Pop $1  ; Get the error flag
+    ${If} $1 != "0"
+        StrCpy $InstallErrorOccurred "1"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "An error occurred during installation.$\n$\nError: $1"
+    ${EndIf}
+FunctionEnd
+
+; Check for write permissions
+Function CheckWritePermissions
+    ; Try to create a test file in install directory
+    GetTempFileName $0 $INSTDIR
+    FileOpen $0 $0 "w"
+    ${If} $0 == ""
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Cannot write to installation directory.$\n$\nPlease run the installer as Administrator."
+        Return
+    ${EndIf}
+    FileClose $0
+    Delete $0
+FunctionEnd
+
 ; Installer Sections
 Section "Main Application" SecMain
 
     SectionIn RO ; Required section
 
+    ; Check write permissions before installing
+    Call CheckWritePermissions
+
     ; Set output path
     SetOutPath $INSTDIR
 
-    ; Copy main executable
+    ; Copy main executable with error handling
+    SetOverwrite try
     File "${DISTDIR}\${EXE_NAME}"
+    ${If} ${FileExists} "$INSTDIR\${EXE_NAME}"
+        DetailPrint "Main executable copied successfully"
+    ${Else}
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Failed to copy main executable.$\n$\nPlease check disk space and permissions."
+        Abort
+    ${EndIf}
 
     ; Copy any additional files
     File /nonfatal "..\README.md"

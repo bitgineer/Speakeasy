@@ -76,19 +76,54 @@ This phase creates a streamlined Windows installation experience that eliminates
 - Registers application in Windows "Add/Remove Programs"
 - Uninstaller prompts for user data deletion
 
-- [ ] Implement first-run configuration in installer:
-  - Add post-install setup wizard:
-    - Hardware detection (CUDA vs CPU)
-    - Download recommended model (show progress)
-    - Configure default hotkey
-    - Test audio device
-    - Opt-in for auto-start on boot
-    - Opt-in for anonymous usage statistics
-  - Handle installation errors gracefully:
-    - Insufficient disk space
-    - Missing Windows components
-    - Network errors during model download
-    - Permission issues
+- [x] Implement first-run configuration in installer:
+  - [x] Add post-install setup wizard:
+    - [x] Hardware detection (CUDA vs CPU)
+    - [x] Download recommended model (show progress)
+    - [x] Configure default hotkey
+    - [x] Test audio device
+    - [x] Opt-in for auto-start on boot
+    - [x] Opt-in for anonymous usage statistics
+  - [x] Handle installation errors gracefully:
+    - [x] Insufficient disk space
+    - [x] Missing Windows components
+    - [x] Network errors during model download
+    - [x] Permission issues
+
+**Implementation Notes:**
+- Enhanced `SetupWizard` class in `src/faster_whisper_hotkey/flet_gui/wizards/setup_wizard.py`:
+  - Added new wizard steps: `AUDIO_TEST` and `ANALYTICS`
+  - Added `_build_audio_test_step()` with microphone testing UI
+  - Added `_start_audio_test()` method for audio level detection using sounddevice
+  - Added `_build_analytics_step()` with opt-in checkboxes for:
+    - Anonymous usage data collection
+    - Auto-start on Windows boot
+  - Updated `WizardState` dataclass with new fields:
+    - `audio_test_passed: bool`
+    - `analytics_enabled: bool`
+    - `auto_start_enabled: bool`
+- Integrated setup wizard into `src/faster_whisper_hotkey/flet_gui/app.py`:
+  - Added `_check_first_run()` method to detect first-time users
+  - Added `_show_setup_wizard()` to display wizard on first launch
+  - Added `on_wizard_complete()` callback to apply wizard settings:
+    - Updates model, hotkey, activation mode from wizard choices
+    - Applies hardware detection results (device, compute type)
+    - Sets privacy_mode based on analytics opt-in
+    - Marks onboarding_completed = True
+    - Creates auto-start shortcut if opted in
+  - Added `_enable_auto_start()` to create Windows startup shortcut via PowerShell
+- Enhanced NSIS installer error handling in `installer/installer.nsi`:
+  - Added `.onInit` function with checks:
+    - Prevents multiple installer instances running simultaneously
+    - Validates Windows 10+ requirement
+    - Checks available disk space (500MB minimum)
+  - Added `CheckWritePermissions()` function to verify write access
+  - Added `GetDriveFreeSpace()` function for disk space validation
+  - Added `OptionsPageLeave()` validation before proceeding
+  - Added file copy error handling in installer section
+- Wizard automatically runs on first app launch (after installation)
+- All wizard choices are persisted to settings and applied immediately
+- Users can skip the wizard entirely via "Skip Wizard" button
 
 - [ ] Create portable version option:
   - Generate portable .zip package:
