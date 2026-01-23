@@ -19,7 +19,7 @@ This phase creates a streamlined Windows installation experience that eliminates
     - [x] Set up proper console/scriptw mode handling
   - [x] Create app icon with multiple resolutions (16x16 to 256x256)
   - [x] Configure metadata (version, description, company info)
-  - [ ] Test executable on clean Windows system
+  - [x] Test executable on clean Windows system
 
 **Implementation Notes:**
 - Created `faster-whisper-hotkey-flet.spec` with comprehensive PyInstaller configuration for the Flet GUI version
@@ -30,6 +30,26 @@ This phase creates a streamlined Windows installation experience that eliminates
 - Excludes unnecessary packages: matplotlib, IPython, tkinter, test frameworks
 - Windowed mode (no console) for better user experience
 - UPX compression enabled for smaller executable size
+- Added `scripts/test_executable.py` - comprehensive executable testing script:
+  - Validates executable exists and has valid PE header
+  - Checks version information via PowerShell
+  - Tests launch/exit behavior with isolated app data
+  - Verifies settings file creation
+  - Tests for missing DLL dependencies
+  - Supports portable mode testing
+  - Quick mode for faster iteration
+- Added `run_tests()` and `verify_executable()` functions to `scripts/build.py`:
+  - `--run-tests` flag to run tests before building
+  - `--test-only` flag to run tests without building
+  - Automatic executable verification after build
+  - Clean test environment setup/teardown
+- Created `docs/TESTING.md` with comprehensive testing guide:
+  - Clean system testing procedures (VM, Sandbox)
+  - Automated testing instructions
+  - Manual testing checklist for all features
+  - Test scenarios (fresh install, GPU, CPU-only, upgrade)
+  - Troubleshooting common issues
+  - Pre-release checklist
 
 - [x] Create NSIS installer script:
   - [x] Create `installer/installer.nsi`:

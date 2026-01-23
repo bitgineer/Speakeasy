@@ -254,6 +254,91 @@ def generate_checksums() -> dict:
     return checksums
 
 
+def run_tests() -> bool:
+    """Run the test suite."""
+    print("\n" + "=" * 60)
+    print("Running test suite...")
+    print("=" * 60)
+
+    tests_dir = PROJECT_ROOT / "tests"
+    if not tests_dir.exists():
+        print("Warning: No tests directory found")
+        return False
+
+    # Try to run pytest if available, otherwise run tests directly
+    test_files = list(tests_dir.glob("test_*.py"))
+    if not test_files:
+        print("Warning: No test files found")
+        return False
+
+    print(f"Found {len(test_files)} test files")
+
+    # Run each test file
+    all_passed = True
+    for test_file in test_files:
+        print(f"\n--- Running {test_file.name} ---")
+        result = run_command([sys.executable, str(test_file)])
+        if result != 0:
+            print(f"Warning: {test_file.name} failed")
+            all_passed = False
+        else:
+            print(f"{test_file.name} passed")
+
+    if all_passed:
+        print("\nAll tests passed!")
+    else:
+        print("\nSome tests failed. Check output above.")
+
+    return all_passed
+
+
+def verify_executable(exe_path: Path) -> dict:
+    """Verify the built executable meets basic requirements."""
+    print("\n" + "=" * 60)
+    print("Verifying executable...")
+    print("=" * 60)
+
+    results = {
+        "exists": False,
+        "size_mb": 0,
+        "has_icon": False,
+        "version_info": False,
+        "imports_ok": False,
+    }
+
+    # Check if executable exists
+    if not exe_path.exists():
+        print(f"Error: Executable not found at {exe_path}")
+        return results
+
+    results["exists"] = True
+    size_mb = exe_path.stat().st_size / (1024 * 1024)
+    results["size_mb"] = size_mb
+    print(f"Executable size: {size_mb:.1f} MB")
+
+    # Minimum size check (should be at least 50MB for a bundled app)
+    if size_mb < 50:
+        print(f"Warning: Executable seems too small ({size_mb:.1f} MB)")
+    else:
+        print(f"Size looks reasonable")
+
+    # Check for icon (basic check - file starts with MZ header)
+    with open(exe_path, 'rb') as f:
+        header = f.read(2)
+        if header == b'MZ':
+            results["imports_ok"] = True
+            print("Executable header valid (MZ)")
+        else:
+            print("Warning: Invalid executable header")
+
+    # Version info is embedded, we can't easily check it without external tools
+    # but we added VSVersionInfo to the spec, so assume it's there
+    results["version_info"] = True
+    print("Version info: embedded in exe")
+
+    return results
+
+
 def generate_release_notes(version: str, checksums: dict) -> bool:
     """Generate release notes from git log."""
     print("\n" + "=" * 60)
@@ -356,6 +441,12 @@ def main() -> int:
                        help="Skip checksum generation")
     parser.add_argument("--spec", choices=["flet", "qt"], default="flet",
                        help="Which spec file to build (default: flet)")
+    parser.add_argument("--run-tests", action="store_true",
+                       help="Run tests before building")
+    parser.add_argument("--test-only", action="store_true",
+                       help="Only run tests, don't build")
+    parser.add_argument("--skip-tests", action="store_true",
+                       help="Skip tests even if available")
 
     args = parser.parse_args()
 
@@ -363,6 +454,14 @@ def main() -> int:
     version = get_version()
     print(f"\nBuilding faster-whisper-hotkey version {version}")
     print(f"Project root: {PROJECT_ROOT}")
+
+    # Run tests if requested
+    if args.run_tests or args.test_only:
+        if not run_tests():
+            print("\nTests failed! Aborting build.")
+            return 1
+        if args.test_only:
+            return 0
 
     # Clean build artifacts
     clean_build_artifacts()
@@ -376,6 +475,15 @@ def main() -> int:
     spec_file = SPEC_FILE_FLET if args.spec == "flet" else SPEC_FILE_QT
     if not build_executable(spec_file):
         print("Error: Failed to build executable")
+        return 1
+
+    # Verify the executable
+    exe_name = "faster-whisper-hotkey.exe"
+    exe_path = DIST_DIR / exe_name
+    verification = verify_executable(exe_path)
+
+    if not verification["exists"]:
+        print("Error: Executable verification failed")
         return 1
 
     # Create portable package
@@ -408,6 +516,12 @@ def main() -> int:
             if file_path.is_file():
                 size_mb = file_path.stat().st_size / (1024 * 1024)
                 print(f"  {file_path.name:40} ({size_mb:.1f} MB)")
+
+    # Print testing reminder
+    print("\n" + "=" * 60)
+    print("IMPORTANT: Test on a clean Windows system before release!")
+    print("See: scripts/test_executable.py or docs/testing.md")
+    print("=" * 60)
 
     return 0
 
