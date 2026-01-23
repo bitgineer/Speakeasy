@@ -37,13 +37,20 @@ dependencies = [
     "transformers>=4.56",
     "bitsandbytes>=0.43.1",
     "pyperclip",
-    "windows-curses; sys_platform == 'win32'"
-
+    "windows-curses; sys_platform == 'win32'",
+    "pystray",
+    "Pillow",
+    "PyQt6",
+    "flet>=0.24.0",
 ]
 
 # SCRIPTS
 [project.scripts]
 faster-whisper-hotkey = "faster_whisper_hotkey.__main__:main"
+faster-whisper-hotkey-gui = "faster_whisper_hotkey.gui:main"
+faster-whisper-hotkey-gui-modern = "faster_whisper_hotkey.gui_modern:main"
+faster-whisper-hotkey-qt = "faster_whisper_hotkey.gui_qt.main:main"
+faster-whisper-hotkey-flet = "faster_whisper_hotkey.flet_gui.__main__:main"
 
 # SETUPTOOLS
 [tool.setuptools]
