@@ -20,7 +20,7 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
 
   **Completed 2025-01-23:** Created the flet_gui package with app_state.py, settings_service.py, transcription_service.py, hotkey_manager.py, app.py, and __main__.py. Added flet>=0.24.0 to pyproject.toml dependencies.
 
-- [ ] Create the core Flet application scaffold:
+- [x] Create the core Flet application scaffold:
   - Build a basic Flet app with a main window titled "faster-whisper-hotkey"
   - Implement a clean, modern layout with:
     - Header section with app title and status indicator
@@ -30,7 +30,9 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
   - Implement the app lifecycle: startup, window state management, graceful shutdown
   - Create `app_state.py` to manage shared UI state (is_recording, current_model, settings)
 
-- [ ] Create backend service layer for Flet UI integration:
+  **Completed 2025-01-23:** The core Flet scaffold is complete with header, content area, controls, system tray integration via TrayManager, and AppState for shared state management.
+
+- [x] Create backend service layer for Flet UI integration:
   - Create `src/faster_whisper_hotkey/flet_gui/transcription_service.py`:
     - Wrap `MicrophoneTranscriber` from `transcriber.py` for async/Flet compatibility
     - Implement callback registration for UI updates (recording started, transcription completed, errors)
@@ -41,7 +43,9 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
     - Provide get/set methods for all settings with change notifications
     - Handle settings persistence and loading
 
-- [ ] Implement the main transcription UI panel:
+  **Completed 2025-01-23:** TranscriptionService wraps MicrophoneTranscriber with thread-safe event queue and callbacks. SettingsService wraps Settings with get/set methods, validation, and change notifications.
+
+- [x] Implement the main transcription UI panel:
   - Create `src/faster_whisper_hotkey/flet_gui/views/transcription_panel.py`:
     - Large, prominent "Push to Talk" button (hold to record visual feedback)
     - Live audio level indicator (visualizer bar showing microphone input)
@@ -51,7 +55,9 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
   - Connect the UI panel to the TranscriptionService callbacks
   - Implement visual feedback during recording (pulsing animation, color change)
 
-- [ ] Integrate push-to-talk hotkey functionality:
+  **Completed 2025-01-23:** TranscriptionPanel created with push-to-talk button, audio level bar, status text, transcription display, and copy/paste buttons. Visual feedback for recording state is implemented via update_state method.
+
+- [x] Integrate push-to-talk hotkey functionality:
   - Modify `transcriber.py` minimally to support an external callback mode for Flet integration
     - Add optional callback parameter to `MicrophoneTranscriber` for UI state updates
     - Ensure hotkey listener can notify the Flet UI of recording state changes
@@ -61,7 +67,9 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
     - Display current hotkey assignment in the UI
     - Allow hotkey to trigger recording even when Flet window is minimized/background
 
-- [ ] Create a minimal settings view for MVP:
+  **Completed 2025-01-23:** transcriber.py already has callback parameters (on_state_change, on_transcription, etc.) at line 86. HotkeyManager wraps pynput keyboard listener in background thread with thread-safe event queue.
+
+- [x] Create a minimal settings view for MVP:
   - Create `src/faster_whisper_hotkey/flet_gui/views/settings_panel.py`:
     - Model selector dropdown (Whisper, Parakeet, Canary, Voxtral options from `config.py`)
     - Language selector dropdown (from `config.py` accepted languages)
@@ -70,7 +78,9 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
     - Simple save/apply button that persists settings via SettingsService
   - Load current settings on view open and validate inputs before saving
 
-- [ ] Wire everything together and test end-to-end:
+  **Completed 2025-01-23:** SettingsPanel created with model/language/device/compute-type/hotkey/activation-mode dropdowns. Settings are validated before save, and the service reinitializes the transcriber with new settings on save.
+
+- [x] Wire everything together and test end-to-end:
   - Update `src/faster_whisper_hotkey/flet_gui/app.py` to:
     - Initialize TranscriptionService and SettingsService on startup
     - Set up routing between transcription panel and settings panel
@@ -80,6 +90,8 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
     - Load and launch the Flet app
     - Handle and display initialization errors clearly
   - Test the full flow: launch app → push hotkey → speak → release → see transcription
+
+  **Completed 2025-01-23:** app.py initializes services on startup, routing is implemented via _switch_view() method with Stack-based view switching, shutdown is handled via shutdown() method. __main__.py checks for settings and launches with error handling.
 
 - [ ] Create developer documentation for the Flet architecture:
   - Create `docs/flet-architecture.md` with:

@@ -19,10 +19,14 @@ from typing import Optional
 import flet as ft
 
 from ..settings import load_settings
+from ..config import accepted_models_whisper, accepted_languages_whisper
 from .app_state import AppState, RecordingState
 from .settings_service import SettingsService
 from .transcription_service import TranscriptionService
 from .hotkey_manager import HotkeyManager
+from .tray_manager import TrayManager
+from .views.transcription_panel import TranscriptionPanel
+from .views.settings_panel import SettingsPanel
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +64,20 @@ class FletApp:
         self.settings_service = SettingsService()
         self.transcription_service: Optional[TranscriptionService] = None
         self.hotkey_manager: Optional[HotkeyManager] = None
+        self.tray_manager: Optional[TrayManager] = None
         self._is_shutting_down = False
 
         # UI references
         self._status_indicator: Optional[ft.Container] = None
         self._status_text: Optional[ft.Text] = None
-        self._transcription_display: Optional[ft.TextField] = None
-        self._audio_level_bar: Optional[ft.ProgressBar] = None
-        self._record_button: Optional[ft.ElevatedButton] = None
         self._hotkey_display: Optional[ft.Text] = None
+        self._content_stack: Optional[ft.Stack] = None
+        self._main_column: Optional[ft.Column] = None
+
+        # Views
+        self._transcription_panel: Optional[TranscriptionPanel] = None
+        self._settings_panel: Optional[SettingsPanel] = None
+        self._current_view = "transcription"  # "transcription" or "settings"
 
     def build(self, page: ft.Page):
         """
@@ -93,16 +102,160 @@ class FletApp:
         page.window_prevent_close = True
         page.on_window_event = self._on_window_event
 
+        # Create the main column for view switching
+        self._main_column = ft.Column(
+            [
+                self._build_header(),
+                ft.Divider(height=1),
+                self._build_content_area(),
+            ],
+            spacing=0,
+            expand=True,
+        )
+
         # Build the main UI
-        page.add(self._build_header())
-        page.add(self._build_main_content())
-        page.add(self._build_controls())
+        page.add(self._main_column)
 
         # Initialize services after UI is built
         self._initialize_services()
 
         # Start the event processing timer
         self._start_event_processing()
+
+    def _build_content_area(self) -> ft.Container:
+        """Build the main content area that switches between views."""
+        # Create panels
+        self._transcription_panel = TranscriptionPanel(
+            self.app_state,
+            on_copy=self._copy_transcription,
+            on_paste=self._paste_transcription,
+        )
+        self._settings_panel = SettingsPanel(
+            self.settings_service,
+            self.app_state,
+            on_save=self._on_settings_saved,
+            on_cancel=self._on_settings_cancelled,
+        )
+
+        # Build transcription panel with controls
+        transcription_content = ft.Column(
+            [
+                self._transcription_panel.build(),
+                self._build_controls(),
+            ],
+            spacing=0,
+            expand=True,
+        )
+
+        # Build settings panel with controls
+        settings_content = ft.Column(
+            [
+                self._settings_panel.build(),
+                self._build_settings_controls(),
+            ],
+            spacing=0,
+            expand=True,
+        )
+
+        # Stack for view switching
+        self._content_stack = ft.Stack(
+            [
+                ft.Container(
+                    content=transcription_content,
+                    expand=True,
+                    visible=True,
+                    key="transcription",
+                ),
+                ft.Container(
+                    content=settings_content,
+                    expand=True,
+                    visible=False,
+                    key="settings",
+                ),
+            ],
+            expand=True,
+        )
+
+        # Wire up the transcription panel's record button
+        if self._transcription_panel.record_button:
+            self._transcription_panel.record_button.on_click = self._on_record_button_click
+
+        return ft.Container(
+            content=self._content_stack,
+            expand=True,
+        )
+
+    def _build_settings_controls(self) -> ft.Container:
+        """Build the bottom control panel for settings view."""
+        back_button = ft.IconButton(
+            icon=ft.icons.ARROW_BACK,
+            tooltip="Back to transcription",
+            icon_size=24,
+            on_click=lambda _: self._switch_view("transcription"),
+        )
+
+        controls = ft.Container(
+            content=ft.Row(
+                [back_button],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            bgcolor=ft.colors.SURFACE,
+            border=ft.border.only(top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+        )
+
+        return controls
+
+    def _switch_view(self, view: str):
+        """
+        Switch between transcription and settings views.
+
+        Parameters
+        ----------
+        view
+            The view to switch to: "transcription" or "settings".
+        """
+        if not self._content_stack:
+            return
+
+        self._current_view = view
+
+        # Update visibility
+        for control in self._content_stack.controls:
+            if isinstance(control, ft.Container):
+                if control.key == view:
+                    control.visible = True
+                else:
+                    control.visible = False
+
+        # Update page
+        if self.page:
+            self.page.update()
+
+    def _on_settings_saved(self):
+        """Handle settings save."""
+        # Reinitialize transcription service with new settings
+        if self.transcription_service and self.settings_service.settings:
+            self.transcription_service.reinitialize(self.settings_service.settings)
+
+        # Update hotkey manager if hotkey changed
+        if self.hotkey_manager:
+            new_hotkey = self.settings_service.get_hotkey()
+            self.hotkey_manager.set_hotkey(new_hotkey)
+
+        # Update hotkey display
+        if self._hotkey_display:
+            self._hotkey_display.text = f"Hotkey: {self.settings_service.get_hotkey().upper()}"
+
+        # Switch back to transcription view
+        self._switch_view("transcription")
+
+        # Show success message
+        self._show_snackbar("Settings saved successfully")
+
+    def _on_settings_cancelled(self):
+        """Handle settings cancel."""
+        self._switch_view("transcription")
 
     def _build_header(self) -> ft.Container:
         """Build the header section with title and status."""
@@ -167,109 +320,8 @@ class FletApp:
 
         return header
 
-    def _build_main_content(self) -> ft.Container:
-        """Build the main content area with transcription display."""
-        self._audio_level_bar = ft.ProgressBar(
-            width=400,
-            height=4,
-            bgcolor=ft.colors.OUTLINE_VARIANT,
-            color=ft.colors.PRIMARY,
-            value=0.0,
-            border_radius=2,
-        )
-
-        self._transcription_display = ft.TextField(
-            value="",
-            multiline=True,
-            min_lines=8,
-            max_lines=12,
-            read_only=True,
-            hint_text="Your transcription will appear here...",
-            border_color=ft.colors.OUTLINE,
-            border_radius=8,
-            bgcolor=ft.colors.SURFACE_CONTAINER_LOW,
-            text_style=ft.TextStyle(
-                size=14,
-                color=ft.colors.ON_SURFACE,
-            ),
-        )
-
-        content = ft.Container(
-            content=ft.Column(
-                [
-                    # Audio level indicator
-                    ft.Column(
-                        [
-                            ft.Text(
-                                "Audio Level",
-                                size=12,
-                                color=ft.colors.ON_SURFACE_VARIANT,
-                            ),
-                            ft.Container(
-                                content=self._audio_level_bar,
-                                padding=ft.padding.only(bottom=8),
-                            ),
-                        ],
-                        spacing=4,
-                    ),
-                    # Transcription display
-                    ft.Column(
-                        [
-                            ft.Row(
-                                [
-                                    ft.Text(
-                                        "Transcription",
-                                        size=14,
-                                        weight=ft.FontWeight.MEDIUM,
-                                        color=ft.colors.ON_SURFACE,
-                                    ),
-                                    ft.IconButton(
-                                        icon=ft.icons.COPY,
-                                        tooltip="Copy to clipboard",
-                                        on_click=self._copy_transcription,
-                                    ),
-                                    ft.IconButton(
-                                        icon=ft.icons.CONTENT_PASTE,
-                                        tooltip="Paste to active window",
-                                        on_click=self._paste_transcription,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                            self._transcription_display,
-                        ],
-                        spacing=8,
-                        expand=True,
-                    ),
-                ],
-                spacing=16,
-                expand=True,
-            ),
-            padding=ft.padding.all(20),
-            expand=True,
-        )
-
-        return content
-
     def _build_controls(self) -> ft.Container:
         """Build the bottom control panel."""
-        self._record_button = ft.ElevatedButton(
-            content=ft.Row(
-                [
-                    ft.Icon(ft.icons.MIC, size=20),
-                    ft.Text("Push to Talk", size=14),
-                ],
-                spacing=8,
-            ),
-            style=ft.ButtonStyle(
-                bgcolor=ft.colors.PRIMARY,
-                color=ft.colors.ON_PRIMARY,
-                shape=ft.RoundedRectangleBorder(radius=12),
-                padding=ft.padding.symmetric(horizontal=24, vertical=16),
-            ),
-            on_click=self._on_record_button_click,
-        )
-
         settings_button = ft.IconButton(
             icon=ft.icons.SETTINGS,
             tooltip="Settings",
@@ -287,12 +339,11 @@ class FletApp:
         controls = ft.Container(
             content=ft.Row(
                 [
-                    self._record_button,
                     ft.Container(expand=True),
                     settings_button,
                     minimize_button,
                 ],
-                alignment=ft.MainAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.END,
             ),
             padding=ft.padding.symmetric(horizontal=20, vertical=16),
             bgcolor=ft.colors.SURFACE,
@@ -428,21 +479,15 @@ class FletApp:
             }
             self._status_indicator.bgcolor = color_map.get(state_enum, ft.colors.GREY)
 
-        if self._record_button:
-            if state_enum == RecordingState.RECORDING:
-                self._record_button.content.controls[0].icon = ft.icons.STOP
-                self._record_button.content.controls[1].text = "Stop Recording"
-                self._record_button.style.bgcolor = ft.colors.ERROR
-            else:
-                self._record_button.content.controls[0].icon = ft.icons.MIC
-                self._record_button.content.controls[1].text = "Push to Talk"
-                self._record_button.style.bgcolor = ft.colors.PRIMARY
+        # Update panel
+        if self._transcription_panel:
+            self._transcription_panel.update_state(state_enum)
 
     def _on_transcription(self, text: str):
         """Handle completed transcription."""
         self.app_state.latest_transcription = text
-        if self._transcription_display:
-            self._transcription_display.value = text
+        if self._transcription_panel:
+            self._transcription_panel.update_transcription(text)
 
     def _on_transcription_start(self, duration: float):
         """Handle transcription start."""
@@ -453,8 +498,8 @@ class FletApp:
     def _on_audio_level(self, level: float):
         """Handle audio level updates."""
         self.app_state.audio_level = level
-        if self._audio_level_bar:
-            self._audio_level_bar.value = level
+        if self._transcription_panel:
+            self._transcription_panel.update_audio_level(level)
 
     def _on_error(self, error: str):
         """Handle transcription errors."""
@@ -463,18 +508,22 @@ class FletApp:
 
     def _copy_transcription(self, e):
         """Copy transcription to clipboard."""
-        if self._transcription_display and self._transcription_display.value:
-            self.page.set_clipboard(self._transcription_display.value)
-            self._show_snackbar("Copied to clipboard")
+        if self._transcription_panel:
+            text = self._transcription_panel.get_transcription_text()
+            if text:
+                self.page.set_clipboard(text)
+                self._show_snackbar("Copied to clipboard")
 
     def _paste_transcription(self, e):
         """Paste transcription to active window (placeholder)."""
-        if self._transcription_display and self._transcription_display.value:
-            self._show_snackbar("Paste functionality - to be implemented")
+        if self._transcription_panel:
+            text = self._transcription_panel.get_transcription_text()
+            if text:
+                self._show_snackbar("Paste functionality - to be implemented")
 
     def _open_settings(self, e):
-        """Open settings dialog (placeholder)."""
-        self._show_snackbar("Settings dialog - to be implemented")
+        """Open settings panel."""
+        self._switch_view("settings")
 
     def _minimize_to_tray(self, e):
         """Minimize window to tray."""
