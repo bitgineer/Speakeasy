@@ -28,6 +28,7 @@ from .tray_manager import TrayManager, RecentItem
 from .views.transcription_panel import TranscriptionPanel
 from .views.modern_transcription_panel import ModernTranscriptionPanel
 from .views.settings_panel import SettingsPanel
+from .views.modern_settings_panel import ModernSettingsPanel
 from .views.history_panel import HistoryPanel
 from .history_manager import HistoryManager
 from .auto_paste import get_auto_paste, AutoPasteResult
@@ -61,7 +62,7 @@ class FletApp:
         Hotkey detection manager.
     """
 
-    def __init__(self, use_modern_ui: bool = True):
+    def __init__(self, use_modern_ui: bool = True, use_modern_settings: bool = True):
         """
         Initialize the Flet application.
 
@@ -69,6 +70,8 @@ class FletApp:
         ----------
         use_modern_ui
             Whether to use the modern UI design.
+        use_modern_settings
+            Whether to use the modern settings panel.
         """
         self.page: Optional[ft.Page] = None
         self.app_state = AppState()
@@ -80,6 +83,7 @@ class FletApp:
         self.tray_manager: Optional[TrayManager] = None
         self._is_shutting_down = False
         self._use_modern_ui = use_modern_ui
+        self._use_modern_settings = use_modern_settings
 
         # UI references
         self._status_indicator: Optional[ft.Container] = None
@@ -92,6 +96,7 @@ class FletApp:
         self._transcription_panel: Optional[TranscriptionPanel] = None
         self._modern_transcription_panel: Optional[ModernTranscriptionPanel] = None
         self._settings_panel: Optional[SettingsPanel] = None
+        self._modern_settings_panel: Optional[ModernSettingsPanel] = None
         self._history_panel: Optional[HistoryPanel] = None
         self._model_manager_panel = None  # Will be initialized when needed
         self._current_view = "transcription"  # "transcription", "settings", "history", or "models"
@@ -157,13 +162,24 @@ class FletApp:
                 on_paste=self._paste_transcription,
             )
 
-        self._settings_panel = SettingsPanel(
-            self.settings_service,
-            self.app_state,
-            on_save=self._on_settings_saved,
-            on_cancel=self._on_settings_cancelled,
-            on_open_model_manager=self._open_model_manager,
-        )
+        # Create settings panel based on flag
+        if self._use_modern_settings:
+            self._modern_settings_panel = ModernSettingsPanel(
+                self.settings_service,
+                self.app_state,
+                on_save=self._on_settings_saved,
+                on_cancel=self._on_settings_cancelled,
+                on_open_model_manager=self._on_model_manager_selected,
+            )
+        else:
+            self._settings_panel = SettingsPanel(
+                self.settings_service,
+                self.app_state,
+                on_save=self._on_settings_saved,
+                on_cancel=self._on_settings_cancelled,
+                on_open_model_manager=self._open_model_manager,
+            )
+
         self._history_panel = HistoryPanel(
             self.history_manager,
             self.app_state,
@@ -192,14 +208,25 @@ class FletApp:
             )
 
         # Build settings panel with controls
-        settings_content = ft.Column(
-            [
-                self._settings_panel.build(),
-                self._build_settings_controls(),
-            ],
-            spacing=0,
-            expand=True,
-        )
+        if self._use_modern_settings:
+            # Modern settings has its own controls built-in
+            settings_content = ft.Column(
+                [
+                    self._modern_settings_panel.build(),
+                    self._build_modern_settings_controls(),
+                ],
+                spacing=0,
+                expand=True,
+            )
+        else:
+            settings_content = ft.Column(
+                [
+                    self._settings_panel.build(),
+                    self._build_settings_controls(),
+                ],
+                spacing=0,
+                expand=True,
+            )
 
         # Build history panel with controls
         history_content = ft.Column(
@@ -273,6 +300,122 @@ class FletApp:
         )
 
         return controls
+
+    def _build_modern_settings_controls(self) -> ft.Container:
+        """Build the bottom control panel for modern settings view."""
+        back_button = ft.IconButton(
+            icon=ft.icons.ARROW_BACK,
+            tooltip="Back to transcription",
+            icon_size=24,
+            on_click=lambda _: self._on_settings_back_click(),
+        )
+
+        save_button = ft.TextButton(
+            "Save",
+            icon=ft.icons.SAVE,
+            on_click=lambda _: self._on_settings_save_click(),
+        )
+
+        controls = ft.Container(
+            content=ft.Row(
+                [back_button, ft.Container(expand=True), save_button],
+                alignment=ft.MainAxisAlignment.START,
+            ),
+            padding=ft.padding.symmetric(horizontal=20, vertical=16),
+            bgcolor=ft.colors.SURFACE,
+            border=ft.border.only(top=ft.BorderSide(1, ft.colors.OUTLINE_VARIANT)),
+        )
+
+        return controls
+
+    def _on_settings_back_click(self):
+        """Handle back button click from modern settings."""
+        # Check if there are unsaved changes
+        if self._modern_settings_panel and self._modern_settings_panel.has_changes():
+            self._show_unsaved_changes_dialog()
+        else:
+            self._switch_view("transcription")
+
+    def _on_settings_save_click(self):
+        """Handle save button click from modern settings."""
+        if self._modern_settings_panel:
+            if self._modern_settings_panel.save():
+                # Reinitialize services if needed
+                if self.transcription_service and self.settings_service.settings:
+                    self.transcription_service.reinitialize(self.settings_service.settings)
+
+                # Update hotkey manager if hotkey changed
+                if self.hotkey_manager:
+                    new_hotkey = self.settings_service.get_hotkey()
+                    self.hotkey_manager.set_hotkey(new_hotkey)
+
+                    # Update history hotkey
+                    new_history_hotkey = self.settings_service.get_history_hotkey()
+                    self.hotkey_manager.set_hotkey(new_history_hotkey, name=HotkeyManager.HISTORY_HOTKEY)
+
+                # Update hotkey display
+                if self._hotkey_display:
+                    self._hotkey_display.text = f"Hotkey: {self.settings_service.get_hotkey().upper()}"
+
+                # Show success and go back
+                self._show_snackbar("Settings saved successfully")
+                self._switch_view("transcription")
+            else:
+                self._show_error("Failed to save settings")
+
+    def _show_unsaved_changes_dialog(self):
+        """Show dialog for unsaved changes."""
+        if not self.page:
+            return
+
+        def discard(e):
+            if self._modern_settings_panel:
+                self._modern_settings_panel._pending_changes.clear()
+            self.page.close(dialog)
+            self._switch_view("transcription")
+
+        def cancel(e):
+            self.page.close(dialog)
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Unsaved Changes"),
+            content=ft.Text("You have unsaved changes. Do you want to discard them?"),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel),
+                ft.TextButton("Discard", on_click=discard, style=ft.ButtonStyle(color=ft.colors.ERROR)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
+
+    def _on_model_manager_selected(self, model_name: str):
+        """
+        Handle model selection from model manager (for modern settings).
+
+        Parameters
+        ----------
+        model_name
+            Selected model identifier.
+        """
+        # Update settings
+        self.settings_service.set_model_name(model_name)
+
+        # Update app state
+        if self.settings_service.settings:
+            self.app_state.update_from_settings(self.settings_service.settings)
+
+        # Show success message
+        self._show_snackbar(f"Model changed to {model_name}")
+
+        # Go back to settings
+        self._switch_view("settings")
+
+        # Reinitialize transcription service with new model
+        if self.transcription_service and self.settings_service.settings:
+            self.transcription_service.reinitialize(self.settings_service.settings)
 
     def _build_history_controls(self) -> ft.Container:
         """Build the bottom control panel for history view."""
