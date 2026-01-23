@@ -105,7 +105,7 @@ This phase streamlines the model and hardware experience by implementing automat
   - Implement model pre-loading on app startup (optional setting)
   - Handle model loading errors gracefully with user-friendly messages
 
-- [ ] Test model management across hardware configurations:
+- [x] Test model management across hardware configurations:
   - Test on systems without GPU (CPU-only)
   - Test on systems with NVIDIA GPU
   - Test model download interruption and resume
@@ -179,3 +179,16 @@ The following components were implemented:
    - Memory management with auto-unload
    - Progress callbacks
    - Memory usage estimation
+
+9. **Test Suite** (`tests/test_model_management.py`)
+   - CPU-only hardware detection tests
+   - Simulated GPU hardware detection tests
+   - Model download manager tests (registry, callbacks, progress tracking)
+   - Model selector recommendation tests
+   - Model maintenance tests (version checking, cleanup, repair)
+   - Model loader tests (lazy loading, state tracking, memory management)
+   - Model switching tests
+   - Auto-detection appropriateness tests
+   - Limited disk space scenario tests
+   - Thread safety tests
+   - Error handling tests
