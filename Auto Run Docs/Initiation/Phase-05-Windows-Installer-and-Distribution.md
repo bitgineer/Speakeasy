@@ -303,19 +303,52 @@ This phase creates a streamlined Windows installation experience that eliminates
   - File paths sanitized from crash reports
   - Can be disabled at any time
 
-- [ ] Create distribution documentation:
-  - Write `docs/installation.md`:
-    - Installation methods (installer, portable, pip)
-    - System requirements
-    - Troubleshooting common installation issues
-    - Uninstallation instructions
-  - Write `docs/release-process.md`:
-    - How to create a new release
-    - Version number conventions
-    - Changelog format
-    - Testing checklist before release
-  - Update README with new installation options
-  - Add installation video/tutorial link
+- [x] Create distribution documentation:
+  - [x] Write `docs/installation.md`:
+    - [x] Installation methods (installer, portable, pip)
+    - [x] System requirements
+    - [x] Troubleshooting common installation issues
+    - [x] Uninstallation instructions
+  - [x] Write `docs/release-process.md`:
+    - [x] How to create a new release
+    - [x] Version number conventions
+    - [x] Changelog format
+    - [x] Testing checklist before release
+  - [x] Update README with new installation options
+  - [ ] Add installation video/tutorial link
+
+**Implementation Notes:**
+- Created `docs/installation.md` with comprehensive installation guide:
+  - Three installation methods compared (Windows Installer, Portable ZIP, pip/uv)
+  - Detailed system requirements (minimum and recommended)
+  - Step-by-step installation instructions for each method
+  - First-run setup wizard walkthrough
+  - Troubleshooting section for common installation and runtime issues
+  - Uninstallation instructions for all methods
+  - Advanced installation options (silent install, pre-configuration, network share deployment)
+  - Verification steps
+- Created `docs/release-process.md` with complete release workflow:
+  - Semantic versioning conventions (MAJOR.MINOR.PATCH)
+  - Pre-release checklist
+  - Step-by-step release process (version bump, changelog, commit, tag, push)
+  - CI/CD workflow details (GitHub Actions)
+  - Manual build instructions using `scripts/build.py` and Makefile
+  - Build artifacts description
+  - Comprehensive testing checklist for Windows 10/11
+  - Manual GitHub release creation options (Web UI and GitHub CLI)
+  - Post-release tasks
+  - Emergency hotfix procedure
+  - Rollback procedure
+  - Changelog format (Keep a Changelog style)
+- Updated `README.md`:
+  - Added "Windows Installer (Recommended)" section at the top of Installation
+  - Table comparing installer vs portable files
+  - Link to detailed installation docs
+  - Removed outdated Windows branch instructions
+  - Updated Usage section with separate instructions for Windows vs Python installs
+  - Added Documentation section with links to all guides
+- All documentation uses structured Markdown with YAML front matter
+- Wiki-links to related documents for DocGraph navigation
 
 - [ ] Test distribution on clean systems:
   - Test on fresh Windows 10 installation

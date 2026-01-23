@@ -49,9 +49,22 @@ _- Voxtral-Mini-3B-2507, on GPU, when I run smaller models and can fit it along 
 
 ## Installation
 
-_see https://docs.astral.sh/uv/ for more information on uv. uv is fast :\)_
+### Windows Installer (Recommended)
 
-### From PyPi
+No Python required! Download the installer and run it.
+
+- **[Download Latest Release](https://github.com/blakkd/faster-whisper-hotkey/releases/latest)**
+
+| File | Description |
+|------|-------------|
+| `faster-whisper-hotkey-setup-{version}.exe` | Windows installer with Start Menu integration |
+| `faster-whisper-hotkey-portable-{version}-windows.zip` | Portable version - no installation required |
+
+See [docs/installation.md](docs/installation.md) for detailed installation instructions, troubleshooting, and uninstallation.
+
+### From PyPI
+
+_see https://docs.astral.sh/uv/ for more information on uv. uv is fast :)_
 
 - As a pip package:
 
@@ -59,13 +72,13 @@ _see https://docs.astral.sh/uv/ for more information on uv. uv is fast :\)_
   uv pip install faster-whisper-hotkey
   ```
 
-- or as an tool, so that you can run faster-whisper-hotkey from any venv:
+- or as a tool, so that you can run faster-whisper-hotkey from any venv:
 
   ```
   uv tool install faster-whisper-hotkey
   ```
 
-### From source
+### From Source
 
 1. Clone the repository:
 
@@ -76,72 +89,34 @@ _see https://docs.astral.sh/uv/ for more information on uv. uv is fast :\)_
 
 2. Install the package and dependencies:
 
-- as a pip package:
+   - as a pip package:
 
-  ```
-  uv pip install .
-  ```
+     ```
+     uv pip install .
+     ```
 
-- or as an uv tool:
+   - or as an uv tool:
 
-  ```
-  uv tool install .
-  ```
+     ```
+     uv tool install .
+     ```
 
 ### For Nvidia GPU
 
 You need to install cudnn https://developer.nvidia.com/cudnn-downloads
 
-### Windows Installation
-
-The main branch uses PulseAudio (Linux-only). For Windows, use the `feature/supportWindows` branch.
-
-#### Fresh Install
-
-```powershell
-git clone https://github.com/eutychius/faster-whisper-hotkey
-cd faster-whisper-hotkey
-git checkout feature/supportWindows
-uv tool install .
-```
-
-#### If You Already Installed the Main Branch
-
-If you previously installed from PyPi or the main branch and got the `libpulse.so.0` error, uninstall first:
-
-```powershell
-uv tool uninstall faster-whisper-hotkey
-```
-
-Then follow the fresh install steps above.
-
-#### Troubleshooting
-
-**`ModuleNotFoundError: No module named '_curses'`**
-
-Windows doesn't include curses natively. Install the Windows version:
-
-```powershell
-uv pip install windows-curses --python %APPDATA%\uv\tools\faster-whisper-hotkey\Scripts\python.exe
-```
-
-**`FileNotFoundError: Could not find module 'libpulse.so.0'`**
-
-You're running the Linux version. Uninstall and reinstall from the Windows branch:
-
-```powershell
-uv tool uninstall faster-whisper-hotkey
-git clone https://github.com/eutychius/faster-whisper-hotkey
-cd faster-whisper-hotkey
-git checkout feature/supportWindows
-uv tool install .
-```
-
 ## Usage
 
-1. Whether you installed from PyPi or from source, just run `faster-whisper-hotkey`
-2. Go through the menu steps.
-3. Once the model is loaded, focus on any text field.
+**Windows Installer/Portable:**
+1. Launch from Start Menu or double-click the executable
+2. Complete the first-run setup wizard
+3. Once the model is loaded, focus on any text field
+4. Press your hotkey while speaking, release when done
+
+**Python/Source:**
+1. Run `faster-whisper-hotkey-flet` (recommended) or `faster-whisper-hotkey`
+2. Go through the menu steps
+3. Once the model is loaded, focus on any text field
 4. Then, simply press the hotkey (PAUSE, F4 or F8) while you speak, release it when you're done, and see the magic happening!
 
 When the script is running, you can forget it, the model will remain loaded, and it's ready to transcribe at any time.
@@ -157,6 +132,15 @@ For developers interested in understanding the codebase structure, see [docs/ARC
 - Module dependency diagram
 - Architectural overview
 - Dependency rules and patterns
+
+### Documentation
+
+- [Installation Guide](docs/installation.md) - Detailed installation instructions
+- [Release Process](docs/release-process.md) - How to create releases
+- [Portable Mode Guide](docs/PORTABLE_MODE.md) - Portable vs installed differences
+- [Testing Guide](docs/TESTING.md) - Testing procedures and checklists
+- [Architecture](docs/ARCHITECTURE.md) - Codebase structure and design
+- [Flet Architecture](docs/flet-architecture.md) - Modern GUI implementation
 
 You can regenerate the dependency diagram with:
 ```bash
