@@ -127,13 +127,27 @@ This phase adds the remaining MVP features: searchable transcription history and
     - Wildcard pattern matching support
     - Automatic reindex of priorities
 
-- [ ] Add global hotkey for quick history access:
+- [x] Add global hotkey for quick history access:
   - Extend `src/faster_whisper_hotkey/flet_gui/hotkey_manager.py`:
     - Add configurable history hotkey (default: Ctrl+Shift+H)
     - When triggered, show Flet window focused on history search
     - Support typing immediately to start searching
     - Allow Esc to close history and return to previous window
     - Implement recent items (last 5) as quick-access from system tray
+  - **Status**: COMPLETED:
+    - Added `history_hotkey` field to Settings dataclass with default "ctrl+shift+h"
+    - Added `get_history_hotkey()` and `set_history_hotkey()` methods to SettingsService
+    - Registered history hotkey in FletApp._initialize_services with named hotkey support
+    - Added `_on_history_hotkey_press()` handler that restores window and opens history panel
+    - Updated event processing to route named hotkey events (default vs history)
+    - Extended TrayManager with RecentItem dataclass and recent items support
+    - Added `update_recent_items()` and `clear_recent_items()` methods to TrayManager
+    - Implemented tray menu with recent transcriptions (up to 5 items)
+    - Added `_update_tray_recent_items()` to update tray after each transcription
+    - Added `_on_tray_recent_item_click()` callback for tray item clicks
+    - Initialized TrayManager in FletApp with callbacks for show, record toggle, exit, and recent items
+    - Tray recording state updates when transcription state changes
+    - Recent items loaded on startup from history manager
 
 - [ ] Polish the history user experience:
   - Add history settings to `settings_panel.py`:

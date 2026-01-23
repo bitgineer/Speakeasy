@@ -24,7 +24,7 @@ from .app_state import AppState, RecordingState
 from .settings_service import SettingsService
 from .transcription_service import TranscriptionService
 from .hotkey_manager import HotkeyManager
-from .tray_manager import TrayManager
+from .tray_manager import TrayManager, RecentItem
 from .views.transcription_panel import TranscriptionPanel
 from .views.settings_panel import SettingsPanel
 from .views.history_panel import HistoryPanel
@@ -292,6 +292,10 @@ class FletApp:
             new_hotkey = self.settings_service.get_hotkey()
             self.hotkey_manager.set_hotkey(new_hotkey)
 
+            # Update history hotkey
+            new_history_hotkey = self.settings_service.get_history_hotkey()
+            self.hotkey_manager.set_hotkey(new_history_hotkey, name=HotkeyManager.HISTORY_HOTKEY)
+
         # Update hotkey display
         if self._hotkey_display:
             self._hotkey_display.text = f"Hotkey: {self.settings_service.get_hotkey().upper()}"
@@ -437,9 +441,27 @@ class FletApp:
         # Initialize hotkey manager
         hotkey = self.app_state.hotkey
         self.hotkey_manager = HotkeyManager(hotkey)
+
+        # Register the history hotkey
+        history_hotkey = getattr(settings, 'history_hotkey', "ctrl+shift+h")
+        self.hotkey_manager.set_hotkey(history_hotkey, name=HotkeyManager.HISTORY_HOTKEY)
+
+        # Register callbacks
         self.hotkey_manager.on("hotkey_press", self._on_hotkey_press)
         self.hotkey_manager.on("hotkey_release", self._on_hotkey_release)
         self.hotkey_manager.start()
+
+        # Initialize tray manager
+        self.tray_manager = TrayManager(
+            on_show=self.restore_from_tray,
+            on_record_toggle=self._handle_tray_record_toggle,
+            on_exit=self._handle_tray_exit,
+            on_recent_item_click=self._on_tray_recent_item_click,
+        )
+        self.tray_manager.start()
+
+        # Initialize tray with recent items from history
+        self._update_tray_recent_items()
 
     def _create_default_settings(self):
         """Create default settings when loading fails."""
@@ -469,9 +491,17 @@ class FletApp:
                 events = self.hotkey_manager.process_events()
                 for event in events:
                     if event.action == "press":
-                        self._handle_hotkey_press()
+                        # Route based on hotkey name
+                        if event.hotkey_name == HotkeyManager.HISTORY_HOTKEY:
+                            self._on_history_hotkey_press()
+                        else:
+                            self._handle_hotkey_press()
                     elif event.action == "release":
-                        self._handle_hotkey_release()
+                        # Route based on hotkey name
+                        if event.hotkey_name == HotkeyManager.HISTORY_HOTKEY:
+                            self._on_history_hotkey_release()
+                        else:
+                            self._handle_hotkey_release()
 
             # Schedule next processing
             if self.page and not self._is_shutting_down:
@@ -518,6 +548,28 @@ class FletApp:
         if self.app_state.recording_state == RecordingState.RECORDING:
             self.transcription_service.stop_recording()
 
+    def _on_history_hotkey_press(self):
+        """
+        Handle history hotkey press action.
+
+        Opens the history panel. If the window is minimized to tray,
+        it restores the window first. The history panel is refreshed
+        and focus is set to allow immediate typing for search.
+        """
+        # Restore window if minimized to tray
+        if not self.app_state.window_visible:
+            self.restore_from_tray()
+
+        # Open history panel (this refreshes the history)
+        self._open_history(None)
+
+        # Show notification
+        self._show_snackbar(f"History opened ({self.hotkey_manager.get_hotkey(HotkeyManager.HISTORY_HOTKEY).upper()})")
+
+    def _on_history_hotkey_release(self):
+        """Handle history hotkey release (currently no action needed)."""
+        pass
+
     def _on_state_change(self, state: str):
         """Handle transcription state changes."""
         state_enum = RecordingState(state.lower()) if state.lower() in [s.value for s in RecordingState] else RecordingState.IDLE
@@ -540,6 +592,10 @@ class FletApp:
         if self._transcription_panel:
             self._transcription_panel.update_state(state_enum)
 
+        # Update tray recording state
+        if self.tray_manager:
+            self.tray_manager.update_recording_state(state_enum == RecordingState.RECORDING)
+
     def _on_transcription(self, text: str):
         """Handle completed transcription."""
         self.app_state.latest_transcription = text
@@ -557,6 +613,9 @@ class FletApp:
             device=self.app_state.device,
         )
         self.history_manager.add_item(item)
+
+        # Update tray with recent items
+        self._update_tray_recent_items()
 
     def _on_transcription_start(self, duration: float):
         """Handle transcription start."""
@@ -667,6 +726,58 @@ class FletApp:
                 )
             )
 
+    def _update_tray_recent_items(self):
+        """Update the system tray with recent history items."""
+        if not self.tray_manager:
+            return
+
+        # Get recent items from history
+        from datetime import datetime
+        items = self.history_manager.get_all(limit=TrayManager.MAX_RECENT_ITEMS)
+
+        # Convert to RecentItem objects for tray
+        recent_items = []
+        for item in items:
+            # Create a simple ID from timestamp (first 10 chars should be unique enough)
+            item_id = item.timestamp[:10]
+            recent_items.append(RecentItem(
+                text=item.text,
+                timestamp=item.timestamp,
+                item_id=item_id,
+            ))
+
+        # Update tray
+        self.tray_manager.update_recent_items(recent_items)
+
+    def _on_tray_recent_item_click(self, item_id: str):
+        """
+        Handle click on a recent item from the tray menu.
+
+        Restores the window, opens history panel, and shows the item.
+        """
+        # Restore window if minimized
+        if not self.app_state.window_visible:
+            self.restore_from_tray()
+
+        # Open history panel (this refreshes the history)
+        self._open_history(None)
+
+        # Show notification about the clicked item
+        self._show_snackbar("History opened - Recent item selected")
+
+    def _handle_tray_record_toggle(self):
+        """Handle record toggle from tray menu."""
+        if self.app_state.recording_state == RecordingState.RECORDING:
+            self.transcription_service.stop_recording()
+        elif self.app_state.recording_state == RecordingState.IDLE:
+            self.transcription_service.start_recording()
+
+    def _handle_tray_exit(self):
+        """Handle exit from tray menu."""
+        self._is_shutting_down = True
+        if self.page:
+            self.page.window_close()
+
     def shutdown(self):
         """Shutdown the application and cleanup resources."""
         self._is_shutting_down = True
@@ -676,5 +787,8 @@ class FletApp:
 
         if self.hotkey_manager:
             self.hotkey_manager.stop()
+
+        if self.tray_manager:
+            self.tray_manager.stop()
 
         logger.info("FletApp shutdown complete")

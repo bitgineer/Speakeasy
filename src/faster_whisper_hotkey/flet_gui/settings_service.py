@@ -101,6 +101,7 @@ class SettingsService:
                     "device": self._settings.device,
                     "language": self._settings.language,
                     "hotkey": self._settings.hotkey,
+                    "history_hotkey": self._settings.history_hotkey,
                     "activation_mode": self._settings.activation_mode,
                     "history_max_items": self._settings.history_max_items,
                     "privacy_mode": self._settings.privacy_mode,
@@ -181,6 +182,21 @@ class SettingsService:
             if not self._settings:
                 return False
             self._settings.hotkey = hotkey
+            if notify:
+                self._notify()
+            return True
+
+    def get_history_hotkey(self) -> str:
+        """Get the history hotkey."""
+        with self._lock:
+            return getattr(self._settings, 'history_hotkey', "ctrl+shift+h") if self._settings else "ctrl+shift+h"
+
+    def set_history_hotkey(self, hotkey: str, notify: bool = True) -> bool:
+        """Set the history hotkey."""
+        with self._lock:
+            if not self._settings:
+                return False
+            self._settings.history_hotkey = hotkey
             if notify:
                 self._notify()
             return True
