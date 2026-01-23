@@ -93,10 +93,12 @@ This phase establishes the foundation for the modernized faster-whisper-hotkey w
 
   **Completed 2025-01-23:** app.py initializes services on startup, routing is implemented via _switch_view() method with Stack-based view switching, shutdown is handled via shutdown() method. __main__.py checks for settings and launches with error handling.
 
-- [ ] Create developer documentation for the Flet architecture:
+- [x] Create developer documentation for the Flet architecture:
   - Create `docs/flet-architecture.md` with:
     - Overview of how Flet UI connects to existing backend
     - Service layer pattern (TranscriptionService, SettingsService)
     - Thread safety considerations (Flet main thread vs background transcription)
     - How to add new views/panels to the Flet app
   - Include a simple component diagram showing the data flow
+
+  **Completed 2025-01-23:** Created comprehensive Flet architecture documentation with service layer overview, thread safety patterns, view addition guide, and component data flow diagrams.
