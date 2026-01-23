@@ -3,7 +3,7 @@ Settings persistence and management for faster-whisper-hotkey.
 
 This module handles loading, saving, and managing application settings
 and transcription history. Settings are stored as JSON in the user's
-config directory.
+config directory, or locally for portable mode.
 
 Classes
 -------
@@ -12,6 +12,12 @@ Settings
 
 Functions
 ---------
+is_portable_mode
+    Detect if the application is running in portable mode.
+
+get_settings_dir
+    Get the appropriate settings directory for portable or installed mode.
+
 save_settings
     Save settings dictionary to JSON file.
 
@@ -31,19 +37,136 @@ Notes
 -----
 Configuration is stored in ~/.config/faster_whisper_hotkey/ on Linux
 and appropriate config directories on other platforms.
+
+In portable mode, settings are stored in a 'settings' subdirectory
+next to the executable.
 """
 
 import os
+import sys
 import json
 import logging
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+# Global variables that will be initialized
+_settings_dir = None
+_settings_file = None
+_history_file = None
+
+
+def is_portable_mode() -> bool:
+    """
+    Detect if the application is running in portable mode.
+
+    Portable mode is detected by:
+    1. Checking for a 'portable.txt' marker file next to the executable
+    2. Checking for a 'settings' directory next to the executable
+    3. Checking if the launcher set the PORTABLE_MODE environment variable
+
+    Returns
+    -------
+    bool
+        True if running in portable mode, False otherwise.
+    """
+    # Check environment variable first (set by portable launcher)
+    if os.environ.get('PORTABLE_MODE') == '1':
+        return True
+
+    # Check if running as frozen executable
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+
+        # Check for portable marker file
+        marker_file = os.path.join(exe_dir, 'portable.txt')
+        if os.path.exists(marker_file):
+            return True
+
+        # Check for existing portable settings directory
+        portable_settings = os.path.join(exe_dir, 'settings')
+        if os.path.exists(portable_settings):
+            return True
+
+    return False
+
+
+def get_settings_dir() -> str:
+    """
+    Get the appropriate settings directory based on mode.
+
+    Returns
+    -------
+    str
+        Path to the settings directory.
+    """
+    global _settings_dir
+
+    if _settings_dir is not None:
+        return _settings_dir
+
+    if is_portable_mode():
+        # Portable mode: store settings next to executable
+        if getattr(sys, 'frozen', False):
+            exe_dir = os.path.dirname(sys.executable)
+            _settings_dir = os.path.join(exe_dir, 'settings')
+        else:
+            # Development mode: use local directory
+            _settings_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'portable_settings')
+            _settings_dir = os.path.abspath(_settings_dir)
+    else:
+        # Installed mode: use user config directory
+        if sys.platform == 'win32':
+            conf_dir = os.environ.get('APPDATA', os.path.expanduser('~\\AppData\\Roaming'))
+        else:
+            conf_dir = os.path.expanduser('~/.config')
+        _settings_dir = os.path.join(conf_dir, 'faster_whisper_hotkey')
+
+    os.makedirs(_settings_dir, exist_ok=True)
+    return _settings_dir
+
+
+def get_settings_file() -> str:
+    """
+    Get the settings file path.
+
+    Returns
+    -------
+    str
+        Path to the settings file.
+    """
+    global _settings_file
+
+    if _settings_file is None:
+        settings_dir = get_settings_dir()
+        _settings_file = os.path.join(settings_dir, 'transcriber_settings.json')
+
+    return _settings_file
+
+
+def get_history_file() -> str:
+    """
+    Get the history file path.
+
+    Returns
+    -------
+    str
+        Path to the history file.
+    """
+    global _history_file
+
+    if _history_file is None:
+        settings_dir = get_settings_dir()
+        _history_file = os.path.join(settings_dir, 'transcription_history.json')
+
+    return _history_file
+
+
+# Legacy global variables for backward compatibility
 conf_dir = os.path.expanduser("~/.config")
-settings_dir = os.path.join(conf_dir, "faster_whisper_hotkey")
-os.makedirs(settings_dir, exist_ok=True)
-SETTINGS_FILE = os.path.join(settings_dir, "transcriber_settings.json")
+settings_dir = get_settings_dir()
+SETTINGS_FILE = get_settings_file()
+HISTORY_FILE = get_history_file()
 
 
 @dataclass
@@ -136,7 +259,8 @@ HISTORY_FILE = os.path.join(settings_dir, "transcription_history.json")
 
 def save_settings(settings: dict):
     try:
-        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        settings_file = get_settings_file()
+        with open(settings_file, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
     except IOError as e:
         logger.error(f"Failed to save settings: {e}")
@@ -144,7 +268,8 @@ def save_settings(settings: dict):
 
 def load_settings() -> Settings | None:
     try:
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+        settings_file = get_settings_file()
+        with open(settings_file, "r", encoding="utf-8") as f:
             data = json.load(f)
             data.setdefault("hotkey", "pause")
             data.setdefault("history_hotkey", "ctrl+shift+h")
@@ -177,7 +302,8 @@ def load_settings() -> Settings | None:
 def load_history() -> list:
     """Load transcription history from disk."""
     try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+        history_file = get_history_file()
+        with open(history_file, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
@@ -188,7 +314,8 @@ def save_history(history: list, max_items: int = 50):
     try:
         # Keep only the most recent items
         history = history[-max_items:]
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        history_file = get_history_file()
+        with open(history_file, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2)
     except IOError as e:
         logger.error(f"Failed to save history: {e}")
@@ -197,8 +324,9 @@ def save_history(history: list, max_items: int = 50):
 def clear_history():
     """Clear all transcription history from disk."""
     try:
-        if os.path.exists(HISTORY_FILE):
-            os.remove(HISTORY_FILE)
+        history_file = get_history_file()
+        if os.path.exists(history_file):
+            os.remove(history_file)
             logger.info("History cleared")
     except IOError as e:
         logger.error(f"Failed to clear history: {e}")

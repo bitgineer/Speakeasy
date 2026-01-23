@@ -125,14 +125,33 @@ This phase creates a streamlined Windows installation experience that eliminates
 - All wizard choices are persisted to settings and applied immediately
 - Users can skip the wizard entirely via "Skip Wizard" button
 
-- [ ] Create portable version option:
-  - Generate portable .zip package:
-    - Single executable + models folder
-    - All settings stored in app directory (not AppData)
-    - No registry entries
-    - No installation required
-  - Document portable vs installed differences
-  - Add portable launcher that handles first-run setup
+- [x] Create portable version option:
+  - [x] Generate portable .zip package:
+    - [x] Single executable + models folder
+    - [x] All settings stored in app directory (not AppData)
+    - [x] No registry entries
+    - [x] No installation required
+  - [x] Document portable vs installed differences
+  - [x] Add portable launcher that handles first-run setup
+
+**Implementation Notes:**
+- Enhanced `src/faster_whisper_hotkey/settings.py` with portable mode detection:
+  - Added `is_portable_mode()` function to detect portable mode
+  - Detection methods: environment variable (`PORTABLE_MODE=1`), `portable.txt` marker file, existing `settings/` directory
+  - Added `get_settings_dir()`, `get_settings_file()`, `get_history_file()` functions for dynamic path resolution
+  - Updated `save_settings()`, `load_settings()`, `save_history()`, `load_history()`, `clear_history()` to use dynamic paths
+  - Portable mode stores settings in `./settings/` next to executable
+  - Installed mode uses `%APPDATA%\faster_whisper_hotkey\` on Windows
+- Enhanced `scripts/build.py` portable package creation:
+  - Added `portable.txt` marker file to portable ZIP
+  - Updated `START-portable.bat` to set `PORTABLE_MODE=1` environment variable
+  - Added `PORTABLE_README.md` with comprehensive portable mode documentation
+- Created `docs/PORTABLE_MODE.md` with full documentation:
+  - Comparison table of portable vs installed features
+  - File structure for both modes
+  - Installation, updating, and uninstallation instructions
+  - Troubleshooting guide
+  - Enterprise deployment guidance
 
 - [ ] Implement auto-update system:
   - Create `src/faster_whisper_hotkey/flet_gui/updater.py`:

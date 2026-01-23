@@ -159,14 +159,27 @@ def create_portable_package(version: str) -> bool:
         if license_file.exists():
             zf.write(license_file, "LICENSE.txt")
 
-        # Add a portable launcher stub (simple batch file)
+        # Add portable mode marker file (enables portable mode detection)
+        # The app checks for this file to determine if running in portable mode
+        portable_marker = """# faster-whisper-hotkey Portable Mode
+
+This file marks this installation as portable. Settings and configuration
+will be stored in a 'settings' subdirectory next to the executable.
+
+To use:
+1. Extract this ZIP to a folder of your choice
+2. Run faster-whisper-hotkey.exe or START-portable.bat
+3. All settings will be stored locally in the settings/ folder
+"""
+        zf.writestr("portable.txt", portable_marker)
+
+        # Add portable launcher batch file
         launcher_content = f"""@echo off
 REM faster-whisper-hotkey Portable Launcher
 REM This launcher ensures settings are stored locally
 
 setlocal
-set APPDATA=%~dp0settings
-set LOCALAPPDATA=%~dp0settings
+set PORTABLE_MODE=1
 
 REM Create settings directory if it doesn't exist
 if not exist "%~dp0settings" mkdir "%~dp0settings"
@@ -177,6 +190,52 @@ start "" "%~dp0{exe_name}"
 endlocal
 """
         zf.writestr("START-portable.bat", launcher_content)
+
+        # Add a README for portable mode specifically
+        portable_readme = """# faster-whisper-hotkey Portable Edition
+
+## What is Portable Mode?
+
+Portable mode allows you to run faster-whisper-hotkey without installing it.
+All settings, models, and data are stored in the application directory.
+
+## How to Use
+
+1. Extract all files to a folder of your choice
+2. Double-click `faster-whisper-hotkey.exe` or `START-portable.bat`
+3. The first run will launch a setup wizard to configure:
+   - Hardware detection (GPU/CPU)
+   - Model download
+   - Hotkey configuration
+   - Audio device testing
+
+## What's Stored Locally
+
+- `settings/` - Configuration and transcription history
+- `models/` - Downloaded AI models (auto-downloaded on first use)
+
+## vs Installed Version
+
+| Feature | Portable | Installed |
+|---------|----------|-----------|
+| Installation | No installation required | Installs to Program Files |
+| Settings | Stored in app directory | Stored in %APPDATA% |
+| Start Menu | No entries | Has shortcuts |
+| Uninstall | Just delete the folder | Uses uninstaller |
+| Auto-start | Manual setup | Can be enabled in setup |
+
+## System Requirements
+
+- Windows 10 or later (64-bit)
+- 4 GB RAM minimum (8 GB recommended for GPU mode)
+- NVIDIA GPU with CUDA support (optional, for faster transcription)
+
+## Getting Help
+
+- GitHub: https://github.com/blakkd/faster-whisper-hotkey
+- Issues: https://github.com/blakkd/faster-whisper-hotkey/issues
+"""
+        zf.writestr("PORTABLE_README.md", portable_readme)
 
     print(f"Portable package created: {zip_path}")
     return True
