@@ -67,7 +67,7 @@ nemo : NVIDIA's NeMo models (Parakeet, Canary)
 transformers : Hugging Face transformers (Voxtral)
 """
 
-__version__ = "0.4.3"
+__version__ = "0.5.0"
 
 # Modern GUI components
 from .theme import Theme, ModernStyle, ThemeManager

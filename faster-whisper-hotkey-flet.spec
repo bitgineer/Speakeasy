@@ -22,7 +22,7 @@ from pathlib import Path
 
 # Project metadata
 APP_NAME = 'faster-whisper-hotkey'
-APP_VERSION = '0.4.3'
+APP_VERSION = '0.5.0'
 APP_DESCRIPTION = 'Push-to-talk transcription powered by cutting-edge ASR models'
 APP_AUTHOR = 'blakkd'
 APP_COPYRIGHT = f'Copyright (c) 2024 {APP_AUTHOR}'
