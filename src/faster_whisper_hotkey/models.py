@@ -57,70 +57,108 @@ class ModelWrapper:
         device = self.settings.device
         compute_type = getattr(self.settings, "compute_type", None)
 
-        if mt == "whisper":
-            self.model = WhisperModel(
-                model_size_or_path=self.settings.model_name,
-                device=device,
-                compute_type=compute_type,
-            )
+        logger.info(f"Loading model: type={mt}, name={self.settings.model_name}, device={device}, compute_type={compute_type}")
 
-        elif mt == "parakeet":
-            self.model = ASRModel.from_pretrained(
-                model_name=self.settings.model_name,
-                map_location=self.settings.device,
-            ).eval()
-            self._model_ref = self.model
+        try:
+            if mt == "whisper":
+                self.model = WhisperModel(
+                    model_size_or_path=self.settings.model_name,
+                    device=device,
+                    compute_type=compute_type,
+                )
+                logger.info(f"Whisper model loaded successfully")
 
-        elif mt == "canary":
-            self.model = EncDecMultiTaskModel.from_pretrained(
-                self.settings.model_name, map_location=self.settings.device
-            ).eval()
-            self._model_ref = self.model
-
-        elif mt == "voxtral":
-            from typing import Optional
-            from mistral_common.protocol.transcription.request import (
-                TranscriptionRequest as _TR,
-            )
-            from pydantic_extra_types.language_code import LanguageAlpha2
-
-            class TranscriptionRequest(_TR):
-                language: Optional[LanguageAlpha2] = None
-
-            repo_id = self.settings.model_name
-            self.processor = AutoProcessor.from_pretrained(repo_id)
-
-            if self.settings.compute_type == "int8":
-                quant_cfg = BitsAndBytesConfig(load_in_8bit=True)
-                self.model = VoxtralForConditionalGeneration.from_pretrained(
-                    repo_id,
-                    quantization_config=quant_cfg,
-                    device_map="cuda",
+            elif mt == "parakeet":
+                logger.info(f"Loading Parakeet model from {self.settings.model_name}...")
+                self.model = ASRModel.from_pretrained(
+                    model_name=self.settings.model_name,
+                    map_location=self.settings.device,
                 ).eval()
+                self._model_ref = self.model
+                logger.info(f"Parakeet model loaded successfully")
 
-            elif self.settings.compute_type == "int4":
-                quant_cfg = BitsAndBytesConfig(load_in_4bit=True)
-                self.model = VoxtralForConditionalGeneration.from_pretrained(
-                    repo_id,
-                    quantization_config=quant_cfg,
-                    device_map="cuda",
+            elif mt == "canary":
+                logger.info(f"Loading Canary model from {self.settings.model_name}...")
+                self.model = EncDecMultiTaskModel.from_pretrained(
+                    self.settings.model_name, map_location=self.settings.device
                 ).eval()
+                self._model_ref = self.model
+                logger.info(f"Canary model loaded successfully")
 
+            elif mt == "voxtral":
+                from typing import Optional
+                from mistral_common.protocol.transcription.request import (
+                    TranscriptionRequest as _TR,
+                )
+                from pydantic_extra_types.language_code import LanguageAlpha2
+
+                class TranscriptionRequest(_TR):
+                    language: Optional[LanguageAlpha2] = None
+
+                repo_id = self.settings.model_name
+                logger.info(f"Loading Voxtral model from {repo_id}...")
+
+                try:
+                    self.processor = AutoProcessor.from_pretrained(repo_id)
+                except Exception as e:
+                    logger.error(f"Failed to load Voxtral processor: {e}")
+                    raise RuntimeError(f"Voxtral processor loading failed: {e}")
+
+                if self.settings.compute_type == "int8":
+                    quant_cfg = BitsAndBytesConfig(load_in_8bit=True)
+                    self.model = VoxtralForConditionalGeneration.from_pretrained(
+                        repo_id,
+                        quantization_config=quant_cfg,
+                        device_map="cuda",
+                    ).eval()
+
+                elif self.settings.compute_type == "int4":
+                    quant_cfg = BitsAndBytesConfig(load_in_4bit=True)
+                    self.model = VoxtralForConditionalGeneration.from_pretrained(
+                        repo_id,
+                        quantization_config=quant_cfg,
+                        device_map="cuda",
+                    ).eval()
+
+                else:
+                    compute_dtype = {
+                        "float16": torch.float16,
+                        "bfloat16": torch.bfloat16,
+                    }.get(self.settings.compute_type, torch.float16)
+
+                    self.model = VoxtralForConditionalGeneration.from_pretrained(
+                        repo_id,
+                        dtype=compute_dtype,
+                        device_map="cuda",
+                    ).eval()
+
+                self.TranscriptionRequest = TranscriptionRequest
+                logger.info(f"Voxtral model loaded successfully")
             else:
-                compute_dtype = {
-                    "float16": torch.float16,
-                    "bfloat16": torch.bfloat16,
-                }.get(self.settings.compute_type, torch.float16)
+                error_msg = f"Unknown model type: {self.model_type}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
-                self.model = VoxtralForConditionalGeneration.from_pretrained(
-                    repo_id,
-                    dtype=compute_dtype,
-                    device_map="cuda",
-                ).eval()
-
-            self.TranscriptionRequest = TranscriptionRequest
-        else:
-            raise ValueError(f"Unknown model type: {self.model_type}")
+        except FileNotFoundError as e:
+            logger.error(f"Model file not found: {e}")
+            raise RuntimeError(
+                f"Model '{self.settings.model_name}' not found. "
+                f"Please ensure the model is downloaded or check your network connection."
+            ) from e
+        except torch.cuda.OutOfMemoryError as e:
+            logger.error(f"GPU out of memory: {e}")
+            raise RuntimeError(
+                f"GPU out of memory while loading model. Try using a smaller model, "
+                f"reducing batch size, or using CPU/CPU with int8 quantization."
+            ) from e
+        except ImportError as e:
+            logger.error(f"Import error while loading model: {e}")
+            raise RuntimeError(
+                f"Missing dependencies for model type '{mt}'. {e}"
+            ) from e
+        except Exception as e:
+            logger.error(f"Unexpected error loading model: {e}")
+            raise RuntimeError(f"Failed to load model '{self.settings.model_name}': {e}") from e
 
     def transcribe(
         self, audio_data, sample_rate: int = 16000, language: Optional[str] = None
@@ -131,6 +169,17 @@ class ModelWrapper:
         For Voxtral-Mini-3B-2507, handles potential input size limits by chunking.
         """
         mt = self.model_type
+
+        # Validate audio input
+        if audio_data is None or len(audio_data) == 0:
+            logger.warning("Empty audio data provided to transcribe")
+            return ""
+
+        audio_duration = len(audio_data) / sample_rate
+        if audio_duration < 0.1:
+            logger.debug(f"Audio too short ({audio_duration:.3f}s), skipping transcription")
+            return ""
+
         try:
             if mt == "whisper":
                 segments, _ = self.model.transcribe(
@@ -212,8 +261,17 @@ class ModelWrapper:
             else:
                 raise ValueError(f"Unknown model type: {mt}")
 
+        except torch.cuda.OutOfMemoryError as e:
+            logger.error(f"GPU out of memory during transcription: {e}")
+            return ""
+        except ValueError as e:
+            logger.error(f"Invalid input or configuration during transcription: {e}")
+            return ""
+        except RuntimeError as e:
+            logger.error(f"Runtime error during transcription: {e}")
+            return ""
         except Exception as e:
-            logger.error(f"Error during model.transcribe: {e}")
+            logger.error(f"Unexpected error during model.transcribe: {e}")
             return ""
 
     def _transcribe_single_chunk_voxtral(
@@ -377,3 +435,46 @@ class ModelWrapper:
                 except Exception:
                     pass
             yield ("", 0.0, True)
+
+    def cleanup(self):
+        """
+        Clean up resources and free memory.
+
+        Call this method to free GPU memory and other resources when the model
+        is no longer needed (e.g., before exiting or switching models).
+        """
+        try:
+            # Clear CUDA cache if using GPU
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.debug("CUDA cache cleared")
+
+            # For PyTorch models, explicitly delete references
+            if self._model_ref is not None:
+                del self._model_ref
+                self._model_ref = None
+
+            # The main model reference
+            if self.model is not None:
+                # For WhisperModel, there's no explicit cleanup needed
+                # For PyTorch models, we'll delete the reference
+                if hasattr(self.model, 'parameters'):
+                    del self.model
+                    self.model = None
+
+            # Delete processor if it exists
+            if self.processor is not None:
+                del self.processor
+                self.processor = None
+
+            logger.debug("Model resources cleaned up")
+
+        except Exception as e:
+            logger.warning(f"Error during model cleanup: {e}")
+
+    def __del__(self):
+        """Destructor to ensure cleanup on object deletion."""
+        try:
+            self.cleanup()
+        except Exception:
+            pass  # Ignore errors during destruction

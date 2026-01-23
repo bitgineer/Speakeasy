@@ -62,7 +62,7 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - Tests cover thread safety, error handling, edge cases
     - Note: `test_history_system.py` and `test_model_management.py` already existed
 
-- [ ] Fix identified bugs in core transcription:
+- [x] Fix identified bugs in core transcription:
   - Review and fix issues in `transcriber.py`:
     - Thread safety issues with state management
     - Hotkey debouncing problems
@@ -73,6 +73,40 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - Incorrect model paths
     - Memory leaks after transcription
   - Add comprehensive error logging throughout
+  - **COMPLETED NOTES:**
+    - Added thread-safe properties and locks to `transcriber.py`:
+      - `_recording_lock`, `_state_lock`, `_queue_lock`, `_modifiers_lock`
+      - Thread-safe `is_recording` property with getter/setter
+      - Thread-safe modifier key tracking in `on_press`/`on_release`
+      - Thread-safe `_check_modifiers_active()` and `_matches_hotkey()` methods
+    - Improved hotkey debouncing logic:
+      - Reduced debounce interval from 100ms to 50ms for better responsiveness
+      - Added double-press protection (50ms)
+      - Only debounce when actively transcribing, not after completion
+      - Added `_last_hotkey_press_time` tracking
+    - Added audio buffer overflow handling with user notification:
+      - Added `_buffer_overflow_warned` flag to warn once per recording
+      - Logs warning with max duration info when overflow occurs
+      - Warning flag reset on each new recording
+    - Enhanced error logging throughout:
+      - Added try/except blocks in `on_press` and `on_release` handlers
+      - Added debug logging for debounce events
+      - Added error logging for audio level callback failures
+    - Fixed model loading error handling in `models.py`:
+      - Added comprehensive error handling in `_load_model()`:
+        - FileNotFoundError with helpful message
+        - torch.cuda.OutOfMemoryError with GPU-specific suggestions
+        - ImportError with dependency information
+        - Generic RuntimeError with context
+      - Added logging for model loading progress
+      - Added input validation in `transcribe()` method
+      - Added specific exception handling (OOM, ValueError, RuntimeError)
+    - Added memory leak cleanup:
+      - Added `cleanup()` method to `ModelWrapper` class
+      - Added `__del__` destructor for automatic cleanup
+      - Added `cleanup()` method to `MicrophoneTranscriber` class
+      - Added `gc.collect()` call after transcription completes
+      - CUDA cache clearing when GPU is available
 
 - [ ] Fix clipboard and paste issues:
   - Test clipboard operations on various applications

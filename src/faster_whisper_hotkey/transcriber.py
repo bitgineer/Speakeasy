@@ -31,6 +31,7 @@ import sounddevice as sd
 import platform
 
 from pynput import keyboard
+from threading import Lock, RLock
 
 from .settings import Settings
 from .models import ModelWrapper
@@ -94,7 +95,13 @@ class MicrophoneTranscriber:
         self.model_wrapper = ModelWrapper(self.settings)
 
         self.stop_event = threading.Event()
-        self.is_recording = False
+        self._is_recording = False  # Private for thread-safe property
+        self._recording_lock = Lock()  # Lock for recording state
+        self._state_lock = RLock()  # Reentrant lock for state changes
+        self._queue_lock = Lock()  # Lock for transcription queue
+        self._modifiers_lock = Lock()  # Lock for active modifiers
+        self._buffer_overflow_warned = False  # Track if we've warned about buffer overflow
+
         self.device_name = self.settings.device_name
         self.keyboard_controller = keyboard.Controller()
         self.language = self.settings.language
@@ -128,6 +135,10 @@ class MicrophoneTranscriber:
         self.recording_start_time = 0.0
         self.should_stop = False
         self.listener = None
+
+        # Debounce settings - prevent rapid-fire transcriptions but allow quick re-recording
+        self._debounce_interval = 0.05  # Reduced from 0.1s to 50ms for better responsiveness
+        self._last_hotkey_press_time = 0.0  # Track last hotkey press time for debouncing
 
         # Audio level tracking for visualization
         self.current_audio_level = 0.0
@@ -178,6 +189,21 @@ class MicrophoneTranscriber:
     def reload_voice_commands(self):
         """Reload voice command processor from settings (call after settings update)."""
         self._init_voice_commands()
+
+    # ------------------------------------------------------------------
+    # Thread-safe properties
+    # ------------------------------------------------------------------
+    @property
+    def is_recording(self) -> bool:
+        """Thread-safe getter for is_recording state."""
+        with self._recording_lock:
+            return self._is_recording
+
+    @is_recording.setter
+    def is_recording(self, value: bool):
+        """Thread-safe setter for is_recording state."""
+        with self._recording_lock:
+            self._is_recording = value
 
     # ------------------------------------------------------------------
     # Hotkey mapping - supports single keys and combos like "ctrl+f1"
@@ -242,16 +268,17 @@ class MicrophoneTranscriber:
         return (modifiers, main_key)
     
     def _check_modifiers_active(self):
-        """Check if required modifiers are currently pressed."""
+        """Check if required modifiers are currently pressed (thread-safe)."""
         required_modifiers = self.hotkey_combo[0]
         if not required_modifiers:
             return True
-        # Check if at least one key from each modifier group is active
-        for mod in required_modifiers:
-            if mod in self.active_modifiers:
-                return True
-        return len(required_modifiers) == 0 or bool(required_modifiers & self.active_modifiers)
-    
+        with self._modifiers_lock:
+            # Check if at least one key from each modifier group is active
+            for mod in required_modifiers:
+                if mod in self.active_modifiers:
+                    return True
+            return len(required_modifiers) == 0 or bool(required_modifiers & self.active_modifiers)
+
     def _notify_state(self, state: str):
         """Notify GUI of state change."""
         if self.on_state_change:
@@ -433,6 +460,14 @@ class MicrophoneTranscriber:
 
         new_index = self.buffer_index + len(audio_data)
         if new_index > self.max_buffer_length:
+            # Warn only once per recording session
+            if not self._buffer_overflow_warned:
+                logger.warning(
+                    f"Audio buffer overflow! Recording exceeds maximum length "
+                    f"({self.max_buffer_length / self.sample_rate / 60:.1f} minutes). "
+                    f"Audio is being truncated. For longer recordings, increase max_buffer_length."
+                )
+                self._buffer_overflow_warned = True
             audio_data = audio_data[: self.max_buffer_length - self.buffer_index]
             new_index = self.max_buffer_length
         self.audio_buffer[self.buffer_index : new_index] = audio_data
@@ -619,6 +654,14 @@ class MicrophoneTranscriber:
         finally:
             self.is_transcribing = False
             self.last_transcription_end_time = time.time()
+
+            # Clean up audio data from memory
+            try:
+                import gc
+                gc.collect()
+            except Exception:
+                pass
+
             self.process_next_transcription()
 
     def process_next_transcription(self):
@@ -649,6 +692,7 @@ class MicrophoneTranscriber:
             self.is_recording = True
             self.recording_start_time = time.time()
             self.current_audio_level = 0.0
+            self._buffer_overflow_warned = False  # Reset overflow warning for new recording
 
             # Capture active app info for analytics
             try:
@@ -744,34 +788,43 @@ class MicrophoneTranscriber:
         return key in modifier_keys
 
     def _matches_hotkey(self, key):
-        """Check if current key + active modifiers match the hotkey combo."""
+        """Check if current key + active modifiers match the hotkey combo (thread-safe)."""
         required_modifiers, main_key = self.hotkey_combo
-        
+
         # Check if main key matches
         if key != main_key:
             return False
-        
+
         # Check modifiers (if any required)
         if required_modifiers:
-            return bool(required_modifiers & self.active_modifiers)
-        
+            with self._modifiers_lock:
+                return bool(required_modifiers & self.active_modifiers)
+
         return True
 
     def on_press(self, key):
         try:
-            # Track modifier keys
+            # Track modifier keys (thread-safe)
             if self._is_modifier(key):
-                self.active_modifiers.add(key)
+                with self._modifiers_lock:
+                    self.active_modifiers.add(key)
                 return True
-            
+
             current_time = time.time()
-            
-            # Debounce
-            if current_time - self.last_transcription_end_time < 0.1:
+
+            # Improved debounce: Only block if we're actively transcribing AND within debounce window
+            # This allows quick re-recording after transcription completes
+            if self.is_transcribing and (current_time - self.last_transcription_end_time < self._debounce_interval):
+                logger.debug(f"Debouncing hotkey press - transcription in progress")
                 return True
-            
+
+            # Also check if hotkey was pressed very recently (prevent accidental double-press)
+            if current_time - self._last_hotkey_press_time < 0.05:  # 50ms double-press protection
+                return True
+
             # Check if hotkey matches
             if self._matches_hotkey(key):
+                self._last_hotkey_press_time = current_time
                 if self.activation_mode == "toggle":
                     # Toggle mode: press to start, press again to stop
                     if self.is_recording:
@@ -785,9 +838,11 @@ class MicrophoneTranscriber:
                         self.start_recording()
                         self._notify_state("recording")
                 return True
-                
+
         except AttributeError:
             pass
+        except Exception as e:
+            logger.error(f"Error in on_press: {e}")
         return True
 
     def on_release(self, key):
@@ -796,11 +851,12 @@ class MicrophoneTranscriber:
         In toggle mode, release does nothing.
         """
         try:
-            # Track modifier keys
+            # Track modifier keys (thread-safe)
             if self._is_modifier(key):
-                self.active_modifiers.discard(key)
+                with self._modifiers_lock:
+                    self.active_modifiers.discard(key)
                 return True
-            
+
             # In hold mode, release stops recording
             if self.activation_mode == "hold":
                 _, main_key = self.hotkey_combo
@@ -808,9 +864,11 @@ class MicrophoneTranscriber:
                     self._notify_state("transcribing")
                     self.stop_recording_and_transcribe()
                     return True
-                    
+
         except AttributeError:
             pass
+        except Exception as e:
+            logger.error(f"Error in on_release: {e}")
         return True
 
     def stop(self):
@@ -820,6 +878,38 @@ class MicrophoneTranscriber:
             self.stop_recording_and_transcribe()
         if self.listener:
             self.listener.stop()
+
+    def cleanup(self):
+        """
+        Clean up resources and free memory.
+
+        Call this before destroying the transcriber to ensure proper cleanup.
+        """
+        try:
+            # Stop recording if active
+            if self.is_recording:
+                self.stop_recording_and_transcribe()
+
+            # Stop the listener
+            if self.listener:
+                self.listener.stop()
+                self.listener = None
+
+            # Clean up model resources
+            if hasattr(self, 'model_wrapper') and self.model_wrapper:
+                self.model_wrapper.cleanup()
+
+            # Clear audio buffer
+            self.audio_buffer = None
+            self.transcription_queue = None
+
+            # Stop audio level thread
+            self._stop_audio_level_thread = True
+
+            logger.debug("Transcriber resources cleaned up")
+
+        except Exception as e:
+            logger.warning(f"Error during transcriber cleanup: {e}")
 
     # ------------------------------------------------------------------
     # Main loop
