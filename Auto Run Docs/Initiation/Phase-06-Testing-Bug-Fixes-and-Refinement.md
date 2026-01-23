@@ -11,7 +11,7 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
 
 ## Tasks
 
-- [ ] Audit and document existing bugs:
+- [x] Audit and document existing bugs:
   - Create `docs/known-issues.md` documenting:
     - All reported issues from GitHub issues
     - Known limitations (VSCode terminal, etc.)
@@ -22,6 +22,13 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - Resource leaks (unclosed files, connections)
     - Edge cases not handled
   - Prioritize bugs by severity and user impact
+  - **COMPLETED NOTES:**
+    - Created comprehensive `docs/known-issues.md` with 15+ documented issues
+    - Categorized by priority: 1 Critical, 3 High, 5 Medium, 4 Low
+    - Includes platform-specific limitations (Windows, Linux)
+    - Documents feature limitations for each model type
+    - Lists unhandled exception scenarios and validation gaps
+    - References related documentation for cross-linking
 
 - [ ] Create comprehensive test suite:
   - Set up `tests/` directory structure:

@@ -1,0 +1,412 @@
+---
+type: reference
+title: Known Issues and Limitations
+created: 2025-01-23
+tags:
+  - bugs
+  - limitations
+  - troubleshooting
+  - known-issues
+related:
+  - "[[installation]]"
+  - "[[TESTING]]"
+  - "[[PORTABLE_MODE]]"
+---
+
+# Known Issues and Limitations
+
+This document catalogues known bugs, limitations, and workarounds for faster-whisper-hotkey.
+
+## Priority Classification
+
+- **Critical**: Application crashes or data loss
+- **High**: Major feature broken, impacting usability
+- **Medium**: Feature partially broken or unreliable
+- **Low**: Minor issues or edge cases
+
+---
+
+## Critical Issues
+
+### C1: Model Loading Failures on Windows without VC++ Redistributable
+
+**Status:** Known Issue | **Workaround:** Available
+
+**Description:**
+On Windows systems without the Microsoft Visual C++ Redistributable, the application may fail to start or crash when loading models.
+
+**Symptoms:**
+- Error message: "MSVCP140.dll is missing" or similar
+- Application crashes on startup
+- Model loading failures
+
+**Workaround:**
+Install the [Microsoft Visual C++ Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe).
+
+**Affected Components:** `models.py`
+
+---
+
+## High Priority Issues
+
+### H1: Clipboard Fallback Typing Limited to ASCII
+
+**Status:** Known Limitation | **Workaround:** Use clipboard-based paste
+
+**Description:**
+When `pyperclip` is unavailable or clipboard operations fail, the application falls back to character-by-character typing using `pynput`. This fallback only works reliably for ASCII characters and may fail for:
+- Unicode characters (emojis, non-Latin scripts)
+- Special symbols
+- Combined characters
+
+**Symptoms:**
+- Missing or garbled characters when pasting
+- Incorrect characters typed
+- Nothing pasted at all
+
+**Location:** `transcriber.py:539-552`
+
+**Workaround:**
+Ensure `pyperclip` is installed and clipboard operations are working. The log will show:
+```
+pyperclip not found - falling back to typing method
+```
+
+**Affected Components:** `clipboard.py`, `transcriber.py`
+
+---
+
+### H2: VSCode Terminal Paste Issues
+
+**Status:** Known Limitation | **Workaround:** Manual paste
+
+**Description:**
+Auto-paste functionality may not work correctly in VSCode integrated terminals and some other terminal emulators on Windows.
+
+**Symptoms:**
+- Text is copied to clipboard but not pasted
+- Need to manually press Ctrl+V or Ctrl+Shift+V
+
+**Reason:**
+The Windows implementation uses simple Ctrl+V simulation (`paste.py` only implements X11/Wayland terminal detection).
+
+**Location:** `paste.py` (Linux-only terminal detection)
+
+**Workaround:**
+Manually paste with Ctrl+V after transcription completes.
+
+**Affected Components:** `paste.py`
+
+---
+
+### H3: Settings Corruption Not Handled Gracefully
+
+**Status:** Known Issue | **Workaround:** Delete settings file
+
+**Description:**
+If the settings JSON file becomes corrupted, the application may not provide clear error messages or recovery options.
+
+**Symptoms:**
+- Settings not loading
+- Application uses defaults silently
+- No user-facing error for corrupted settings
+
+**Location:** `settings.py:277-313` (`load_settings` function)
+
+**Workaround:**
+Delete the corrupted settings file:
+- **Installed:** `%APPDATA%\faster_whisper_hotkey\transcriber_settings.json`
+- **Portable:** `settings\transcriber_settings.json` next to executable
+
+**Affected Components:** `settings.py`
+
+---
+
+## Medium Priority Issues
+
+### M1: No Thread Safety for State Variables
+
+**Status:** Technical Debt | **Impact:** Race conditions possible
+
+**Description:**
+Several state variables in `MicrophoneTranscriber` are accessed from multiple threads without synchronization:
+- `is_recording`
+- `is_transcribing`
+- `active_modifiers`
+- `transcription_queue`
+
+**Symptoms:**
+- Rare race conditions in rapid hotkey presses
+- Inconsistent state reporting
+- Potential for duplicate transcriptions
+
+**Location:** `transcriber.py:86-150`
+
+**Affected Components:** `transcriber.py`
+
+---
+
+### M2: Audio Buffer Overflow Not Handled
+
+**Status:** Known Issue | **Impact:** Data loss on long recordings
+
+**Description:**
+If recording exceeds `max_buffer_length` (10 minutes at 16kHz), audio data is silently truncated without warning.
+
+**Symptoms:**
+- Transcription stops at 10 minutes
+- No error or warning to user
+- Lost audio data
+
+**Location:** `transcriber.py:434-439`
+
+```python
+new_index = self.buffer_index + len(audio_data)
+if new_index > self.max_buffer_length:
+    audio_data = audio_data[: self.max_buffer_length - self.buffer_index]
+    new_index = self.max_buffer_length
+```
+
+**Workaround:**
+Keep recordings under 10 minutes.
+
+**Affected Components:** `transcriber.py`
+
+---
+
+### M3: Model Download No Retry Logic
+
+**Status:** Known Issue | **Workaround:** Manual download
+
+**Description:**
+Model downloads from HuggingFace do not implement automatic retry on network failures.
+
+**Symptoms:**
+- Download fails on network interruption
+- No automatic retry
+- User must manually retry
+
+**Location:** Model download code (referenced but implementation location varies)
+
+**Workaround:**
+Retry the download manually, or download the model directly from HuggingFace and place in:
+- **Installed:** `%USERPROFILE%\.cache\huggingface\hub\`
+- **Portable:** `models\` next to executable
+
+**Affected Components:** Model management system
+
+---
+
+### M4: Voxtral 30-Second Chunking May Lose Context
+
+**Status:** Known Limitation | **Impact:** Potential text discontinuity
+
+**Description:**
+Voxtral model chunks audio at 30-second boundaries. Text spanning chunk boundaries may lose context at boundaries.
+
+**Symptoms:**
+- Inconsistent transcription at chunk boundaries
+- Different wording for repeated phrases at different positions
+
+**Location:** `models.py:179-210`
+
+**Workaround:**
+For critical work, keep recordings under 30 seconds, or use Whisper models which handle longer context.
+
+**Affected Components:** `models.py`
+
+---
+
+### M5: Hotkey Debounce May Miss Valid Presses
+
+**Status:** Known Issue | **Impact:** Occasional missed hotkey
+
+**Description:**
+The 100ms debounce after transcription may prevent immediate re-recording if user presses hotkey quickly.
+
+**Symptoms:**
+- Hotkey doesn't respond immediately after transcription
+- Must wait 100ms before next transcription
+
+**Location:** `transcriber.py:769-771`
+
+```python
+if current_time - self.last_transcription_end_time < 0.1:
+    return True
+```
+
+**Workaround:**
+Wait slightly between transcriptions.
+
+**Affected Components:** `transcriber.py`
+
+---
+
+## Low Priority Issues
+
+### L1: Audio Level Callback No Error Recovery
+
+**Status:** Minor Issue | **Impact:** UI may stop updating
+
+**Description:**
+If the audio level callback throws an exception, the callback continues but no recovery mechanism exists.
+
+**Location:** `transcriber.py:638-643`
+
+**Affected Components:** `transcriber.py`
+
+---
+
+### L2: Clipboard Restore Commented Out
+
+**Status:** Intentional Design | **Impact:** Clipboard replaced with transcription
+
+**Description:**
+The clipboard restore functionality is intentionally disabled (commented out) to keep transcribed text in clipboard.
+
+**Location:** `transcriber.py:556-559`
+
+```python
+# Keep transcript in clipboard instead of restoring original
+# if original_clip is not None:
+#     time.sleep(0.05)
+#     restore_clipboard(original_clip)
+```
+
+**Note:** This is intentional behavior, not a bug. Users who want the original clipboard restored can uncomment this code.
+
+**Affected Components:** `transcriber.py`
+
+---
+
+### L3: No Unicode Normalization in Text Processing
+
+**Status:** Minor Limitation | **Impact:** Inconsistent unicode handling
+
+**Description:**
+Text processor doesn't normalize Unicode characters, which may cause issues with composed/decomposed characters.
+
+**Affected Components:** `text_processor.py`
+
+---
+
+### L4: Global Settings Variables May Be Stale
+
+**Status:** Technical Debt | **Impact:** Potential inconsistency
+
+**Description:**
+`settings.py` has legacy global variables that may become stale if settings directory changes after import.
+
+**Location:** `settings.py:165-169`
+
+```python
+# Legacy global variables for backward compatibility
+conf_dir = os.path.expanduser("~/.config")
+settings_dir = get_settings_dir()
+SETTINGS_FILE = get_settings_file()
+HISTORY_FILE = get_history_file()
+```
+
+**Affected Components:** `settings.py`
+
+---
+
+## Platform-Specific Limitations
+
+### Windows
+
+| Issue | Description | Workaround |
+|-------|-------------|------------|
+| No portable mode detection from exe | Requires `portable.txt` marker | Create `portable.txt` next to exe |
+| Paste to terminals | Always uses Ctrl+V | Manually paste with Ctrl+Shift+V |
+| No pulseaudio support | Uses system default audio device | Set default device in Windows settings |
+
+### Linux
+
+| Issue | Description | Workaround |
+|-------|-------------|------------|
+| Requires xdotool/xprop | For terminal detection on X11 | Install via package manager |
+| Requires wtype | For paste on Wayland | Install via package manager |
+| No portable mode | Settings always in `~/.config` | Use symlink if needed |
+
+---
+
+## Known Feature Limitations
+
+### Model Support
+
+| Model | Limitation |
+|-------|------------|
+| **Voxtral** | 30-second chunking, requires GPU (CUDA only) |
+| **Canary** | Requires source-target language pair |
+| **Parakeet** | No language auto-detection |
+| **Whisper** | Largest model size (large-v3) requires significant RAM |
+
+### Text Processing
+
+| Feature | Limitation |
+|---------|------------|
+| Auto-punctuation | English language optimized only |
+| Filler word removal | English-only word list |
+| Dictionary matching | Fuzzy matching may give false positives |
+
+### Streaming Transcription
+
+| Limitation | Details |
+|------------|---------|
+| Whisper only | Parakeet, Canary, Voxtral don't support streaming |
+| No word timestamps | Only segment-level timestamps available |
+
+---
+
+## Error Handling Gaps
+
+### Unhandled Exception Scenarios
+
+1. **Audio device disconnect during recording** - May crash or hang
+2. **GPU out of memory** - Falls back to CPU without clear notification
+3. **Model file corruption** - No verification or recovery
+4. **Hotkey already registered** - May fail to register silently
+
+### Missing Validation
+
+1. **Settings values** - No range validation (e.g., negative history retention days)
+2. **Model names** - Typos not caught until load time
+3. **Language codes** - Invalid codes passed through to model
+
+---
+
+## Work in Progress
+
+The following issues are being addressed in Phase 6:
+
+- [ ] Thread safety improvements for state variables
+- [ ] Audio buffer overflow handling with user notification
+- [ ] Model download retry logic
+- [ ] Settings corruption graceful handling
+- [ ] Comprehensive error logging
+- [ ] Input validation for all settings
+
+---
+
+## Reporting New Issues
+
+If you encounter an issue not listed here:
+
+1. Check if it's covered in [[installation]] troubleshooting
+2. Search existing [GitHub Issues](https://github.com/blakkd/faster-whisper-hotkey/issues)
+3. When reporting, include:
+   - Windows version and build
+   - Application version
+   - Steps to reproduce
+   - Error messages or logs
+   - Hardware specs (GPU, RAM)
+
+---
+
+## Related Documentation
+
+- [[installation]] - Installation and troubleshooting
+- [[TESTING]] - Testing procedures
+- [[PORTABLE_MODE]] - Portable mode details
+- [[ARCHITECTURE]] - System architecture
