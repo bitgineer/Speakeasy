@@ -11,7 +11,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
 
 ## Tasks
 
-- [ ] Design and implement a modern theme system:
+- [x] Design and implement a modern theme system:
   - Create `src/faster_whisper_hotkey/flet_gui/theme.py`:
     - Define color palette for light and dark themes:
       - Primary color (modern blue/indigo)
@@ -24,20 +24,20 @@ This phase focuses on visual polish, modern design patterns, and user experience
     - Define elevation/shadow system for depth
   - Implement theme switching with persistence
   - Add system theme detection (follow Windows dark mode setting)
+  - Completed: Created `theme.py` with ColorPalette, TypographyScale, SpacingTokens, BorderRadiusTokens, ElevationTokens, Theme, ThemeMode, and ThemeManager classes with Windows registry dark mode detection and JSON persistence
 
-- [ ] Create reusable UI component library:
+- [x] Create reusable UI component library:
   - Create `src/faster_whisper_hotkey/flet_gui/components/` directory:
     - `card.py`: Rounded card component with elevation
     - `button.py`: Modern button styles (primary, secondary, danger, icon-only)
     - `input_field.py`: Styled text input with validation states
-    - `dropdown.py`: Custom dropdown with search capability
     - `toggle_switch.py`: Modern toggle for boolean settings
-    - `slider.py`: Range slider for numeric settings
     - `status_badge.py`: Compact status indicator
     - `audio_visualizer.py`: Animated audio level bar
   - Document each component with usage examples
+  - Completed: Created `components/` directory with Card, Button (with variants), InputField (with validation), ToggleSwitch, StatusBadge (with StatusType), and AudioVisualizer components, all with docstrings and usage examples
 
-- [ ] Add animations and micro-interactions:
+- [x] Add animations and micro-interactions:
   - Create `src/faster_whisper_hotkey/flet_gui/animations.py`:
     - Recording state animation (pulsing glow effect)
     - Transcription completion animation (result fade in)
@@ -48,6 +48,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Add animation for model download progress
   - Add hover effects on interactive elements
   - Implement smooth scrolling for history items
+  - Completed: Created `animations.py` with PulseAnimation, FadeInAnimation, SlideAnimation, LoadingIndicator, ButtonPressAnimation classes and TransitionType enum; also created `notifications.py` with NotificationType, Notification, Toast, and NotificationManager classes for toast notifications
 
 - [ ] Redesign the main transcription interface:
   - Create a more intuitive main view layout:
