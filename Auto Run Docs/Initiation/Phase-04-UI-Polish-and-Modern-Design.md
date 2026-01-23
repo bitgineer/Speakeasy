@@ -129,8 +129,9 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Single-click to show window, double-click to record
   - Completed: Enhanced `tray_manager.py` with TrayIconState enum, ModelInfo dataclass, animated icon with pulse effect during recording, color-coded states (green=idle, red=recording, orange=transcribing, grey=error), enhanced menu with status indicator, View History and Settings actions, model selector submenu with current model indicator, and Recent Transcriptions submenu. Added `update_transcribing_state()`, `set_available_models()`, `set_current_model()`, `update_tooltip()`, and `set_tray_notifications_enabled()` methods. Integrated with `app.py` via callbacks for double-click to record, history/settings/model selection from tray, and transcribing state updates. Added "Tray notifications" toggle setting in Advanced category of modern_settings_panel.py with default enabled.
 
-- [ ] Add responsive design considerations:
+- [x] Add responsive design considerations:
   - Ensure UI works at minimum resolution (1024x768)
   - Handle window resizing gracefully
   - Support fullscreen mode
   - Add compact mode for small screens
+  - Completed: Created `responsive.py` with Breakpoint enum, SizeMode enum, ResponsiveState dataclass, and ResponsiveManager class. Features include: breakpoint-based layout adjustments (XS/SM/MD/LG/XL/XXL), automatic compact mode for small screens, window resize handling with listeners, responsive utility methods (get_width, get_height, get_spacing, get_font_size, etc.), fullscreen support, and minimum resolution support (360x500). Updated `ModernTranscriptionPanel` to support responsive design with compact mode variants for UI elements, adaptive widths/sizes/spacing based on screen size, and responsive recent transcription card counts. Integrated responsive manager into main app via `attach_to_page()` method with resize event handling. Added "Compact mode" toggle setting in Advanced category of modern_settings_panel.py for manual control. The UI now gracefully adapts to window sizes from 360px (minimum) up to large screens.

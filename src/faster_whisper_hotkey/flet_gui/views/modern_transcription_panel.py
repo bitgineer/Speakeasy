@@ -8,6 +8,7 @@ This module provides a redesigned, modern transcription interface with:
 - Recording time elapsed counter
 - Keyboard shortcut hints
 - Enhanced visual feedback for recording state
+- Responsive design for different screen sizes
 """
 
 import logging
@@ -21,6 +22,7 @@ from ..app_state import AppState, RecordingState
 from ..history_manager import HistoryManager, HistoryItem
 from ..theme import get_theme_manager, SPACING, BORDER_RADIUS
 from ..components import Card, Button, ButtonVariant, StatusBadge, StatusType
+from ..responsive import ResponsiveManager, ResponsiveState, Breakpoint, SizeMode
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,8 @@ class RecentTranscriptionCard(Card):
         Callback when the card is clicked.
     max_length
         Maximum text length to display.
+    compact
+        Whether to use compact layout.
     **kwargs
         Additional Card properties.
     """
@@ -46,6 +50,7 @@ class RecentTranscriptionCard(Card):
         item: HistoryItem,
         on_click: Optional[Callable] = None,
         max_length: int = 80,
+        compact: bool = False,
         **kwargs,
     ):
         """
@@ -59,6 +64,8 @@ class RecentTranscriptionCard(Card):
             Click callback.
         max_length
             Maximum text length.
+        compact
+            Whether to use compact layout.
         **kwargs
             Additional properties.
         """
@@ -73,8 +80,17 @@ class RecentTranscriptionCard(Card):
 
         # Truncate text
         text = item.text
-        if len(text) > max_length:
-            text = text[:max_length] + "..."
+        # Adjust max length for compact mode
+        effective_max_length = max_length // 2 if compact else max_length
+        if len(text) > effective_max_length:
+            text = text[:effective_max_length] + "..."
+
+        # Adjust sizes for compact mode
+        icon_size = 12 if compact else 14
+        time_size = 10 if compact else 11
+        text_size = 12 if compact else 13
+        max_lines = 2 if compact else 3
+        padding = SPACING.xs if compact else SPACING.sm
 
         # Build content
         content = ft.Column(
@@ -84,24 +100,24 @@ class RecentTranscriptionCard(Card):
                     [
                         ft.Icon(
                             ft.icons.HISTORY,
-                            size=14,
+                            size=icon_size,
                             color=theme.colors.on_surface_variant,
                         ),
                         ft.Text(
                             time_str,
-                            size=11,
+                            size=time_size,
                             color=theme.colors.on_surface_variant,
                         ),
                         ft.Container(expand=True),
                     ],
-                    spacing=4,
+                    spacing=4 if not compact else 2,
                 ),
                 # Text content
                 ft.Text(
                     text,
-                    size=13,
+                    size=text_size,
                     color=theme.colors.on_surface,
-                    max_lines=3,
+                    max_lines=max_lines,
                     overflow=ft.TextOverflow.ELLIPSIS,
                 ),
             ],
@@ -116,12 +132,13 @@ class RecentTranscriptionCard(Card):
         super().__init__(
             content=content,
             variant="outlined",
-            padding=SPACING.sm,
+            padding=padding,
             on_click=on_click,
             **kwargs,
         )
 
         self._item = item
+        self._compact = compact
 
     def _format_relative_time(self, dt: datetime) -> str:
         """Format a relative time string (e.g., "2m ago", "1h ago")."""
@@ -238,7 +255,7 @@ class ShortcutHint(ft.Container):
 
 class ModernTranscriptionPanel:
     """
-    Modern transcription panel with enhanced UI.
+    Modern transcription panel with enhanced UI and responsive design.
 
     This panel provides:
     - Large, prominent "Push to Talk" button with visual feedback
@@ -249,6 +266,7 @@ class ModernTranscriptionPanel:
     - Recent transcriptions as quick-access cards
     - Keyboard shortcut hints
     - Copy to clipboard and paste buttons
+    - Responsive layout that adapts to window size
 
     Attributes
     ----------
@@ -271,6 +289,7 @@ class ModernTranscriptionPanel:
         on_copy: Optional[Callable] = None,
         on_paste: Optional[Callable] = None,
         on_recent_click: Optional[Callable[[HistoryItem], None]] = None,
+        responsive_manager: Optional[ResponsiveManager] = None,
     ):
         """
         Initialize the modern transcription panel.
@@ -287,12 +306,19 @@ class ModernTranscriptionPanel:
             Callback when paste to active window is requested.
         on_recent_click
             Callback when a recent transcription is clicked.
+        responsive_manager
+            Optional responsive manager for adaptive layouts.
         """
         self.app_state = app_state
         self.history_manager = history_manager
         self._on_copy = on_copy
         self._on_paste = on_paste
         self._on_recent_click = on_recent_click
+
+        # Responsive manager
+        self._responsive_manager = responsive_manager
+        self._is_compact = False
+        self._current_width = 400
 
         # UI components
         self._audio_level_bar: Optional[ft.ProgressBar] = None
@@ -311,6 +337,78 @@ class ModernTranscriptionPanel:
         self._recording_start_time: Optional[float] = None
         self._timer_running: bool = False
 
+        # Unsubscribe function for responsive changes
+        self._responsive_unsubscribe: Optional[Callable] = None
+
+    def set_responsive_manager(self, manager: ResponsiveManager):
+        """
+        Set the responsive manager and subscribe to changes.
+
+        Parameters
+        ----------
+        manager
+            The responsive manager instance.
+        """
+        self._responsive_manager = manager
+        self._is_compact = manager.state.is_compact
+        self._current_width = manager.state.window_width
+
+        # Subscribe to responsive changes
+        def on_responsive_change(state: ResponsiveState):
+            old_compact = self._is_compact
+            old_width = self._current_width
+            self._is_compact = state.is_compact
+            self._current_width = state.window_width
+
+            # Rebuild if compact mode changed or width changed significantly
+            if old_compact != self._is_compact or abs(old_width - state.window_width) > 100:
+                self._refresh_layout()
+
+        self._responsive_unsubscribe = manager.subscribe(on_responsive_change)
+
+    def _refresh_layout(self):
+        """Refresh the layout based on current responsive state."""
+        # Update transcription display width
+        if self._transcription_display:
+            self._transcription_display.width = self._get_content_width()
+
+        # Update status row width
+        if self._status_badge and self._status_badge.parent:
+            # Find the status row and update its width
+            pass
+
+        # Update recent cards
+        self.refresh_recent_transcriptions()
+
+    def _get_content_width(self) -> int:
+        """Get the responsive content width."""
+        if not self._responsive_manager:
+            return 400
+
+        if self._is_compact:
+            # For compact/small screens, use percentage-based width
+            base = int(self._current_width * 0.9)
+            return max(280, min(base, 350))
+        return 400
+
+    def _get_spacing(self) -> float:
+        """Get responsive spacing."""
+        if self._is_compact:
+            return SPACING.sm
+        return SPACING.md
+
+    def _get_padding(self) -> float:
+        """Get responsive padding."""
+        if self._is_compact:
+            return SPACING.md
+        return SPACING.lg
+
+    def _get_visible_recent_count(self) -> int:
+        """Get number of recent items to show based on screen size."""
+        if not self._responsive_manager:
+            return 3
+        return self._responsive_manager.get_visible_recent_count()
+
     def build(self) -> ft.Container:
         """
         Build the modern transcription panel UI.
@@ -321,6 +419,10 @@ class ModernTranscriptionPanel:
             The transcription panel container.
         """
         theme = get_theme_manager()
+
+        # Get responsive spacing and padding
+        spacing = self._get_spacing()
+        padding = self._get_padding()
 
         # Build the main layout
         main_content = ft.Column(
@@ -338,14 +440,14 @@ class ModernTranscriptionPanel:
                 # Shortcut hints
                 self._build_shortcut_hints(),
             ],
-            spacing=SPACING.md,
+            spacing=spacing,
             scroll=ft.ScrollMode.AUTO,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         return ft.Container(
             content=main_content,
-            padding=ft.padding.symmetric(horizontal=SPACING.lg, vertical=SPACING.md),
+            padding=ft.padding.symmetric(horizontal=padding, vertical=SPACING.md),
             expand=True,
         )
 
@@ -353,10 +455,18 @@ class ModernTranscriptionPanel:
         """Build the status row with badge and timer."""
         theme = get_theme_manager()
 
+        # Responsive sizes
+        status_size = 12 if self._is_compact else 13
+        timer_size = 12 if self._is_compact else 13
+        indicator_size = 6 if self._is_compact else 8
+        badge_padding_h = 10 if self._is_compact else 12
+        badge_padding_v = 4 if self._is_compact else 6
+        row_width = self._get_content_width()
+
         # Status badge
         self._status_text = ft.Text(
             "Ready",
-            size=13,
+            size=status_size,
             weight=ft.FontWeight.MEDIUM,
             color=theme.colors.on_surface,
         )
@@ -364,16 +474,16 @@ class ModernTranscriptionPanel:
             content=ft.Row(
                 [
                     ft.Container(
-                        width=8,
-                        height=8,
-                        border_radius=4,
+                        width=indicator_size,
+                        height=indicator_size,
+                        border_radius=indicator_size // 2,
                         bgcolor=theme.colors.success,
                     ),
                     self._status_text,
                 ],
-                spacing=6,
+                spacing=6 if not self._is_compact else 4,
             ),
-            padding=ft.padding.symmetric(horizontal=12, vertical=6),
+            padding=ft.padding.symmetric(horizontal=badge_padding_h, vertical=badge_padding_v),
             bgcolor=theme.colors.success_container,
             border_radius=16,
         )
@@ -381,10 +491,10 @@ class ModernTranscriptionPanel:
         # Recording timer (hidden initially)
         self._recording_timer = ft.Text(
             "0:00",
-            size=13,
+            size=timer_size,
             color=theme.colors.on_surface_variant,
             visible=False,
-            width=60,
+            width=50 if self._is_compact else 60,
             text_align=ft.TextAlign.RIGHT,
         )
 
@@ -394,18 +504,25 @@ class ModernTranscriptionPanel:
                 ft.Container(expand=True),
                 self._recording_timer,
             ],
-            width=400,
+            width=row_width,
         )
 
     def _build_record_button_area(self) -> ft.Container:
         """Build the floating record button with pulse effect."""
         theme = get_theme_manager()
 
+        # Responsive button sizes
+        btn_size = 70 if self._is_compact else 80
+        ring_size = 78 if self._is_compact else 90
+        icon_size = 28 if self._is_compact else 32
+        text_size = 12 if self._is_compact else 14
+        bar_width = 180 if self._is_compact else 200
+
         # Pulse ring for recording state
         self._pulse_ring = ft.Container(
-            width=90,
-            height=90,
-            border_radius=45,
+            width=ring_size,
+            height=ring_size,
+            border_radius=ring_size // 2,
             border=ft.border.all(3, theme.colors.recording),
             bgcolor=ft.colors.TRANSPARENT,
             opacity=0,
@@ -418,12 +535,12 @@ class ModernTranscriptionPanel:
         # Record button content
         self._record_icon = ft.Icon(
             ft.icons.MIC,
-            size=32,
+            size=icon_size,
             color=theme.colors.on_primary,
         )
         self._record_text = ft.Text(
-            "Push to Talk",
-            size=14,
+            "Push to Talk" if not self._is_compact else "Talk",
+            size=text_size,
             weight=ft.FontWeight.MEDIUM,
             color=theme.colors.on_primary,
         )
@@ -432,7 +549,7 @@ class ModernTranscriptionPanel:
                 self._record_icon,
                 self._record_text,
             ],
-            spacing=4,
+            spacing=4 if not self._is_compact else 2,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
@@ -443,21 +560,21 @@ class ModernTranscriptionPanel:
                     self._pulse_ring,
                     ft.Container(
                         content=button_content,
-                        width=80,
-                        height=80,
-                        border_radius=40,
+                        width=btn_size,
+                        height=btn_size,
+                        border_radius=btn_size // 2,
                         bgcolor=theme.colors.primary,
                         alignment=ft.alignment.center,
                     ),
                 ],
-                width=90,
-                height=90,
+                width=ring_size,
+                height=ring_size,
                 alignment=ft.alignment.center,
             ),
-            width=90,
-            height=90,
+            width=ring_size,
+            height=ring_size,
             bgcolor=theme.colors.primary,
-            border_radius=45,
+            border_radius=ring_size // 2,
             alignment=ft.alignment.center,
             shadow=ft.BoxShadow(
                 blur_radius=20,
@@ -478,7 +595,7 @@ class ModernTranscriptionPanel:
 
         # Audio level bar below button
         self._audio_level_bar = ft.ProgressBar(
-            width=200,
+            width=bar_width,
             height=4,
             bgcolor=theme.colors.surface_container_low,
             color=theme.colors.primary,
@@ -492,48 +609,63 @@ class ModernTranscriptionPanel:
                     self._record_button,
                     ft.Container(
                         content=self._audio_level_bar,
-                        padding=ft.padding.only(top=SPACING.sm),
+                        padding=ft.padding.only(top=SPACING.sm if not self._is_compact else SPACING.xs),
                     ),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            padding=ft.padding.symmetric(vertical=SPACING.sm),
+            padding=ft.padding.symmetric(vertical=SPACING.xs if self._is_compact else SPACING.sm),
         )
 
     def _build_transcription_display(self) -> ft.Container:
         """Build the transcription display area."""
         theme = get_theme_manager()
 
+        # Responsive dimensions
+        content_width = self._get_content_width()
+        font_size = 13 if self._is_compact else 14
+        padding = SPACING.sm if self._is_compact else SPACING.md
+
+        # Get max lines from responsive manager or use default
+        if self._responsive_manager:
+            max_lines = self._responsive_manager.get_transcription_max_lines()
+            min_lines = max(3, max_lines - 3)
+        else:
+            min_lines = 6
+            max_lines = 10
+
         self._transcription_display = ft.TextField(
             value="",
             multiline=True,
-            min_lines=6,
-            max_lines=10,
+            min_lines=min_lines,
+            max_lines=max_lines,
             read_only=True,
             hint_text="Your transcription will appear here...",
             border_color=theme.colors.outline_variant,
             border_radius=theme.radius.lg,
             bgcolor=theme.colors.surface_container_low,
             text_style=ft.TextStyle(
-                size=14,
+                size=font_size,
                 color=theme.colors.on_surface,
             ),
-            content_padding=ft.padding.all(SPACING.md),
-            width=400,
+            content_padding=ft.padding.all(padding),
+            width=content_width,
         )
 
         return ft.Container(
             content=self._transcription_display,
-            width=400,
+            width=content_width,
         )
 
     def _build_action_buttons(self) -> ft.Row:
         """Build the action buttons row."""
         theme = get_theme_manager()
 
+        icon_size = 18 if self._is_compact else 20
+
         copy_button = ft.IconButton(
             icon=ft.icons.COPY,
-            icon_size=20,
+            icon_size=icon_size,
             tooltip="Copy to clipboard",
             on_click=self._on_copy_click,
             style=ft.ButtonStyle(
@@ -544,7 +676,7 @@ class ModernTranscriptionPanel:
 
         paste_button = ft.IconButton(
             icon=ft.icons.CONTENT_PASTE,
-            icon_size=20,
+            icon_size=icon_size,
             tooltip="Paste to active window",
             on_click=self._on_paste_click,
             style=ft.ButtonStyle(
@@ -555,19 +687,22 @@ class ModernTranscriptionPanel:
 
         return ft.Row(
             [copy_button, paste_button],
-            spacing=SPACING.sm,
+            spacing=SPACING.xs if self._is_compact else SPACING.sm,
         )
 
     def _build_recent_transcriptions(self) -> ft.Container:
         """Build the recent transcriptions section."""
         theme = get_theme_manager()
 
+        content_width = self._get_content_width()
+        header_size = 12 if self._is_compact else 13
+
         # Section header
         header = ft.Row(
             [
                 ft.Text(
                     "Recent",
-                    size=13,
+                    size=header_size,
                     weight=ft.FontWeight.MEDIUM,
                     color=theme.colors.on_surface_variant,
                 ),
@@ -589,14 +724,15 @@ class ModernTranscriptionPanel:
                 ],
                 spacing=SPACING.xs,
             ),
-            width=400,
-            padding=ft.padding.only(top=SPACING.sm),
+            width=content_width,
+            padding=ft.padding.only(top=SPACING.xs if self._is_compact else SPACING.sm),
         )
 
     def _build_shortcut_hints(self) -> ft.Container:
         """Build the keyboard shortcut hints row."""
         theme = get_theme_manager()
 
+        # In compact mode, only show the main hotkey
         hints = [
             ShortcutHint(
                 self.app_state.hotkey.upper(),
@@ -604,8 +740,8 @@ class ModernTranscriptionPanel:
             ),
         ]
 
-        # Add history hotkey hint
-        if hasattr(self.app_state, 'history_hotkey'):
+        # Add history hotkey hint only in non-compact mode
+        if hasattr(self.app_state, 'history_hotkey') and not self._is_compact:
             hints.append(
                 ShortcutHint(
                     self.app_state.history_hotkey.upper(),
@@ -615,12 +751,12 @@ class ModernTranscriptionPanel:
 
         self._shortcut_hints = ft.Row(
             hints,
-            spacing=SPACING.sm,
+            spacing=SPACING.xs if self._is_compact else SPACING.sm,
         )
 
         return ft.Container(
             content=self._shortcut_hints,
-            padding=ft.padding.only(top=SPACING.sm),
+            padding=ft.padding.only(top=SPACING.xs if self._is_compact else SPACING.sm),
         )
 
     def _on_record_click(self, e):
@@ -722,27 +858,32 @@ class ModernTranscriptionPanel:
         if not self._recent_cards_container:
             return
 
-        # Get recent items (up to 3)
-        items = self.history_manager.get_all(limit=3, descending=True)
+        # Get responsive item count
+        limit = self._get_visible_recent_count()
+
+        # Get recent items
+        items = self.history_manager.get_all(limit=limit, descending=True)
 
         # Clear existing cards
         self._recent_cards_container.controls.clear()
 
-        # Add new cards
+        # Add new cards with compact mode flag
         for item in items:
             card = RecentTranscriptionCard(
                 item=item,
                 on_click=lambda e, i=item: self._on_recent_card_click(i),
+                compact=self._is_compact,
             )
             self._recent_cards_container.controls.append(card)
 
         # Show empty message if no items
         if not items:
             theme = get_theme_manager()
+            font_size = 11 if self._is_compact else 12
             self._recent_cards_container.controls.append(
                 ft.Text(
-                    "No recent transcriptions",
-                    size=12,
+                    "No recent transcriptions" if not self._is_compact else "No recent",
+                    size=font_size,
                     color=theme.colors.on_surface_variant,
                     italic=True,
                 )

@@ -41,6 +41,7 @@ from .notifications import (
 )
 from .accessibility import get_accessibility_manager
 from .theme import get_theme_manager
+from .responsive import get_responsive_manager, ResponsiveManager
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,9 @@ class FletApp:
         self.accessibility_manager = get_accessibility_manager()
         self.theme_manager = get_theme_manager()
 
+        # Responsive manager
+        self.responsive_manager = get_responsive_manager()
+
         # UI references
         self._status_indicator: Optional[ft.Container] = None
         self._status_text: Optional[ft.Text] = None
@@ -129,10 +133,14 @@ class FletApp:
         page.theme_mode = ft.ThemeMode.SYSTEM
         page.window_width = 500 if not self._use_modern_ui else 450
         page.window_height = 700
-        page.window_min_width = 400
-        page.window_min_height = 500
+        # Set minimum supported resolution
+        page.window_min_width = ResponsiveManager.MIN_WIDTH
+        page.window_min_height = ResponsiveManager.MIN_HEIGHT
         page.padding = 0
         page.bgcolor = ft.colors.SURFACE_CONTAINER_LOWEST if hasattr(ft.colors, 'SURFACE_CONTAINER_LOWEST') else ft.colors.GREY_50
+
+        # Attach responsive manager to page for resize handling
+        self.responsive_manager.attach_to_page(page)
 
         # Apply accessibility settings
         # Link accessibility manager to theme manager for adaptive theming
@@ -175,6 +183,7 @@ class FletApp:
                 on_copy=self._copy_transcription,
                 on_paste=self._paste_transcription,
                 on_recent_click=self._on_recent_transcription_click,
+                responsive_manager=self.responsive_manager,
             )
         else:
             self._transcription_panel = TranscriptionPanel(

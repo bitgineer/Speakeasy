@@ -874,6 +874,16 @@ class ModernSettingsPanel:
                 search_keywords=["clipboard", "paste"],
             ),
             SettingDefinition(
+                key="compact_mode",
+                title="Compact mode",
+                description="Use smaller UI elements for tight spaces",
+                category=SettingsCategory.ADVANCED,
+                type="toggle",
+                default=False,
+                search_keywords=["size", "layout", "small screen"],
+                tooltip="Enable this to make the UI more compact. Useful for smaller screens or if you want to fit more content.",
+            ),
+            SettingDefinition(
                 key="tray_notifications_enabled",
                 title="Tray notifications",
                 description="Show system tray notifications for transcription events",
@@ -1228,6 +1238,12 @@ class ModernSettingsPanel:
             elif setting_name == "reduce_motion":
                 return a11y_settings.reduce_motion
 
+        # Handle responsive settings
+        if key == "compact_mode":
+            from ..responsive import get_responsive_manager
+            resp_manager = get_responsive_manager()
+            return resp_manager.state.is_compact
+
         # Direct settings
         return getattr(settings, key, None)
 
@@ -1412,6 +1428,11 @@ class ModernSettingsPanel:
             # Handle accessibility sub-settings
             elif key.startswith("a11y_"):
                 self._apply_accessibility_setting(key, value, a11y_manager)
+            # Handle responsive settings
+            elif key == "compact_mode":
+                from ..responsive import get_responsive_manager
+                resp_manager = get_responsive_manager()
+                resp_manager.set_compact_mode(value, manual=True)
             # Handle special settings that aren't in Settings object
             elif key == "tray_notifications_enabled":
                 special_settings[key] = value
