@@ -32,6 +32,12 @@ from .views.modern_settings_panel import ModernSettingsPanel
 from .views.history_panel import HistoryPanel
 from .history_manager import HistoryManager
 from .auto_paste import get_auto_paste, AutoPasteResult
+from .notifications import (
+    init_notifications,
+    get_notification_manager,
+    get_sound_manager,
+    SoundNotificationManager,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -489,6 +495,10 @@ class FletApp:
         # Show success message
         self._show_snackbar("Settings saved successfully")
 
+        # Play sound notification
+        if self.sound_manager:
+            self.sound_manager.play(SoundNotificationManager.EVENT_SETTINGS_SAVED)
+
     def _on_settings_cancelled(self):
         """Handle settings cancel."""
         self._switch_view("transcription")
@@ -642,6 +652,16 @@ class FletApp:
             on_recent_item_click=self._on_tray_recent_item_click,
         )
         self.tray_manager.start()
+
+        # Initialize notification manager with tray support
+        self.notification_manager = init_notifications(
+            page,
+            tray_manager=self.tray_manager,
+            enable_tray_notifications=True,
+        )
+
+        # Initialize sound notification manager
+        self.sound_manager = get_sound_manager()
 
         # Initialize tray with recent items from history
         self._update_tray_recent_items()
@@ -810,6 +830,10 @@ class FletApp:
         if self._use_modern_ui and self._modern_transcription_panel:
             self._modern_transcription_panel.refresh_recent_transcriptions()
 
+        # Play sound notification
+        if self.sound_manager:
+            self.sound_manager.play(SoundNotificationManager.EVENT_TRANSCRIPTION_COMPLETE)
+
     def _on_transcription_start(self, duration: float):
         """Handle transcription start."""
         self.app_state.recording_state = RecordingState.TRANSCRIBING
@@ -830,6 +854,10 @@ class FletApp:
         """Handle transcription errors."""
         logger.error(f"Transcription error: {error}")
         self._show_error(error)
+
+        # Play error sound notification
+        if self.sound_manager:
+            self.sound_manager.play(SoundNotificationManager.EVENT_ERROR)
 
     def _copy_transcription(self, e):
         """Copy transcription to clipboard."""

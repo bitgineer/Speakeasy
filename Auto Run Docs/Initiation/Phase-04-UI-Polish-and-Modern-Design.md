@@ -79,7 +79,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
   - Implement per-application settings override
   - Completed: Created `modern_settings_panel.py` with SettingsCategory enum, SettingDefinition dataclass, SettingsItem component, and ModernSettingsPanel class. Features include: 7 categorized sections (General, Recording, Models, Text Processing, History, Shortcuts, Advanced), search functionality with results count, reset to defaults with confirmation dialog and proper default values restoration (including text_processing and voice_commands sub-settings), restart-required indicators with warning icons, per-setting change tracking, and integration into FletApp with `use_modern_settings` flag. The panel supports dropdown, toggle, hotkey, slider, and number input types. Note: Per-application settings override is a complex feature deferred for future implementation.
 
-- [ ] Implement notification and toast system:
+- [x] Implement notification and toast system:
   - Create `src/faster_whisper_hotkey/flet_gui/notifications.py`:
     - Toast notifications for:
       - Transcription completed
@@ -92,6 +92,7 @@ This phase focuses on visual polish, modern design patterns, and user experience
     - Notification history panel
   - Add system tray notification support
   - Add sound notifications (optional, with volume control)
+  - Completed: Enhanced `notifications.py` with NotificationHistoryPanel component featuring filter chips, notification count, clear history, and timestamp display. Added SoundNotificationManager with platform-specific sound playback (Windows winsound, macOS afplay, Linux paplay/aplay), volume control, per-event sound settings, and JSON persistence. Integrated system tray notifications via NotificationManager.set_tray_manager() for important events (success, error, warning). Integrated sound notifications into FletApp for transcription complete, errors, and settings saved events.
 
 - [ ] Add accessibility features:
   - Implement keyboard navigation for all UI elements
