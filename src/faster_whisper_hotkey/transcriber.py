@@ -37,10 +37,18 @@ from .settings import Settings
 from .models import ModelWrapper
 from .clipboard import backup_clipboard, set_clipboard, restore_clipboard
 from .paste import paste_to_active_window
+from .typing_util import get_smart_typer, TypingResult
 from .text_processor import TextProcessor, TextProcessorConfig, Correction
 from .snippets_manager import get_snippets_manager
 from .app_rules_manager import get_app_rules_manager
 from .app_detector import AppDetector
+
+# Check if pyperclip is available for clipboard operations
+try:
+    import pyperclip as _pyperclip_check
+    PYPERCLIP_AVAILABLE = True
+except ImportError:
+    PYPERCLIP_AVAILABLE = False
 
 # Voice command import
 try:
@@ -571,20 +579,22 @@ class MicrophoneTranscriber:
                     except Exception as e:
                         logger.debug(f"Transcription callback error: {e}")
 
-                if not set_clipboard:
-                    # fallback typing - preserves case / punctuation
-                    for char in text_to_send:
-                        self.keyboard_controller.press(char)
-                        self.keyboard_controller.release(char)
-                        time.sleep(0.001)
+                if not PYPERCLIP_AVAILABLE:
+                    # pyperclip not available - use smart typing fallback
+                    # This handles special characters, Unicode, and proper timing
+                    typer = get_smart_typer()
+                    result = typer.type(text_to_send)
+                    if not result.success:
+                        logger.error(f"Typing fallback failed: {result.error_message}")
                 else:
                     original_clip = backup_clipboard()
                     if not set_clipboard(text_to_send):
                         logger.error("Could not set clipboard - falling back to typing")
-                        for char in text_to_send:
-                            self.keyboard_controller.press(char)
-                            self.keyboard_controller.release(char)
-                            time.sleep(0.001)
+                        # Use smart typing fallback with proper character handling
+                        typer = get_smart_typer()
+                        result = typer.type(text_to_send)
+                        if not result.success:
+                            logger.error(f"Typing fallback failed: {result.error_message}")
                     else:
                         time.sleep(0.01)  # give clipboard time to settle
                         paste_to_active_window()
