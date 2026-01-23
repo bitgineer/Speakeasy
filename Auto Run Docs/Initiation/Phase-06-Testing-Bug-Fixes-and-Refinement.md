@@ -216,7 +216,7 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - TranscriptionService uses deferred initialization via `initialize()` method
     - Background threading already in place for audio level updates and transcription
 
-- [ ] Cross-configuration testing:
+- [x] Cross-configuration testing:
   - Test on Windows 10 (various builds):
     - Home edition
     - Pro edition
@@ -231,6 +231,36 @@ This phase focuses on quality assurance, fixing existing bugs, and ensuring the 
     - Multiple microphones (selection)
   - Test with antivirus software enabled
   - Test with restricted user permissions
+  - **COMPLETED NOTES:**
+    - Created `tests/unit/test_hardware_detector.py` with 40+ tests:
+      - GPU detection tests (CUDA availability, VRAM calculation)
+      - CPU feature detection tests (AVX, AVX2, ARM NEON)
+      - Hardware recommendation tests per VRAM tier
+      - Model VRAM requirement validation
+      - Compute type selection tests
+      - Cross-platform detection tests (x86_64, ARM64)
+    - Created `docs/cross-configuration-testing.md` with:
+      - Windows version testing matrix (10/11, Home/Pro/Enterprise)
+      - GPU testing matrix (12GB+, 8-12GB, 6-8GB, 4-6GB, 2-4GB, <2GB)
+      - CPU testing matrix (AVX512, AVX2, AVX, SSE2)
+      - RAM configuration testing (32GB+, 16GB, 8GB, 4GB)
+      - Audio device testing procedures (USB, Bluetooth, analog, virtual)
+      - Permission and security testing (admin, standard user, guest)
+      - Antivirus compatibility matrix
+      - Third-party software compatibility (paste targets)
+      - Network configuration testing
+      - Special configurations (multi-monitor, High DPI, roaming profiles)
+    - Created `scripts/cross_config_test.py` interactive test runner:
+      - Automatic system information collection
+      - Quick Smoke Test suite (15 min)
+      - Standard Test suite (30 min)
+      - Comprehensive Test suite (1-2 hours)
+      - GPU-specific tests
+      - Audio device tests
+      - Paste target application tests
+      - JSON result export for reporting
+    - Note: Physical testing on different configurations is manual
+    - Test runner script guides users through manual testing steps
 
 - [ ] Error handling improvements:
   - Add user-friendly error messages for:
