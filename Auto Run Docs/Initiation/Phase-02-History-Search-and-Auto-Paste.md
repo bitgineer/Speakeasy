@@ -1,0 +1,107 @@
+# Phase 02: History, Search, and Auto-Paste Features
+
+This phase adds the remaining MVP features: searchable transcription history and intelligent auto-paste to the active window. These features complete the core user experience envisioned for mass adoption.
+
+## Goals
+
+- Implement a searchable history system with slash command navigation
+- Add auto-paste functionality that detects the active window and inserts text
+- Create a polished history viewer UI with filtering and export capabilities
+- Ensure clipboard restoration so user's clipboard content is preserved
+
+## Tasks
+
+- [x] Create the history data layer:
+  - Create `src/faster_whisper_hotkey/flet_gui/history_manager.py`:
+    - Extend existing history storage from `history_panel.py` with enhanced features
+    - Add SQLite-based storage for better search performance (migrate from JSON)
+    - Implement methods: add_item, get_all, search_by_text, search_by_date, delete_item, clear_all
+    - Add metadata tracking (timestamp, model used, language, app context if available)
+    - Create migration script from existing JSON history to SQLite
+    - Implement privacy mode support (disable history when enabled)
+  - **Status**: COMPLETED - Created HistoryManager class with:
+    - SQLite database with indexed columns for fast searching
+    - Full HistoryItem dataclass with metadata (model, language, device, app_context, confidence, duration_ms, tags, edited)
+    - All CRUD operations (add, get, update, delete, clear)
+    - Search methods: search_by_text, search_by_date, search_by_model, search_by_language, advanced_search
+    - Automatic migration from JSON history on first run
+    - Privacy mode support that clears and disables history
+    - Export to JSON and TXT formats
+    - Statistics gathering
+    - Thread-safe operations with change notification callbacks
+
+- [ ] Implement slash-based search functionality:
+  - Create `src/faster_whisper_hotkey/flet_gui/slash_search.py`:
+    - Implement a global slash command trigger (Ctrl+Slash or configurable)
+    - Create fuzzy search algorithm for finding transcriptions by content
+    - Support search operators: `/text:query`, `/date:today`, `/model:parakeet`
+    - Return ranked results with highlighted matched terms
+    - Provide keyboard navigation (up/down arrows, Enter to select)
+
+- [ ] Build the history viewer UI:
+  - Create `src/faster_whisper_hotkey/flet_gui/views/history_panel.py`:
+    - Split view layout: search/command bar on top, results list below
+    - List items showing: timestamp, preview text, model badge, copy button
+    - Detail view panel when an item is selected (full text, metadata)
+    - Delete button per item with confirmation
+    - "Copy to Clipboard" button for selected item
+    - "Paste to Active Window" button that triggers auto-paste
+    - Clear all history button with safety confirmation
+    - Export button (export to JSON, TXT, or clipboard)
+
+- [ ] Implement auto-paste to active window:
+  - Create `src/faster_whisper_hotkey/flet_gui/auto_paste.py`:
+    - Integrate existing `clipboard.py` and `paste.py` functionality
+    - Use `app_detector.py` to get the active window title/class
+    - Implement clipboard backup before paste, restore after paste
+    - Add app-specific paste behaviors:
+      - Detect if target is a terminal (use character-by-character typing)
+      - Detect if target supports direct clipboard paste (use Ctrl+V)
+      - Add configurable delay between clipboard restore and paste
+    - Handle edge cases: admin windows, UAC prompts, fullscreen apps
+
+- [ ] Create app-specific paste rules system:
+  - Create `src/faster_whisper_hotkey/flet_gui/app_paste_rules.py`:
+    - Define paste method per app (clipboard, typing, simulated Ctrl+V)
+    - Build on existing `app_rules_manager.py` infrastructure
+    - Add UI for users to configure custom paste behavior per application
+    - Include pre-configured rules for common apps:
+      - VS Code: clipboard paste
+      - Windows Terminal: character typing mode
+      - Discord: clipboard paste
+      - Browser: clipboard paste
+    - Allow wildcard matching (e.g., `*chrome*` for any Chrome window)
+
+- [ ] Add global hotkey for quick history access:
+  - Extend `src/faster_whisper_hotkey/flet_gui/hotkey_manager.py`:
+    - Add configurable history hotkey (default: Ctrl+Shift+H)
+    - When triggered, show Flet window focused on history search
+    - Support typing immediately to start searching
+    - Allow Esc to close history and return to previous window
+    - Implement recent items (last 5) as quick-access from system tray
+
+- [ ] Polish the history user experience:
+  - Add history settings to `settings_panel.py`:
+    - Maximum history items limit (default: 1000)
+    - Auto-delete after X days option
+    - Privacy mode toggle (disable history recording)
+    - Confirm before clear toggle
+  - Implement history item editing (correct transcription errors)
+  - Add tags/labels system for organizing transcriptions
+  - Show statistics: total items, today's count, most used model
+  - Create history backup/restore functionality
+
+- [ ] Integrate history with main transcription flow:
+  - Auto-save every transcription to history
+  - Show last N transcriptions in main transcription panel
+  - Add "View History" button from transcription panel
+  - Implement undo (restore last item from history)
+  - Create "retry transcription" option for history items
+
+- [ ] Test and optimize the full history system:
+  - Test with 1000+ history items for performance
+  - Verify search responsiveness with large datasets
+  - Test auto-paste across different target applications
+  - Verify clipboard backup/restore works correctly
+  - Test privacy mode (ensure nothing is saved)
+  - Add error handling for corrupted history database

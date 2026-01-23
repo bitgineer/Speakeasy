@@ -20,6 +20,9 @@ settings_service
 
 hotkey_manager
     Hotkey detection and management for Flet.
+
+history_manager
+    SQLite-based history storage and management.
 """
 
 __version__ = "0.1.0"
@@ -27,10 +30,13 @@ __version__ = "0.1.0"
 from .app_state import AppState
 from .transcription_service import TranscriptionService
 from .settings_service import SettingsService
+from .history_manager import HistoryManager, HistoryItem
 
 __all__ = [
     "__version__",
     "AppState",
     "TranscriptionService",
     "SettingsService",
+    "HistoryManager",
+    "HistoryItem",
 ]
