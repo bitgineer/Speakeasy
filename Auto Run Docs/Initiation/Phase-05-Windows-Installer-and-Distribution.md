@@ -315,7 +315,14 @@ This phase creates a streamlined Windows installation experience that eliminates
     - [x] Changelog format
     - [x] Testing checklist before release
   - [x] Update README with new installation options
-  - [ ] Add installation video/tutorial link
+  - [x] Add installation video/tutorial link
+
+**Implementation Notes:**
+- Added "Video Tutorial" section to `docs/installation.md`
+- Placed after overview table for early visibility
+- Uses GitHub-style video callout block with placeholder link
+- Lists key topics the video will cover: installer download, first-run setup wizard, hotkey configuration, audio device testing, and transcription testing
+- Link formatted as `https://youtu.be/PLACEHOLDER` to be replaced when video is created
 
 **Implementation Notes:**
 - Created `docs/installation.md` with comprehensive installation guide:

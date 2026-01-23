@@ -27,6 +27,17 @@ faster-whisper-hotkey offers three installation options:
 | **Portable ZIP** | Testing, USB drives, no-admin setups | ~200 MB + models | `.\settings\` (next to exe) |
 | **pip/uv** | Developers, Python users | Models only | `~/.config/faster_whisper_hotkey/` |
 
+## Video Tutorial
+
+> [!VIDEO]
+> **[Installation and Setup Walkthrough](https://youtu.be/PLACEHOLDER)** (Coming Soon)
+>
+> A visual guide covering:
+> - Downloading and running the installer
+> - Completing the first-run setup wizard
+> - Configuring your hotkey and audio device
+> - Testing transcription
+
 ## System Requirements
 
 ### Minimum Requirements
