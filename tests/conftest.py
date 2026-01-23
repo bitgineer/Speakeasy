@@ -209,3 +209,5 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Slow-running tests")
     config.addinivalue_line("markers", "gpu: Tests requiring GPU")
     config.addinivalue_line("markers", "requires_network: Tests requiring network access")
+    config.addinivalue_line("markers", "stress: Stress tests for stability and load testing")
+    config.addinivalue_line("markers", "memory: Memory leak detection tests")
