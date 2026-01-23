@@ -1,0 +1,189 @@
+name: Build Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.4.3)'
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - 'scripts/build.py'
+      - 'faster-whisper-hotkey-flet.spec'
+      - '.github/workflows/build-release.yml'
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-windows:
+    name: Build Windows Distribution
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Install project dependencies
+        run: |
+          pip install -e .
+
+      - name: Install NSIS
+        run: |
+          choco install nsis --no-progress
+          echo "$env:ProgramFiles\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify NSIS installation
+        run: |
+          makensis /VERSION
+
+      - name: Set version from tag
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ github.event.inputs.version }}" -ne "") {
+            $version = "${{ github.event.inputs.version }}"
+          } elseif ("${{ github.ref }}" -match "^refs/tags/v(.+)$") {
+            $version = $matches[1]
+          } else {
+            # Extract version from pyproject.toml
+            $content = Get-Content "pyproject.toml" -Raw
+            if ($content -match 'version\s*=\s*[''"]([^''"]+)[''"]') {
+              $version = $matches[1]
+            } else {
+              $version = "0.0.0"
+            }
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "Building version: $version"
+
+      - name: Clean build artifacts
+        run: |
+          python scripts/build.py --clean-only
+
+      - name: Run tests
+        run: |
+          python scripts/build.py --test-only
+
+      - name: Build executable
+        run: |
+          python scripts/build.py --spec flet
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist-${{ steps.version.outputs.version }}
+          path: dist/*
+          retention-days: 30
+          if-no-files-found: error
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: windows-dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "## What's Changed" > changelog.md
+            echo "" >> changelog.md
+            git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD >> changelog.md
+          else
+            echo "## What's Changed" > changelog.md
+            echo "" >> changelog.md
+            git log --pretty=format:"- %s (%h)" -10 >> changelog.md
+          fi
+
+          # Append release notes from build if available
+          if [ -f "dist/RELEASE_NOTES.md" ]; then
+            echo "" >> changelog.md
+            cat dist/RELEASE_NOTES.md >> changelog.md
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.changelog.outputs.version }}
+          body_path: changelog.md
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.sha256
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-pr-check:
+    name: Build Test (PR only)
+    runs-on: windows-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Install project dependencies
+        run: |
+          pip install -e .
+
+      - name: Run tests
+        run: |
+          python scripts/build.py --test-only
+
+      - name: Test build (no installer)
+        run: |
+          python scripts/build.py --skip-tests --no-installer --no-portable --no-checksums

@@ -208,12 +208,12 @@ This phase creates a streamlined Windows installation experience that eliminates
     - [x] Generate portable zip
     - [x] Create checksums for release files
     - [x] Generate release notes from git log
-  - [ ] Create Makefile or GitHub Actions workflow:
-    - [ ] Trigger on tag push
-    - [ ] Run on Windows runner
-    - [ ] Build all distribution formats
-    - [ ] Upload artifacts to GitHub Releases
-    - [ ] Create GitHub Release with changelog
+  - [x] Create Makefile or GitHub Actions workflow:
+    - [x] Trigger on tag push
+    - [x] Run on Windows runner
+    - [x] Build all distribution formats
+    - [x] Upload artifacts to GitHub Releases
+    - [x] Create GitHub Release with changelog
 
 **Implementation Notes:**
 - Created `scripts/build.py` with command-line options for flexible building
@@ -226,6 +226,30 @@ This phase creates a streamlined Windows installation experience that eliminates
 - Test files exist in `tests/` directory:
   - `test_history_system.py` - 10 tests covering history management, search, clipboard, privacy mode, etc.
   - `test_model_management.py` - 12 tests covering hardware detection, model download, selector, maintenance, loader, etc.
+- Created `.github/workflows/build-release.yml` with comprehensive CI/CD pipeline:
+  - Triggers on version tag push (v*.*.*) or manual workflow_dispatch
+  - Runs on windows-latest runner
+  - Installs Python, PyInstaller, and project dependencies
+  - Installs NSIS via Chocolatey for installer creation
+  - Runs test suite before building
+  - Builds executable with PyInstaller using Flet spec
+  - Uploads build artifacts with version tagging
+  - Creates GitHub Release with:
+    - Auto-generated changelog from git commits
+    - Release notes from build output
+    - All distribution files (exe installer, portable zip, checksums)
+  - PR build verification: runs tests and partial build on pull requests
+- Updated `Makefile` with build and release targets:
+  - `make build` - Build full Windows distribution
+  - `make build-flet` - Build Flet GUI version
+  - `make build-qt` - Build Qt GUI version
+  - `make build-portable` - Build only portable ZIP
+  - `make build-installer` - Build only NSIS installer
+  - `make build-no-tests` - Build without running tests
+  - `make test` - Run test suite
+  - `make clean` - Clean build artifacts
+  - `make clean-all` - Clean all artifacts and cache
+  - `make release` - Create full release (clean, test, build all)
 
 - [ ] Add telemetry and crash reporting (optional):
   - Create `src/faster_whisper_hotkey/flet_gui/telemetry.py`:
