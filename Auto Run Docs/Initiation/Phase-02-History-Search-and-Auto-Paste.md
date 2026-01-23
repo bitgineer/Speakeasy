@@ -30,13 +30,28 @@ This phase adds the remaining MVP features: searchable transcription history and
     - Statistics gathering
     - Thread-safe operations with change notification callbacks
 
-- [ ] Implement slash-based search functionality:
+- [x] Implement slash-based search functionality:
   - Create `src/faster_whisper_hotkey/flet_gui/slash_search.py`:
     - Implement a global slash command trigger (Ctrl+Slash or configurable)
     - Create fuzzy search algorithm for finding transcriptions by content
     - Support search operators: `/text:query`, `/date:today`, `/model:parakeet`
     - Return ranked results with highlighted matched terms
     - Provide keyboard navigation (up/down arrows, Enter to select)
+  - **Status**: COMPLETED - Created SlashSearch class with:
+    - Command parsing with operators (/text:, /model:, /lang:, /date:, /tag:, /limit:)
+    - Fuzzy text matching using Python's difflib.SequenceMatcher
+    - Result ranking by relevance score (0.0 to 1.0)
+    - Match highlighting with ** markers for display
+    - Date filter parsing (today, yesterday, week, month)
+    - SearchNavigation class for keyboard navigation (up/down, page up/down, home/end, enter)
+    - Quick commands reference for user help
+    - Integration with HistoryManager for search operations
+  - **Also**: Extended HotkeyManager to support multiple named hotkeys:
+    - Added DEFAULT_HOTKEY, SEARCH_HOTKEY, HISTORY_HOTKEY constants
+    - set_hotkey(name, hotkey) for registering multiple hotkeys
+    - get_hotkey(name) for retrieving specific hotkey
+    - list_hotkeys() for getting all registered hotkeys
+    - HotkeyEvent now includes hotkey_name for identifying which hotkey triggered
 
 - [ ] Build the history viewer UI:
   - Create `src/faster_whisper_hotkey/flet_gui/views/history_panel.py`:
