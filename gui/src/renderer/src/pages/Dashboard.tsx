@@ -31,6 +31,7 @@ export default function Dashboard(): JSX.Element {
   
   const searchInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
 
@@ -41,16 +42,25 @@ export default function Dashboard(): JSX.Element {
     overscan: 5,
   })
   
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
-        e.preventDefault()
-        setShowExportDialog(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+   useEffect(() => {
+     const handleKeyDown = (e: KeyboardEvent) => {
+       if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+         e.preventDefault()
+         setShowExportDialog(true)
+       }
+     }
+     window.addEventListener('keydown', handleKeyDown)
+     return () => window.removeEventListener('keydown', handleKeyDown)
+   }, [])
+   
+   // Cleanup debounce timeout on unmount
+   useEffect(() => {
+     return () => {
+       if (debounceTimeoutRef.current) {
+         clearTimeout(debounceTimeoutRef.current)
+       }
+     }
+   }, [])
   
   // Initial fetch
   useEffect(() => {
@@ -85,22 +95,43 @@ export default function Dashboard(): JSX.Element {
     }
   }, [])
   
-  // Search handler with debounce
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    // Update search query immediately for UI feedback
-    useHistoryStore.setState({ searchQuery: value })
-  }, [])
-  
-  const handleSearchSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSearching(true)
-    try {
-      await search(searchQuery)
-    } finally {
-      setIsSearching(false)
-    }
-  }, [search, searchQuery])
+   // Search handler with debounce
+   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+     const value = e.target.value
+     // Update search query immediately for UI feedback
+     useHistoryStore.setState({ searchQuery: value })
+     
+     // Cancel pending debounce
+     if (debounceTimeoutRef.current) {
+       clearTimeout(debounceTimeoutRef.current)
+     }
+     
+     // Set searching state
+     setIsSearching(true)
+     
+     // Debounce the actual search query trigger
+     debounceTimeoutRef.current = setTimeout(async () => {
+       try {
+         await search(value)
+       } finally {
+         setIsSearching(false)
+       }
+     }, 300)
+   }, [search])
+   
+   const handleSearchSubmit = useCallback(async (e: React.FormEvent) => {
+     e.preventDefault()
+     // Cancel pending debounce and execute immediately
+     if (debounceTimeoutRef.current) {
+       clearTimeout(debounceTimeoutRef.current)
+     }
+     setIsSearching(true)
+     try {
+       await search(searchQuery)
+     } finally {
+       setIsSearching(false)
+     }
+   }, [search, searchQuery])
   
   // Delete handler
   const handleDelete = useCallback(async (id: string) => {
@@ -171,20 +202,25 @@ export default function Dashboard(): JSX.Element {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                useHistoryStore.setState({ searchQuery: '' })
-                search('')
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
+           {searchQuery && (
+             <button
+               type="button"
+               onClick={() => {
+                 // Cancel pending debounce and clear immediately
+                 if (debounceTimeoutRef.current) {
+                   clearTimeout(debounceTimeoutRef.current)
+                 }
+                 useHistoryStore.setState({ searchQuery: '' })
+                 search('')
+                 setIsSearching(false)
+               }}
+               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+             >
+               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+               </svg>
+             </button>
+           )}
         </form>
         {isSearching && (
           <div className="mt-2 flex items-center gap-2 text-sm text-gray-400 px-1">
