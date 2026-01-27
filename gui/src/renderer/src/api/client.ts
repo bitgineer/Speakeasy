@@ -33,6 +33,7 @@ import type {
   BatchListResponse
 } from './types'
 import { createCache } from './cache'
+import { perfMonitor } from '../utils/performance'
 
 const DEFAULT_PORT = 8765
 const BASE_URL = `http://127.0.0.1:${DEFAULT_PORT}`
@@ -112,22 +113,27 @@ class ApiClient {
     })
   }
 
-  // History
-  async getHistory(params?: {
-    limit?: number
-    offset?: number
-    search?: string
-  }): Promise<HistoryListResponse> {
-    const searchParams = new URLSearchParams()
-    if (params?.limit) searchParams.set('limit', String(params.limit))
-    if (params?.offset) searchParams.set('offset', String(params.offset))
-    if (params?.search) searchParams.set('search', params.search)
-    
-    const query = searchParams.toString()
-    return this.request<HistoryListResponse>(
-      `/api/history${query ? `?${query}` : ''}`
-    )
-  }
+   // History
+   async getHistory(params?: {
+     limit?: number
+     offset?: number
+     search?: string
+   }): Promise<HistoryListResponse> {
+     const searchParams = new URLSearchParams()
+     if (params?.limit) searchParams.set('limit', String(params.limit))
+     if (params?.offset) searchParams.set('offset', String(params.offset))
+     if (params?.search) searchParams.set('search', params.search)
+     
+     const query = searchParams.toString()
+     perfMonitor.markStart('api-get-history')
+     try {
+       return await this.request<HistoryListResponse>(
+         `/api/history${query ? `?${query}` : ''}`
+       )
+     } finally {
+       perfMonitor.markEnd('api-get-history')
+     }
+   }
 
   async getHistoryItem(id: string): Promise<TranscriptionRecord> {
     return this.request<TranscriptionRecord>(`/api/history/${id}`)
@@ -159,10 +165,15 @@ class ApiClient {
     return result
   }
 
-  // Models
-  async getModels(): Promise<ModelsResponse> {
-    return this.cachedRequest<ModelsResponse>('/api/models', 5 * 60 * 1000)
-  }
+   // Models
+   async getModels(): Promise<ModelsResponse> {
+     perfMonitor.markStart('api-get-models')
+     try {
+       return await this.cachedRequest<ModelsResponse>('/api/models', 5 * 60 * 1000)
+     } finally {
+       perfMonitor.markEnd('api-get-models')
+     }
+   }
 
   async getModelsByType(type: string): Promise<{
     models: string[]
@@ -173,14 +184,19 @@ class ApiClient {
     return this.request(`/api/models/${type}`)
   }
 
-  async loadModel(request: ModelLoadRequest): Promise<{ status: string; model: string }> {
-    const result = await this.request<{ status: string; model: string }>('/api/models/load', {
-      method: 'POST',
-      body: JSON.stringify(request)
-    })
-    this.cache.invalidate('/api/models*')
-    return result
-  }
+   async loadModel(request: ModelLoadRequest): Promise<{ status: string; model: string }> {
+     perfMonitor.markStart('api-load-model')
+     try {
+       const result = await this.request<{ status: string; model: string }>('/api/models/load', {
+         method: 'POST',
+         body: JSON.stringify(request)
+       })
+       this.cache.invalidate('/api/models*')
+       return result
+     } finally {
+       perfMonitor.markEnd('api-load-model')
+     }
+   }
 
   async unloadModel(): Promise<{ status: string }> {
     const result = await this.request<{ status: string }>('/api/models/unload', {

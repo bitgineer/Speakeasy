@@ -10,6 +10,7 @@ import { useHistoryStore, useAppStore } from '../store'
 import HistoryItem from '../components/HistoryItem'
 import HistoryItemSkeleton from '../components/HistoryItemSkeleton'
 import ExportDialog from '../components/ExportDialog'
+import { perfMonitor } from '../utils/performance'
 
 export default function Dashboard(): JSX.Element {
   const { 
@@ -62,10 +63,13 @@ export default function Dashboard(): JSX.Element {
      }
    }, [])
   
-  // Initial fetch
-  useEffect(() => {
-    fetchHistory()
-  }, [fetchHistory])
+   // Initial fetch
+   useEffect(() => {
+     perfMonitor.markStart('history-fetch')
+     fetchHistory().finally(() => {
+       perfMonitor.markEnd('history-fetch')
+     })
+   }, [fetchHistory])
   
   // Infinite scroll handler - using ref for stable reference
   const handleScrollRef = useRef<() => void>(() => {})
@@ -109,29 +113,33 @@ export default function Dashboard(): JSX.Element {
      // Set searching state
      setIsSearching(true)
      
-     // Debounce the actual search query trigger
-     debounceTimeoutRef.current = setTimeout(async () => {
-       try {
-         await search(value)
-       } finally {
-         setIsSearching(false)
-       }
-     }, 300)
+      // Debounce the actual search query trigger
+      debounceTimeoutRef.current = setTimeout(async () => {
+        try {
+          perfMonitor.markStart('search-query')
+          await search(value)
+          perfMonitor.markEnd('search-query')
+        } finally {
+          setIsSearching(false)
+        }
+      }, 300)
    }, [search])
    
-   const handleSearchSubmit = useCallback(async (e: React.FormEvent) => {
-     e.preventDefault()
-     // Cancel pending debounce and execute immediately
-     if (debounceTimeoutRef.current) {
-       clearTimeout(debounceTimeoutRef.current)
-     }
-     setIsSearching(true)
-     try {
-       await search(searchQuery)
-     } finally {
-       setIsSearching(false)
-     }
-   }, [search, searchQuery])
+    const handleSearchSubmit = useCallback(async (e: React.FormEvent) => {
+      e.preventDefault()
+      // Cancel pending debounce and execute immediately
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
+      setIsSearching(true)
+      try {
+        perfMonitor.markStart('search-submit')
+        await search(searchQuery)
+        perfMonitor.markEnd('search-submit')
+      } finally {
+        setIsSearching(false)
+      }
+    }, [search, searchQuery])
   
   // Delete handler
   const handleDelete = useCallback(async (id: string) => {

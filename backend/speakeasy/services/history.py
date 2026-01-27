@@ -9,7 +9,7 @@ import base64
 import logging
 import uuid
 from dataclasses import dataclass, fields as dataclass_fields
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -179,7 +179,7 @@ class HistoryService:
             raise RuntimeError("Database not initialized")
 
         record_id = str(uuid.uuid4())
-        created_at = datetime.utcnow()
+        created_at = datetime.now(timezone.utc)
 
         await self._db.execute(
             """

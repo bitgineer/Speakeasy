@@ -129,3 +129,38 @@ Many thanks to:
 Also thanks to [wgabrys88](https://huggingface.co/spaces/WJ88/NVIDIA-Parakeet-TDT-0.6B-v2-INT8-Real-Time-Mic-Transcription) and [MohamedRashadthat](https://huggingface.co/spaces/MohamedRashad/Voxtral) for their huggingface spaces that have been helpful!
 
 And to finish, a special mention to **@siddhpant** for their useful [broo](https://github.com/siddhpant/broo) tool, who gave me a mic <3
+
+## Export & Import Features
+
+Export your transcription history in multiple formats:
+
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| **Plain Text** | `.txt` | Simple text format with timestamps |
+| **JSON** | `.json` | Structured data, ideal for backup and re-import |
+| **CSV** | `.csv` | Spreadsheet-compatible format for Excel/Sheets |
+| **SRT** | `.srt` | SubRip subtitle format for video players |
+| **VTT** | `.vtt` | WebVTT subtitle format for web videos |
+
+**How to Export:**
+- Click the "Export" button in the Dashboard header to export all history
+- Use the overflow menu on individual transcriptions to export single items
+- Keyboard shortcut: `Ctrl+E` (Windows/Linux) or `Cmd+E` (Mac)
+- Filter by date range before exporting
+
+**How to Import:**
+- Go to Settings > Data Management
+- Click "Import" and select a previously exported JSON file
+- Choose to merge with existing history or replace all
+
+## Batch Transcription
+
+Process multiple audio files at once:
+
+1. Navigate to the Batch Transcription page
+2. Drag and drop audio files or use the file picker
+3. Click "Start Batch" to begin processing
+4. Monitor progress with real-time updates
+5. Review results and retry any failed files
+
+Batch processing handles errors gracefully - if one file fails, the others continue.
