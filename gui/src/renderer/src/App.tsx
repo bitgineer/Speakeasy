@@ -7,7 +7,7 @@
 
 import { useEffect, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { useAppStore, useHistoryStore } from './store'
+import { useAppStore, useHistoryStore, useSettingsStore } from './store'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSpinner from './components/LoadingSpinner'
 import { ToastProvider } from './context/ToastProvider'
@@ -44,16 +44,24 @@ function NavigationListener(): null {
 function MainLayout(): JSX.Element {
   const { backendConnected, fetchHealth, startRecording, stopRecording, setAppState, isReconnecting } = useAppStore()
   const { addItem, fetchHistory } = useHistoryStore()
+  const { fetchSettings, settings } = useSettingsStore()
   
   useEffect(() => {
     fetchHealth()
     fetchHistory()
+    fetchSettings()
     
     const interval = setInterval(fetchHealth, 5000)
     
     return () => clearInterval(interval)
-  }, [fetchHealth, fetchHistory])
+  }, [fetchHealth, fetchHistory, fetchSettings])
   
+  useEffect(() => {
+    if (settings?.hotkey && window.api) {
+      window.api.registerHotkey(settings.hotkey, settings.hotkey_mode || 'toggle')
+    }
+  }, [settings?.hotkey, settings?.hotkey_mode])
+   
   useEffect(() => {
     const unsubStart = window.api?.onRecordingStart(() => {
       startRecording()
