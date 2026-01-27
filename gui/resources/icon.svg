@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="url(#grad)"/>
+  <g transform="translate(128, 128)">
+    <!-- Microphone body -->
+    <rect x="-24" y="-60" width="48" height="80" rx="24" fill="white"/>
+    <!-- Microphone stand -->
+    <path d="M-40 30 Q-40 70 0 70 Q40 70 40 30" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <!-- Microphone base -->
+    <line x1="0" y1="70" x2="0" y2="90" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <line x1="-25" y1="90" x2="25" y2="90" stroke="white" stroke-width="8" stroke-linecap="round"/>
+    <!-- Sound waves -->
+    <path d="M60 -20 Q80 0 60 20" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.6"/>
+    <path d="M-60 -20 Q-80 0 -60 20" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.6"/>
+  </g>
+</svg>

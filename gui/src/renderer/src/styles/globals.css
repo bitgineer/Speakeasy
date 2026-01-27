@@ -1,0 +1,152 @@
+/**
+ * Global Styles - Tailwind CSS Directives
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  
+  body {
+    @apply bg-gray-900 text-gray-100;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+  
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-900;
+  }
+}
+
+/* Custom component classes */
+@layer components {
+  /* Button variants */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-gray-700 text-gray-100 hover:bg-gray-600 focus:ring-gray-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white focus:ring-gray-500;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+  
+  /* Input styles */
+  .input {
+    @apply w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+  
+  .input-error {
+    @apply input border-red-500 focus:ring-red-500;
+  }
+  
+  /* Select styles */
+  .select {
+    @apply w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply bg-gray-800 border border-gray-700 rounded-lg;
+  }
+  
+  /* Label styles */
+  .label {
+    @apply block text-sm font-medium text-gray-300 mb-1;
+  }
+  
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+  
+  .badge-green {
+    @apply badge bg-green-900 text-green-300;
+  }
+  
+  .badge-blue {
+    @apply badge bg-blue-900 text-blue-300;
+  }
+  
+  .badge-yellow {
+    @apply badge bg-yellow-900 text-yellow-300;
+  }
+  
+  .badge-red {
+    @apply badge bg-red-900 text-red-300;
+  }
+  
+  .badge-gray {
+    @apply badge bg-gray-700 text-gray-300;
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  /* Animation utilities */
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Recording indicator pulse */
+  .recording-pulse {
+    animation: recording-pulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes recording-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+  }
+}
