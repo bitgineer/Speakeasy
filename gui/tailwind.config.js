@@ -6,7 +6,8 @@ module.exports = {
     extend: {
       // Font family - mapped from CSS variables
       fontFamily: {
-        sans: ['var(--font-family-sans)', 'sans-serif']
+        sans: ['var(--font-family-geist)'],
+        mono: ['var(--font-family-mono)']
       },
       colors: {
         // Brand colors - mapped from CSS variables
@@ -124,10 +125,11 @@ module.exports = {
       },
       // Shadow tokens - mapped from CSS variables
       boxShadow: {
-        'token-sm': 'var(--shadow-sm)',
-        'token-md': 'var(--shadow-md)',
-        'token-lg': 'var(--shadow-lg)',
-        'token-inner': 'var(--shadow-inner)'
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
+        inner: 'var(--shadow-inner)',
+        focus: 'var(--shadow-focus)'
       },
       // Border radius tokens - mapped from CSS variables
       borderRadius: {
@@ -143,7 +145,7 @@ module.exports = {
         'token-slow': 'var(--transition-duration-slow)'
       },
       transitionTimingFunction: {
-        'token-spring': 'var(--transition-easing)'
+        spring: 'var(--transition-easing)'
       },
       animation: {
         'pulse-recording': 'pulse-recording 1.5s ease-in-out infinite'
