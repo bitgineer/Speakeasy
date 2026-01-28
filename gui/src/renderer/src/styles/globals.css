@@ -76,7 +76,27 @@
   
   /* Focus styles */
   *:focus-visible {
-    @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-900;
+    @apply outline-none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* Inner border for clarity on dark backgrounds */
+  *:focus-visible::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: inherit;
+  }
+
+  /* Focus-visible pseudo-class for specific elements */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-[var(--color-bg-primary)];
   }
 }
 
