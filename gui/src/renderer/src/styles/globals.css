@@ -168,16 +168,56 @@
 
 /* Custom utility classes */
 @layer utilities {
+  /* Smooth transitions with spring physics */
+  .transition-all-spring {
+    transition-property: all;
+    transition-duration: var(--transition-duration-default);
+    transition-timing-function: var(--transition-easing);
+  }
+
+  .transition-colors-spring {
+    transition-property: color, background-color, border-color;
+    transition-duration: var(--transition-duration-default);
+    transition-timing-function: var(--transition-easing);
+  }
+
+  .transition-opacity-spring {
+    transition-property: opacity;
+    transition-duration: var(--transition-duration-default);
+    transition-timing-function: var(--transition-easing);
+  }
+
+  .transition-transform-spring {
+    transition-property: transform;
+    transition-duration: var(--transition-duration-fast);
+    transition-timing-function: var(--transition-easing);
+  }
+
+  /* Hover state - scale up subtly */
+  .hover-lift:hover {
+    transform: scale(1.02);
+  }
+
+  /* Press state - scale down for tactile feedback */
+  .active-press:active {
+    transform: scale(0.98);
+  }
+
+  /* Shadow elevation on hover */
+  .hover-elevated:hover {
+    box-shadow: var(--shadow-md);
+  }
+
   /* Animation utilities */
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  
+
   /* Recording indicator pulse */
   .recording-pulse {
     animation: recording-pulse 1.5s ease-in-out infinite;
   }
-  
+
   @keyframes recording-pulse {
     0%, 100% {
       opacity: 1;
