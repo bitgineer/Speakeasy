@@ -13,6 +13,8 @@ from enum import Enum
 from typing import Callable, Optional
 import uuid
 
+from huggingface_hub import scan_cache_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -296,57 +298,47 @@ def get_cached_models() -> list[dict]:
     Get list of downloaded/cached models.
 
     Returns a list of cached models with their disk usage.
+    Uses huggingface_hub's scan_cache_dir() API for cross-platform support.
     """
     cached_models = []
 
-    # Check HuggingFace cache
-    # Priority: HF_HOME env var -> ~/.cache/huggingface/hub
-    hf_home = os.environ.get("HF_HOME")
-    if hf_home:
-        hf_cache_dir = os.path.join(hf_home, "hub")
-    else:
-        hf_cache_dir = os.path.expanduser("~/.cache/huggingface/hub")
+    try:
+        # Scan HuggingFace cache using official API
+        # This automatically detects platform-specific cache location
+        hf_cache_info = scan_cache_dir()
+        logger.info(f"Scanning HuggingFace cache: {len(hf_cache_info.repos)} repos found")
 
-    logger.info(f"Scanning for models in: {hf_cache_dir}")
+        # Iterate through all repos in cache
+        for repo in hf_cache_info.repos:
+            # Filter only model-type repos (ignore datasets, spaces)
+            if repo.repo_type == "model":
+                # Map to existing API response format for backward compatibility
+                cached_models.append(
+                    {
+                        "model_name": repo.repo_id,
+                        "path": str(repo.repo_path),
+                        "size_bytes": repo.size_on_disk,
+                        "size_human": repo.size_on_disk_str,
+                        "source": "huggingface",
+                    }
+                )
+                logger.info(f"Found cached model: {repo.repo_id} ({repo.size_on_disk_str})")
 
-    if os.path.exists(hf_cache_dir):
-        try:
-            for entry in os.scandir(hf_cache_dir):
-                if entry.is_dir() and entry.name.startswith("models--"):
-                    # Parse model name from directory
-                    # Format: models--org--model_name
-                    parts = entry.name.replace("models--", "").split("--")
-                    if len(parts) >= 2:
-                        model_name = f"{parts[0]}/{parts[1]}"
-                    else:
-                        model_name = parts[0] if parts else entry.name
+        # Log warnings about corrupted repos if any
+        if hf_cache_info.warnings:
+            for warning in hf_cache_info.warnings:
+                logger.warning(f"Cache warning: {warning}")
 
-                    # Calculate directory size
-                    size_bytes = _get_directory_size(entry.path)
+        # Sort by size descending (largest first)
+        cached_models.sort(key=lambda x: x["size_bytes"], reverse=True)
+        logger.info(f"Total: {len(cached_models)} cached models")
 
-                    cached_models.append(
-                        {
-                            "model_name": model_name,
-                            "path": entry.path,
-                            "size_bytes": size_bytes,
-                            "size_human": _format_bytes(size_bytes),
-                            "source": "huggingface",
-                        }
-                    )
-        except Exception as e:
-            logger.error(f"Error scanning HuggingFace cache: {e}")
-    else:
-        logger.warning(f"HuggingFace cache directory not found at: {hf_cache_dir}")
+        return cached_models
 
-    # Check faster-whisper cache (CTranslate2 models)
-    # faster-whisper uses the same HuggingFace cache, so already covered
-
-    # Sort by size descending
-    cached_models.sort(key=lambda x: x["size_bytes"], reverse=True)
-
-    logger.info(f"Found {len(cached_models)} cached models")
-
-    return cached_models
+    except Exception as e:
+        # Propagate errors to API layer for proper error response
+        logger.error(f"Error scanning HuggingFace cache: {e}", exc_info=True)
+        raise
 
 
 def get_cache_info() -> dict:
