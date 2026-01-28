@@ -9,3 +9,6 @@ gui/node_modules/
 backend/__pycache__/
 backend/speakeasy/__pycache__/
 *.pyc
+
+# GSD planning
+.planning/
