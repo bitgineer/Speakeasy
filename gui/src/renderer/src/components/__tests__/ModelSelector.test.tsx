@@ -37,10 +37,9 @@ describe('ModelSelector', () => {
   }
 
   beforeEach(() => {
-    // Setup default store mock
+    // Setup default store mock - no fetchCachedModels since ModelSelector no longer auto-fetches
     (downloadStore.default as any).mockReturnValue({
       cachedModels: [],
-      fetchCachedModels: vi.fn(),
       isDownloading: false
     })
   })
@@ -117,7 +116,6 @@ describe('ModelSelector', () => {
   it('shows downloaded status correctly', () => {
     (downloadStore.default as any).mockReturnValue({
       cachedModels: [{ model_name: 'tiny', size_human: '75MB' }],
-      fetchCachedModels: vi.fn(),
       isDownloading: false
     })
 

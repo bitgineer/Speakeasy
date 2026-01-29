@@ -4,7 +4,7 @@
  * Dropdown for selecting ASR model type and variant.
  */
 
-import { useMemo, useEffect, memo } from 'react'
+import { useMemo, memo } from 'react'
 import type { ModelInfo } from '../api/types'
 import useDownloadStore from '../store/download-store'
 
@@ -29,11 +29,8 @@ function ModelSelector({
   isLoadingModels = false,
   isLoadingModel = false
 }: ModelSelectorProps): JSX.Element {
-  const { cachedModels, fetchCachedModels, isDownloading } = useDownloadStore()
-
-  useEffect(() => {
-    fetchCachedModels()
-  }, [fetchCachedModels])
+  // Use cached models from store - data is populated by "Sync Models" button in ModelSettings
+  const { cachedModels, isDownloading } = useDownloadStore()
 
   const isModelDownloaded = (name: string) => {
     return cachedModels.some((m) => m.model_name === name)
@@ -69,8 +66,9 @@ function ModelSelector({
 
       {/* Model Type */}
       <div className={isLoadingModels ? 'opacity-50 pointer-events-none' : ''}>
-        <label className="label">Model Type</label>
+        <label htmlFor="model-type-select" className="label">Model Type</label>
         <select
+          id="model-type-select"
           value={selectedType}
           onChange={(e) => {
             onTypeChange(e.target.value)
@@ -102,8 +100,9 @@ function ModelSelector({
       
       {/* Model Variant */}
       <div className={isLoadingModels ? 'opacity-50 pointer-events-none' : ''}>
-        <label className="label">Model Variant</label>
+        <label htmlFor="model-variant-select" className="label">Model Variant</label>
         <select
+          id="model-variant-select"
           value={selectedName}
           onChange={(e) => onNameChange(e.target.value)}
           disabled={isComponentDisabled || modelVariants.length === 0}

@@ -87,12 +87,12 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
       aria-modal="true"
       aria-labelledby="export-dialog-title"
     >
-      <div className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
+      <div className="w-full max-w-md transform overflow-hidden rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-6 text-left align-middle shadow-xl transition-all">
         <h3
           id="export-dialog-title"
-          className="text-lg font-medium leading-6 text-white mb-4 flex items-center gap-2"
+          className="text-lg font-medium leading-6 text-[var(--color-text-primary)] mb-4 flex items-center gap-2"
         >
-          <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
           {singleRecordId ? 'Export Transcription' : 'Export History'}
@@ -100,13 +100,13 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
               Format
             </label>
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               {FORMAT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -114,7 +114,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               {FORMAT_OPTIONS.find((o) => o.value === format)?.description}
             </p>
           </div>
@@ -125,16 +125,16 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
                 type="checkbox"
                 checked={includeMetadata}
                 onChange={(e) => setIncludeMetadata(e.target.checked)}
-                className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-[var(--color-accent)] bg-[var(--color-bg-tertiary)] border-[var(--color-border)] rounded focus:ring-[var(--color-accent)]"
               />
-              <span className="text-sm text-gray-300">Include metadata (duration, model, language)</span>
+              <span className="text-sm text-[var(--color-text-secondary)]">Include metadata (duration, model, language)</span>
             </label>
           )}
 
           {!singleRecordId && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
                   Date Range (optional)
                 </label>
                 <div className="flex gap-2">
@@ -142,14 +142,14 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     placeholder="From"
                   />
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     placeholder="To"
                   />
                 </div>
@@ -158,8 +158,8 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
           )}
 
           {error && (
-            <div className="bg-red-900/20 border border-red-900/50 rounded-lg p-3">
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg p-3">
+              <p className="text-sm text-[var(--color-error)]">{error}</p>
             </div>
           )}
         </div>
@@ -167,7 +167,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
-            className="inline-flex justify-center rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-sm font-medium text-white hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 transition-colors"
+            className="inline-flex justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] transition-colors"
             onClick={onClose}
             disabled={isLoading}
           >
@@ -175,7 +175,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
           </button>
           <button
             type="button"
-            className="inline-flex justify-center rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex justify-center rounded-lg border border-transparent bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-text-on-accent)] hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleExport}
             disabled={isLoading}
           >
