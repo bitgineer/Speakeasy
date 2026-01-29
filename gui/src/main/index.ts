@@ -8,7 +8,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { join } from 'path'
 import { createTray, destroyTray } from './tray'
-import { createMainWindow, createRecordingIndicator, getMainWindow, getRecordingIndicator } from './windows'
+import { createMainWindow, createRecordingIndicator, getMainWindow, getRecordingIndicator, showRecordingIndicator } from './windows'
 import { startBackend, stopBackend, isBackendRunning } from './backend'
 import { setupIpcHandlers } from './ipc-handlers'
 import { registerGlobalHotkey, unregisterGlobalHotkey, stopUiohook } from './hotkey'
@@ -54,7 +54,8 @@ if (!gotTheLock) {
     // Create windows
     createMainWindow()
     createRecordingIndicator()
-
+    showRecordingIndicator() // Ensure it's shown and positioned correctly
+    
     // Create system tray
     createTray()
 
@@ -71,10 +72,16 @@ if (!gotTheLock) {
 
   // Handle app quit
   app.on('before-quit', async () => {
+    console.log('[BEFORE-QUIT] Starting shutdown sequence...')
+    console.log('[BEFORE-QUIT] Unregistering global hotkey...')
     unregisterGlobalHotkey()
+    console.log('[BEFORE-QUIT] Hotkey unregistered. Stopping uiohook...')
     stopUiohook()
+    console.log('[BEFORE-QUIT] Uiohook stopped. Stopping backend...')
     await stopBackend()
+    console.log('[BEFORE-QUIT] Backend stopped. Destroying tray...')
     destroyTray()
+    console.log('[BEFORE-QUIT] Shutdown complete!')
   })
 
   // Quit when all windows are closed, except on macOS

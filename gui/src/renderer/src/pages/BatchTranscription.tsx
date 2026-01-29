@@ -133,13 +133,13 @@ export default function BatchTranscription(): JSX.Element {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white p-6 overflow-auto">
+    <div className="h-full flex flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] p-6 overflow-auto">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold">Batch Transcription</h1>
         {job && (
           <button 
             onClick={clearAll}
-            className="text-sm text-gray-400 hover:text-white transition-colors"
+            className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             Start New Batch
           </button>
@@ -147,7 +147,7 @@ export default function BatchTranscription(): JSX.Element {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
+        <div className="mb-6 p-4 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg text-[var(--color-error)]">
           {error}
         </div>
       )}
@@ -159,8 +159,8 @@ export default function BatchTranscription(): JSX.Element {
             className={`
               border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer
               ${isDragging 
-                ? 'border-blue-500 bg-blue-500/10' 
-                : 'border-gray-700 hover:border-gray-500 bg-gray-800/50'
+                ? 'border-[var(--color-accent)] bg-[var(--color-accent-muted)]' 
+                : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)] bg-[var(--color-bg-tertiary)]'
               }
             `}
             onDragOver={handleDragOver}
@@ -177,46 +177,46 @@ export default function BatchTranscription(): JSX.Element {
               accept="audio/*,video/*"
             />
             <div className="flex flex-col items-center gap-3">
-              <svg className="w-12 h-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              <p className="text-lg font-medium text-gray-300">
+              <p className="text-lg font-medium text-[var(--color-text-secondary)]">
                 Drop audio files here or click to browse
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[var(--color-text-muted)]">
                 Supports MP3, WAV, M4A, MP4, MKV, and more
               </p>
             </div>
           </div>
 
           {selectedFiles.length > 0 && (
-            <div className="flex-1 flex flex-col bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
-              <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/80">
-                <span className="font-medium text-gray-300">{selectedFiles.length} files selected</span>
+            <div className="flex-1 flex flex-col bg-[var(--color-bg-secondary)] rounded-xl overflow-hidden border border-[var(--color-border)]">
+              <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg-tertiary)]">
+                <span className="font-medium text-[var(--color-text-secondary)]">{selectedFiles.length} files selected</span>
                 <button 
                   onClick={() => setSelectedFiles([])}
-                  className="text-sm text-red-400 hover:text-red-300"
+                  className="text-sm text-[var(--color-error)] hover:text-[var(--color-error-hover)]"
                 >
                   Clear All
                 </button>
               </div>
               <div className="flex-1 overflow-auto p-2 space-y-2">
                 {selectedFiles.map((file, index) => (
-                  <div key={`${file.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg group">
+                  <div key={`${file.name}-${index}`} className="flex items-center justify-between p-3 bg-[var(--color-bg-tertiary)] rounded-lg group">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-8 h-8 rounded bg-gray-600 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 rounded bg-[var(--color-bg-elevated)] flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-[var(--color-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-200 truncate">{file.name}</p>
-                        <p className="text-xs text-gray-500">{formatSize(file.size)}</p>
+                        <p className="text-sm font-medium text-[var(--color-text-secondary)] truncate">{file.name}</p>
+                        <p className="text-xs text-[var(--color-text-muted)]">{formatSize(file.size)}</p>
                       </div>
                     </div>
                     <button 
                       onClick={(e) => { e.stopPropagation(); removeFile(index); }}
-                      className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-error)] opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -225,15 +225,15 @@ export default function BatchTranscription(): JSX.Element {
                   </div>
                 ))}
               </div>
-              <div className="p-4 border-t border-gray-700 bg-gray-800/80">
+              <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
                 <button
                   onClick={startBatch}
                   disabled={isLoading}
-                  className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--color-text-on-accent)] font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
                       Starting...
                     </>
                   ) : (
@@ -254,15 +254,15 @@ export default function BatchTranscription(): JSX.Element {
         // Job Progress/Results State
         <div className="flex-1 flex flex-col gap-6">
           {/* Progress Header */}
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+          <div className="bg-[var(--color-bg-secondary)] rounded-xl p-6 border border-[var(--color-border)]">
             <div className="flex justify-between items-end mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-white mb-1">
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-1">
                   {job.status === 'completed' ? 'Batch Complete' : 
                    job.status === 'failed' ? 'Batch Failed' : 
                    'Processing Batch...'}
                 </h2>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-[var(--color-text-muted)]">
                   {job.status === 'processing' 
                     ? `Processing file ${job.current_file_index + 1} of ${job.total_files}`
                     : `Processed ${job.completed_count} of ${job.total_files} files`
@@ -270,44 +270,44 @@ export default function BatchTranscription(): JSX.Element {
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-blue-400">
+                <div className="text-2xl font-bold text-[var(--color-accent)]">
                   {Math.round((job.completed_count / job.total_files) * 100)}%
                 </div>
               </div>
             </div>
             
             {/* Progress Bar */}
-            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
               <div 
                 className={`h-full transition-all duration-500 ${
-                  job.status === 'failed' ? 'bg-red-500' : 
-                  job.status === 'completed' ? 'bg-green-500' : 
-                  'bg-blue-500'
+                  job.status === 'failed' ? 'bg-[var(--color-error)]' : 
+                  job.status === 'completed' ? 'bg-[var(--color-success)]' : 
+                  'bg-[var(--color-accent)]'
                 }`}
                 style={{ width: `${(job.completed_count / job.total_files) * 100}%` }}
               />
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-700">
+            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-[var(--color-border)]">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">{job.completed_count}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Completed</div>
+                <div className="text-2xl font-bold text-[var(--color-success)]">{job.completed_count}</div>
+                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Completed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-400">{job.failed_count}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Failed</div>
+                <div className="text-2xl font-bold text-[var(--color-error)]">{job.failed_count}</div>
+                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Failed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-400">{job.skipped_count}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Skipped</div>
+                <div className="text-2xl font-bold text-[var(--color-text-muted)]">{job.skipped_count}</div>
+                <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Skipped</div>
               </div>
             </div>
           </div>
 
           {/* File List */}
-          <div className="flex-1 bg-gray-800 rounded-xl overflow-hidden border border-gray-700 flex flex-col">
-            <div className="p-4 border-b border-gray-700 font-medium text-gray-300">
+          <div className="flex-1 bg-[var(--color-bg-secondary)] rounded-xl overflow-hidden border border-[var(--color-border)] flex flex-col">
+            <div className="p-4 border-b border-[var(--color-border)] font-medium text-[var(--color-text-secondary)]">
               Files
             </div>
             <div className="flex-1 overflow-auto p-2 space-y-2">
@@ -316,20 +316,20 @@ export default function BatchTranscription(): JSX.Element {
                   key={file.id} 
                   className={`
                     flex items-center justify-between p-3 rounded-lg border
-                    ${file.status === 'processing' ? 'bg-blue-900/20 border-blue-500/30' : 
-                      file.status === 'completed' ? 'bg-green-900/10 border-green-500/20' :
-                      file.status === 'failed' ? 'bg-red-900/10 border-red-500/20' :
-                      'bg-gray-700/30 border-transparent'
+                    ${file.status === 'processing' ? 'bg-[var(--color-info-muted)] border-[var(--color-info)]' : 
+                      file.status === 'completed' ? 'bg-[var(--color-success-muted)] border-[var(--color-success)]' :
+                      file.status === 'failed' ? 'bg-[var(--color-error-muted)] border-[var(--color-error)]' :
+                      'bg-[var(--color-bg-tertiary)] border-transparent'
                     }
                   `}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`
                       w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0
-                      ${file.status === 'completed' ? 'text-green-400' :
-                        file.status === 'failed' ? 'text-red-400' :
-                        file.status === 'processing' ? 'text-blue-400' :
-                        'text-gray-500'
+                      ${file.status === 'completed' ? 'text-[var(--color-success)]' :
+                        file.status === 'failed' ? 'text-[var(--color-error)]' :
+                        file.status === 'processing' ? 'text-[var(--color-info)]' :
+                        'text-[var(--color-text-muted)]'
                       }
                     `}>
                       {file.status === 'completed' ? (
@@ -347,13 +347,13 @@ export default function BatchTranscription(): JSX.Element {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-200 truncate">{file.filename}</p>
+                      <p className="text-sm font-medium text-[var(--color-text-secondary)] truncate">{file.filename}</p>
                       {file.error && (
-                        <p className="text-xs text-red-400 truncate">{file.error}</p>
+                        <p className="text-xs text-[var(--color-error)] truncate">{file.error}</p>
                       )}
                     </div>
                   </div>
-                  <div className="text-xs font-medium px-2 py-1 rounded bg-gray-800 text-gray-400 capitalize">
+                  <div className="text-xs font-medium px-2 py-1 rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] capitalize">
                     {file.status}
                   </div>
                 </div>
@@ -361,11 +361,11 @@ export default function BatchTranscription(): JSX.Element {
             </div>
             
             {job.failed_count > 0 && (
-              <div className="p-4 border-t border-gray-700 bg-gray-800/80">
+              <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
                 <button
                   onClick={retryFailed}
                   disabled={isLoading}
-                  className="w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2 px-4 bg-[var(--color-bg-elevated)] hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {isLoading ? 'Retrying...' : 'Retry Failed Files'}
                 </button>

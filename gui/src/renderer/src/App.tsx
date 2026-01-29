@@ -6,18 +6,28 @@
  */
 
 import { useEffect, lazy, Suspense } from 'react'
-import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { useAppStore, useHistoryStore, useSettingsStore } from './store'
+import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useAppStore, useHistoryStore, useSettingsStore, initHistoryWebSocket } from './store'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSpinner from './components/LoadingSpinner'
+import Sidebar from './components/Sidebar'
 import { ToastProvider } from './context/ToastProvider'
 import type { TranscriptionRecord } from './api/types'
 
 // Lazy load components
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const Settings = lazy(() => import('./pages/Settings'))
 const BatchTranscription = lazy(() => import('./pages/BatchTranscription'))
+const Stats = lazy(() => import('./pages/Stats'))
 const RecordingIndicator = lazy(() => import('./components/RecordingIndicator'))
+
+// Settings pages
+const ModelSettings = lazy(() => import('./pages/settings/ModelSettings'))
+const AudioSettings = lazy(() => import('./pages/settings/AudioSettings'))
+const HotkeySettings = lazy(() => import('./pages/settings/HotkeySettings'))
+const BehaviorSettings = lazy(() => import('./pages/settings/BehaviorSettings'))
+const AppearanceSettings = lazy(() => import('./pages/settings/AppearanceSettings'))
+const DataSettings = lazy(() => import('./pages/settings/DataSettings'))
+const AboutSettings = lazy(() => import('./pages/settings/AboutSettings'))
 
 // Navigation listener component
 function NavigationListener(): null {
@@ -40,9 +50,26 @@ function NavigationListener(): null {
   return null
 }
 
+// Theme initializer - loads theme on startup
+function ThemeInitializer(): null {
+  const { settings, fetchSettings } = useSettingsStore()
+  
+  useEffect(() => {
+    fetchSettings()
+  }, [fetchSettings])
+  
+  useEffect(() => {
+    if (settings?.theme) {
+      document.documentElement.setAttribute('data-theme', settings.theme)
+    }
+  }, [settings?.theme])
+  
+  return null
+}
+
 // Main app layout for regular windows
 function MainLayout(): JSX.Element {
-  const { backendConnected, fetchHealth, startRecording, stopRecording, setAppState, isReconnecting } = useAppStore()
+  const { backendConnected, fetchHealth, startRecording, setAppState, isReconnecting } = useAppStore()
   const { addItem, fetchHistory } = useHistoryStore()
   const { fetchSettings, settings } = useSettingsStore()
   
@@ -50,6 +77,9 @@ function MainLayout(): JSX.Element {
     fetchHealth()
     fetchHistory()
     fetchSettings()
+    
+    // Initialize WebSocket subscription for real-time transcription updates
+    initHistoryWebSocket()
     
     const interval = setInterval(fetchHealth, 5000)
     
@@ -96,59 +126,27 @@ function MainLayout(): JSX.Element {
   }, [startRecording, setAppState, addItem])
   
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-white">SpeakEasy</h1>
-        <div className="flex items-center gap-3">
-          {/* Connection status indicator */}
-          <div className="flex items-center gap-2" title={backendConnected ? "Connected" : undefined}>
-            <div 
-              className={`rounded-full transition-all duration-300 ${
-                backendConnected 
-                  ? 'w-2 h-2 bg-green-500' 
-                  : isReconnecting
-                    ? 'w-3 h-3 bg-yellow-500 animate-pulse'
-                    : 'w-3 h-3 bg-red-500'
-              }`} 
-            />
-            {!backendConnected && (
-              <span className="text-xs text-gray-400">
-                {isReconnecting ? 'Reconnecting...' : 'Disconnected'}
-              </span>
-            )}
-          </div>
-          {/* Batch button */}
-          <a 
-            href="#/batch" 
-            className="text-gray-400 hover:text-white transition-colors p-2"
-            title="Batch Transcription"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-          </a>
-          {/* Settings button */}
-          <a 
-            href="#/settings" 
-            className="text-gray-400 hover:text-white transition-colors p-2"
-            title="Settings"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </a>
-        </div>
-      </header>
+    <div className="h-screen flex bg-[var(--color-bg-primary)]">
+      {/* Sidebar Navigation */}
+      <Sidebar />
       
       {/* Main content */}
       <main className="flex-1 overflow-auto">
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="/batch" element={<BatchTranscription />} />
+            <Route path="/stats" element={<Stats />} />
+            
+            {/* Settings routes - redirect /settings to /settings/model */}
+            <Route path="/settings" element={<Navigate to="/settings/model" replace />} />
+            <Route path="/settings/model" element={<ModelSettings />} />
+            <Route path="/settings/audio" element={<AudioSettings />} />
+            <Route path="/settings/hotkey" element={<HotkeySettings />} />
+            <Route path="/settings/behavior" element={<BehaviorSettings />} />
+            <Route path="/settings/appearance" element={<AppearanceSettings />} />
+            <Route path="/settings/data" element={<DataSettings />} />
+            <Route path="/settings/about" element={<AboutSettings />} />
           </Routes>
         </Suspense>
       </main>
@@ -163,6 +161,7 @@ function App(): JSX.Element {
       <ToastProvider>
         <HashRouter>
           <NavigationListener />
+          <ThemeInitializer />
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               {/* Recording indicator is a separate route for the overlay window */}
@@ -189,7 +188,7 @@ declare global {
       hideIndicator: () => Promise<void>
       getBackendStatus: () => Promise<{ running: boolean; port: number }>
       getBackendPort: () => Promise<number>
-      registerHotkey: (hotkey: string) => Promise<boolean>
+      registerHotkey: (hotkey: string, mode?: string) => Promise<boolean>
       unregisterHotkey: () => Promise<void>
       getCurrentHotkey: () => Promise<string | null>
       getVersion: () => Promise<string>

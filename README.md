@@ -1,166 +1,151 @@
-# _faster-whisper Hotkey_
+# SpeakEasy
 
-a minimalist push-to-talk style transcription tool built upon **[cutting-edge ASR models](https://huggingface.co/spaces/hf-audio/open_asr_leaderboard)**.
+<div align="center">
+  <h3>The Ultimate Local Voice Transcription Powerhouse</h3>
+  <p>
+    Use state-of-the-art AI models to transcribe your voice into any application.<br/>
+    <b>Privately. Locally. Instantly.</b>
+  </p>
+</div>
 
-**Hold the hotkey, Speak, Release ==> And baamm in your text field!**
+---
 
-In the terminal, in a text editor, or even in the text chat of your online video game, anywhere!
+## 🚀 Overview
 
-## Features
+SpeakEasy is a modern desktop application that brings the power of **Whisper**, **NVIDIA Parakeet/Canary**, and **Mistral Voxtral** directly to your fingertips. 
 
-- **Models downloading**: Missing models are automatically downloaded from Hugging Face.
-- **User-Friendly Interface**: Allows users to set the input device, transcription model, compute type, device, and language directly through the menu.
-- **Fast**: Almost instant transcription, even on CPU when picking parakeet or canary.
+Unlike cloud-based solutions, SpeakEasy runs entirely on your machine. Whether you're dictating emails, capturing meeting notes, or transcribing recorded interviews, SpeakEasy handles it all with zero latency and 100% privacy.
 
-## Current models
+It combines a robust **Python FastAPI backend** for high-performance inference with a sleek **Electron + React frontend** for a seamless user experience.
 
-- (NEW) **[nvidia/canary-1b-v2](https://huggingface.co/nvidia/canary-1b-v2)**:
+## 📸 Screenshots
 
-  - 25 languages supported
-  - Transcription and translation
-  - No automatic language recognition
-  - Crazy fast even on CPU in F16
+<p align="center">
+  <img src="docs/images/screenshot-dashboard.png" alt="SpeakEasy Dashboard" width="100%">
+</p>
 
-- (NEW) **[nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)**:
+*The modern dark-mode interface makes managing your transcriptions effortless.*
 
-  - 25 languages supported
-  - Transcription only
-  - Automatic language recognition
-  - Crazy fast even on CPU in F16
+## ✨ Key Features
 
-- **[mistralai/Voxtral-Mini-3B-2507](https://huggingface.co/mistralai/Voxtral-Mini-3B-2507)**:
+### 🎙️ Core Transcription
+- **Universal Dictation**: Press a hotkey and start talking. Your words are typed directly into the active window.
+- **Push-to-Talk & Toggle Modes**: customize how you want to control recording.
+- **Smart Formatting**: Automatic punctuation, capitalization, and optional removal of filler words (um, uh).
+- **Audio Device Management**: Seamlessly switch between microphones and input devices.
 
-  - English, Spanish, French, Portuguese, Hindi, German, Dutch, Italian
-  - Transcription only
-  - Automatic language recognition
-  - Smart (it even guesses when to put some quotes, etc.) and less error-prone for non English native speakers
-  - GPU only
+### 🧠 Advanced AI Models
+SpeakEasy supports a wide range of models to balance speed and accuracy:
+- **OpenAI Whisper**: The industry standard, powered by `faster-whisper` (CTranslate2) for blazing fast inference.
+- **NVIDIA NeMo**: Support for `Parakeet` (TDT) and `Canary` (multilingual) models for ultra-low latency.
+- **Mistral Voxtral**: Support for the powerful 3B parameter model for superior accuracy.
+- **Hardware Acceleration**: Automatic GPU detection (CUDA) with quantization support (`float16`, `int8`, `int4`) to run large models on consumer hardware.
 
-- **[Systran/faster-whisper](https://github.com/SYSTRAN/faster-whisper)**:
+### 🛠️ Power User Tools
+- **Transcription History**: A searchable, persistent database of everything you've ever said.
+- **Batch Processing**: Drag and drop existing audio files to transcribe them in bulk.
+- **Rich Export Options**: Export your history or batch jobs to **TXT**, **JSON**, **CSV**, **SRT** (Subtitles), and **VTT**.
+- **Clipboard Integration**: Automatically copy transcripts to your clipboard.
 
-  - Many languages
-  - Transcription only
+## 🏗 Architecture
 
-**_What I personally use currently?_**
+The project is structured as a modern hybrid application:
 
-_- parakeet-tdt-0.6b-v3, on CPU, when I need all my VRAM to run my LMs_
+```mermaid
+graph TD
+    User((User)) -->|Hotkeys / UI| Electron[Electron Frontend]
+    Electron -->|Spawn| Backend[Python FastAPI Backend]
+    
+    subgraph "Frontend (Electron/React)"
+        UI[React UI]
+        Main[Main Process]
+        GlobalShortcut[Global Shortcuts]
+    end
+    
+    subgraph "Backend (Python)"
+        API[FastAPI Server]
+        Whisper[Whisper Engine]
+        NeMo[NVIDIA NeMo]
+        DB[(SQLite History)]
+        Audio[Audio Processing]
+    end
+    
+    Electron <-->|WebSocket / HTTP| API
+    API --> Whisper
+    API --> NeMo
+    API --> DB
+    API --> Audio
+```
 
-_- Voxtral-Mini-3B-2507, on GPU, when I run smaller models and can fit it along them_
+| Component | Tech Stack | Responsibility | Documentation |
+|-----------|------------|----------------|---------------|
+| **Backend** | Python, FastAPI, PyTorch, CTranslate2, SQLite | Model inference, audio processing, database, websocket server | [Backend Docs](./backend/README.md) |
+| **GUI** | Electron, React, TypeScript, Vite, Tailwind | User interface, global hotkeys, window management, system tray | [GUI Docs](./gui/README.md) |
 
-## Installation
+## 📦 Prerequisites
 
-_see https://docs.astral.sh/uv/ for more information on uv. uv is fast :\)_
+Before you begin, ensure you have the following installed:
 
-### From PyPi
+1.  **Python 3.10+**: [Download Python](https://www.python.org/downloads/)
+2.  **Node.js 18+**: [Download Node.js](https://nodejs.org/)
+3.  **UV** (Highly Recommended): A fast Python package installer.
+    ```bash
+    # Install UV (Windows)
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    
+    # Install UV (macOS/Linux)
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+4.  **FFmpeg**: Required for audio processing.
+    *   **Windows**: `winget install ffmpeg` (or download binaries and add to PATH)
+    *   **Mac**: `brew install ffmpeg`
+    *   **Linux**: `sudo apt install ffmpeg`
 
-- As a pip package:
+## 🏁 Quick Start
 
-  ```
-  uv pip install faster-whisper-hotkey
-  ```
+### 1. Set up the Backend
 
-- or as an tool, so that you can run faster-whisper-hotkey from any venv:
+The backend handles all the heavy lifting.
 
-  ```
-  uv tool install faster-whisper-hotkey
-  ```
+```bash
+cd backend
+# Create a virtual environment and install dependencies
+uv venv
+uv pip install -e .
+```
 
-### From source
+> **Note for GPU Users:** To enable CUDA acceleration, you may need to install the specific PyTorch version for your CUDA driver. See the [Backend README](./backend/README.md) for details.
 
-1. Clone the repository:
+### 2. Set up the GUI
 
-   ```
-   git clone https://github.com/blakkd/faster-whisper-hotkey
-   cd faster-whisper-hotkey
-   ```
+The frontend provides the interface.
 
-2. Install the package and dependencies:
+```bash
+cd ../gui
+# Install Node dependencies
+npm install
+```
 
-- as a pip package:
+### 3. Run the Application
 
-  ```
-  uv pip install .
-  ```
+You can run everything from the GUI directory. The Electron app is configured to automatically spawn the Python backend in the background.
 
-- or as an uv tool:
+```bash
+cd gui
+npm run dev
+```
 
-  ```
-  uv tool install .
-  ```
+*The first launch will be slower as it downloads the default model.*
 
-### For Nvidia GPU
+## 🎮 Usage
 
-You need to install cudnn https://developer.nvidia.com/cudnn-downloads
+1.  **Select a Model**: On the Settings page, choose a model that fits your hardware (e.g., `distil-medium.en` for speed, `large-v3` for accuracy).
+2.  **Configure Hotkeys**: Go to Settings > General to set your Global Record Hotkey.
+3.  **Transcribe**: 
+    *   Focus on any text field (Notepad, Browser, Slack).
+    *   Hold your hotkey and speak.
+    *   Release to transcribe and paste.
 
-## Usage
+## 📄 License
 
-1. Whether you installed from PyPi or from source, just run `faster-whisper-hotkey`
-2. Go through the menu steps.
-3. Once the model is loaded, focus on any text field.
-4. Then, simply press the hotkey (PAUSE, F4 or F8) while you speak, release it when you're done, and see the magic happening!
-
-When the script is running, you can forget it, the model will remain loaded, and it's ready to transcribe at any time.
-
-## Configuration File
-
-The script automatically saves your settings to `~/.config/faster_whisper_hotkey/transcriber_settings.json`.
-
-## Limitations
-
-- **voxtral**: because of some limitations, and to keep the automatic language recognition capabilities, we are splitting the audio by chunks of 30s. So even if we can still transcribe long speech, best results are when audio is shorter than this.
-  In the current state it seems impossible to concile long audio as 1 chunk and automatic language detection. We may need to patch upstream https://huggingface.co/docs/transformers/v4.56.1/en/model_doc/voxtral#transformers.VoxtralProcessor.apply_transcription_request
-
-- Due to window type detection to send appropriate key stroke, unfortunately the VSCodium/VSCode terminal isn't supported for now. No clue if we can workaround this.
-
-## Tricks
-
-- If you you pick a multilingual **faster-whisper** model, and select `en` as source while speaking another language it will be translated to English, provided you speak for at least few seconds.
-- If you pick parakeet-tdt-0.6b-v3, you can even use multiple languages during your recording!
-
-## Acknowledgements
-
-Many thanks to:
-
-- **the developers of faster-whisper** for providing such an efficient transcription inference engine
-- **NVIDIA** for their blazing fast parakeet and canary models
-- **Mistral** for their impressively accurate model Voxtral-Mini-3B model
-- and to **all the contributors** of the libraries I used
-
-Also thanks to [wgabrys88](https://huggingface.co/spaces/WJ88/NVIDIA-Parakeet-TDT-0.6B-v2-INT8-Real-Time-Mic-Transcription) and [MohamedRashadthat](https://huggingface.co/spaces/MohamedRashad/Voxtral) for their huggingface spaces that have been helpful!
-
-And to finish, a special mention to **@siddhpant** for their useful [broo](https://github.com/siddhpant/broo) tool, who gave me a mic <3
-
-## Export & Import Features
-
-Export your transcription history in multiple formats:
-
-| Format | Extension | Description |
-|--------|-----------|-------------|
-| **Plain Text** | `.txt` | Simple text format with timestamps |
-| **JSON** | `.json` | Structured data, ideal for backup and re-import |
-| **CSV** | `.csv` | Spreadsheet-compatible format for Excel/Sheets |
-| **SRT** | `.srt` | SubRip subtitle format for video players |
-| **VTT** | `.vtt` | WebVTT subtitle format for web videos |
-
-**How to Export:**
-- Click the "Export" button in the Dashboard header to export all history
-- Use the overflow menu on individual transcriptions to export single items
-- Keyboard shortcut: `Ctrl+E` (Windows/Linux) or `Cmd+E` (Mac)
-- Filter by date range before exporting
-
-**How to Import:**
-- Go to Settings > Data Management
-- Click "Import" and select a previously exported JSON file
-- Choose to merge with existing history or replace all
-
-## Batch Transcription
-
-Process multiple audio files at once:
-
-1. Navigate to the Batch Transcription page
-2. Drag and drop audio files or use the file picker
-3. Click "Start Batch" to begin processing
-4. Monitor progress with real-time updates
-5. Review results and retry any failed files
-
-Batch processing handles errors gracefully - if one file fails, the others continue.
+MIT © 2024 SpeakEasy Contributors

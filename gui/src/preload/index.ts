@@ -16,6 +16,7 @@ const api = {
   // Recording indicator
   showIndicator: () => ipcRenderer.invoke('indicator:show'),
   hideIndicator: () => ipcRenderer.invoke('indicator:hide'),
+  cancelRecording: () => ipcRenderer.invoke('recording:cancel'),
   
   // Backend
   getBackendStatus: () => ipcRenderer.invoke('backend:status'),
@@ -60,7 +61,15 @@ const api = {
     const handler = (_event: Electron.IpcRendererEvent, error: string) => callback(error)
     ipcRenderer.on('recording:error', handler)
     return () => ipcRenderer.removeListener('recording:error', handler)
-  }
+  },
+  
+  onRecordingLocked: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('recording:locked', handler)
+    return () => ipcRenderer.removeListener('recording:locked', handler)
+  },
+  
+  getRecordingStatus: () => ipcRenderer.invoke('recording:status')
 }
 
 // Expose APIs to renderer

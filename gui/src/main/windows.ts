@@ -67,20 +67,28 @@ export function createMainWindow(): BrowserWindow {
 export function createRecordingIndicator(): BrowserWindow {
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
 
+  // Size for the new minimal pill UI (horizontal)
+  // Match visible pill dimensions (h-12 = 48px) to avoid invisible hit area
+  const indicatorWidth = 250
+  const indicatorHeight = 48
+  const bottomMargin = 50 // Distance from bottom of work area
+
   recordingIndicator = new BrowserWindow({
-    width: 200,
-    height: 60,
-    x: Math.round(screenWidth / 2 - 100),
-    y: Math.round(screenHeight / 2 - 30),
-    show: false,
+    width: indicatorWidth,
+    height: indicatorHeight,
+    x: Math.round(screenWidth / 2 - indicatorWidth / 2),
+    y: screenHeight - indicatorHeight - bottomMargin,
+    show: true, // Show immediately on startup (Always On)
     frame: false,
     transparent: true,
+    backgroundColor: '#00000000', // Restore this to fix visibility
     alwaysOnTop: true,
     skipTaskbar: true,
+    type: 'toolbar', // Hint to OS that this is a toolbar/overlay
     resizable: false,
     movable: false,
     focusable: false,
-    hasShadow: true,
+    hasShadow: false, // Shadow handled in CSS
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -89,8 +97,9 @@ export function createRecordingIndicator(): BrowserWindow {
     }
   })
 
-  // Ignore mouse events so it doesn't interfere with user input
-  recordingIndicator.setIgnoreMouseEvents(true)
+  // Allow mouse events for the cancel button, but ignore elsewhere
+  // The component handles click-through areas
+  recordingIndicator.setIgnoreMouseEvents(false)
 
   // Load the recording indicator page
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -109,13 +118,24 @@ export function createRecordingIndicator(): BrowserWindow {
  */
 export function showRecordingIndicator(): void {
   if (recordingIndicator && !recordingIndicator.isDestroyed()) {
-    // Re-center the indicator
+    // Position at bottom center, above taskbar
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
+    const indicatorWidth = 200
+    const indicatorHeight = 48
+    const bottomMargin = 50
+    
     recordingIndicator.setPosition(
-      Math.round(screenWidth / 2 - 100),
-      Math.round(screenHeight / 2 - 30)
+      Math.round(screenWidth / 2 - indicatorWidth / 2),
+      screenHeight - indicatorHeight - bottomMargin
     )
+    
+    // Enforce "Always On Top" aggressively
+    recordingIndicator.setAlwaysOnTop(true, 'screen-saver')
+    recordingIndicator.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
     recordingIndicator.show()
+    
+    // Ensure it doesn't steal focus (which might lower z-index on some OSs)
+    recordingIndicator.setSkipTaskbar(true)
   }
 }
 

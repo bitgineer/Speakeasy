@@ -39,6 +39,10 @@ class AppSettings(BaseModel):
     # UI settings
     auto_paste: bool = Field(default=True, description="Automatically paste after transcription")
     show_recording_indicator: bool = Field(default=True, description="Show recording overlay")
+    always_show_indicator: bool = Field(
+        default=True, description="Keep indicator visible when idle"
+    )
+    theme: str = Field(default="default", description="UI theme name")
 
     # Text cleanup settings
     enable_text_cleanup: bool = Field(

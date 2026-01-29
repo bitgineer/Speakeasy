@@ -4,5 +4,5 @@
 
 export { useAppStore, type AppState } from './app-store'
 export { useSettingsStore } from './settings-store'
-export { useHistoryStore } from './history-store'
+export { useHistoryStore, initHistoryWebSocket } from './history-store'
 export { useDownloadStore } from './download-store'
