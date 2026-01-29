@@ -69,9 +69,9 @@ export function createRecordingIndicator(): BrowserWindow {
 
   recordingIndicator = new BrowserWindow({
     width: 200,
-    height: 60,
+    height: 48,
     x: Math.round(screenWidth / 2 - 100),
-    y: Math.round(screenHeight / 2 - 30),
+    y: Math.round(screenHeight / 2 - 24),
     show: false,
     frame: false,
     transparent: true,
