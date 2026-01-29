@@ -67,6 +67,8 @@ export interface Settings {
   hotkey_mode: 'toggle' | 'push-to-talk'
   auto_paste: boolean
   show_recording_indicator: boolean
+  always_show_indicator: boolean
+  theme: string
   enable_text_cleanup: boolean
   custom_filler_words: string[] | null
   server_port: number
@@ -83,6 +85,8 @@ export interface SettingsUpdateRequest {
   hotkey_mode?: 'toggle' | 'push-to-talk'
   auto_paste?: boolean
   show_recording_indicator?: boolean
+  always_show_indicator?: boolean
+  theme?: string
   enable_text_cleanup?: boolean
   custom_filler_words?: string[] | null
 }

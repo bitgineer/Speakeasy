@@ -25,6 +25,20 @@ def setup_logging(verbose: bool = False) -> None:
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+    # Suppress noisy NeMo/ML library logs (only show errors)
+    logging.getLogger("nemo").setLevel(logging.ERROR)
+    logging.getLogger("nemo_logger").setLevel(logging.ERROR)
+    logging.getLogger("nv_one_logger").setLevel(logging.ERROR)
+    logging.getLogger("numexpr").setLevel(logging.WARNING)
+    logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+    logging.getLogger("transformers").setLevel(logging.WARNING)
+    logging.getLogger("filelock").setLevel(logging.WARNING)
+
+    # Also set the NeMo internal logging filter
+    import os
+
+    os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
+
 
 def main() -> int:
     """Main entry point."""

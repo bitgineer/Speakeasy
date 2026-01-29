@@ -2,11 +2,13 @@
  * History Store - Transcription history management
  * 
  * Manages the list of past transcriptions with search and pagination.
+ * Subscribes to WebSocket for real-time updates.
  */
 
 import { create } from 'zustand'
 import { apiClient } from '../api/client'
-import type { TranscriptionRecord, HistoryStats } from '../api/types'
+import wsClient from '../api/websocket'
+import type { TranscriptionRecord, HistoryStats, TranscriptionEvent } from '../api/types'
 
 interface HistoryStore {
   // Data
@@ -18,6 +20,8 @@ interface HistoryStore {
   limit: number
   offset: number
   hasMore: boolean
+  currentPage: number
+  totalPages: number
   
   // Search
   searchQuery: string
@@ -30,6 +34,8 @@ interface HistoryStore {
   // Actions
   fetchHistory: (reset?: boolean) => Promise<void>
   loadMore: () => Promise<void>
+  goToPage: (page: number) => Promise<void>
+  setPageSize: (size: number) => Promise<void>
   
   setSearchQuery: (query: string) => void
   search: (query: string) => Promise<void>
@@ -55,6 +61,8 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   limit: DEFAULT_LIMIT,
   offset: 0,
   hasMore: false,
+  currentPage: 1,
+  totalPages: 1,
   
   searchQuery: '',
   
@@ -64,24 +72,28 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   
   // Actions
   fetchHistory: async (reset = true) => {
-    const { limit, searchQuery } = get()
+    const { limit, searchQuery, currentPage } = get()
+    const offset = reset ? 0 : (currentPage - 1) * limit
     
     if (reset) {
-      set({ isLoading: true, offset: 0, error: null })
+      set({ isLoading: true, offset: 0, currentPage: 1, error: null })
     }
     
     try {
       const response = await apiClient.getHistory({
         limit,
-        offset: reset ? 0 : get().offset,
+        offset,
         search: searchQuery || undefined
       })
       
+      const totalPages = Math.max(1, Math.ceil(response.total / limit))
+      
       set({
-        items: reset ? response.items : [...get().items, ...response.items],
+        items: response.items,
         total: response.total,
-        hasMore: response.items.length === limit,
-        offset: reset ? response.items.length : get().offset + response.items.length,
+        hasMore: response.items.length === limit && offset + response.items.length < response.total,
+        offset,
+        totalPages,
         isLoading: false
       })
     } catch (error) {
@@ -93,32 +105,49 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   },
   
   loadMore: async () => {
-    const { hasMore, isLoadingMore } = get()
-    if (!hasMore || isLoadingMore) return
+    const { hasMore, isLoadingMore, currentPage, totalPages } = get()
+    if (!hasMore || isLoadingMore || currentPage >= totalPages) return
     
-    set({ isLoadingMore: true })
+    // For infinite scroll, load next page
+    await get().goToPage(currentPage + 1)
+  },
+  
+  goToPage: async (page: number) => {
+    const { limit, searchQuery, totalPages, isLoading } = get()
+    if (isLoading || page < 1 || page > totalPages) return
+    
+    const offset = (page - 1) * limit
+    set({ isLoading: true, error: null })
     
     try {
-      const { limit, offset, searchQuery, items } = get()
       const response = await apiClient.getHistory({
         limit,
         offset,
         search: searchQuery || undefined
       })
       
+      const newTotalPages = Math.max(1, Math.ceil(response.total / limit))
+      
       set({
-        items: [...items, ...response.items],
+        items: response.items,
         total: response.total,
-        hasMore: response.items.length === limit,
-        offset: offset + response.items.length,
-        isLoadingMore: false
+        hasMore: offset + response.items.length < response.total,
+        offset,
+        currentPage: page,
+        totalPages: newTotalPages,
+        isLoading: false
       })
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to load more history',
-        isLoadingMore: false
+        error: error instanceof Error ? error.message : 'Failed to load page',
+        isLoading: false
       })
     }
+  },
+  
+  setPageSize: async (size: number) => {
+    set({ limit: size, currentPage: 1, offset: 0 })
+    await get().fetchHistory(true)
   },
   
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -172,11 +201,48 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
     total: 0,
     offset: 0,
     hasMore: false,
+    currentPage: 1,
+    totalPages: 1,
     searchQuery: '',
     isLoading: false,
     isLoadingMore: false,
     error: null
   })
 }))
+
+// Subscribe to WebSocket transcription events for real-time updates
+// This runs once when the module is loaded
+let wsSubscribed = false
+
+export function initHistoryWebSocket(): void {
+  if (wsSubscribed) return
+  wsSubscribed = true
+  
+  wsClient.onTranscription((event: TranscriptionEvent) => {
+    // When a new transcription comes in via WebSocket, add it to the store
+    const { items, searchQuery } = useHistoryStore.getState()
+    
+    // Create a TranscriptionRecord from the event data
+    const record: TranscriptionRecord = {
+      id: event.id,
+      text: event.text,
+      duration_ms: event.duration_ms,
+      model_used: null,
+      language: null,
+      created_at: new Date().toISOString()
+    }
+    
+    // Only add if not already in the list and no search filter is active
+    const alreadyExists = items.some(item => item.id === record.id)
+    
+    if (!alreadyExists && !searchQuery) {
+      useHistoryStore.getState().addItem(record)
+    } else if (!alreadyExists && searchQuery) {
+      // If search is active, we still increment total but don't add to visible items
+      // User can clear search to see the new item
+      useHistoryStore.setState(state => ({ total: state.total + 1 }))
+    }
+  })
+}
 
 export default useHistoryStore

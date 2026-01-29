@@ -11,6 +11,12 @@ let isProcessing = false // Lock to prevent concurrent operations
 let lastHotkeyTime = 0
 const DEBOUNCE_MS = 500 // Increased from 300 for better race condition prevention
 
+// Push-to-Talk Auto-Lock
+const LOCK_THRESHOLD_MS = 60000 // 60 seconds
+let lockTimer: NodeJS.Timeout | null = null
+let isLocked = false
+let lastPttState = false
+
 // Track modifier + key states for push-to-talk
 let pttActiveKeys = new Set<number>()
 let pttRequiredKeys: number[] = []
@@ -116,7 +122,20 @@ async function startRecording(): Promise<void> {
   isProcessing = true
   try {
     isRecordingActive = true
+    isLocked = false
     console.log('Starting recording')
+    
+    // Start lock timer for push-to-talk mode
+    if (currentMode === 'push-to-talk') {
+      if (lockTimer) clearTimeout(lockTimer)
+      lockTimer = setTimeout(() => {
+        if (isRecordingActive) {
+          isLocked = true
+          console.log('Recording locked (long press)')
+          sendToRenderer('recording:locked')
+        }
+      }, LOCK_THRESHOLD_MS)
+    }
     
     setTrayRecording(true)
     showRecordingIndicator()
@@ -142,13 +161,21 @@ async function startRecording(): Promise<void> {
 async function stopRecording(): Promise<void> {
   if (!isRecordingActive || isProcessing) return
   
+  // Clear lock timer
+  if (lockTimer) {
+    clearTimeout(lockTimer)
+    lockTimer = null
+  }
+  isLocked = false
+  
   isProcessing = true
   try {
     isRecordingActive = false
     console.log('Stopping recording')
     
     setTrayRecording(false)
-    hideRecordingIndicator()
+    // Don't hide indicator - keep it visible in idle state
+    // hideRecordingIndicator()
     
     const response = await fetch('http://127.0.0.1:8765/api/transcribe/stop', {
       method: 'POST',
@@ -169,13 +196,53 @@ async function stopRecording(): Promise<void> {
   }
 }
 
+export async function cancelRecording(): Promise<void> {
+  if (!isRecordingActive || isProcessing) return
+  
+  // Clear lock timer
+  if (lockTimer) {
+    clearTimeout(lockTimer)
+    lockTimer = null
+  }
+  isLocked = false
+  
+  isProcessing = true
+  try {
+    isRecordingActive = false
+    console.log('Cancelling recording')
+    
+    setTrayRecording(false)
+    // Don't hide indicator - keep it visible in idle state
+    // hideRecordingIndicator()
+    
+    const response = await fetch('http://127.0.0.1:8765/api/transcribe/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    
+    if (!response.ok) throw new Error(`Backend returned ${response.status}`)
+    
+    sendToRenderer('recording:error', 'Cancelled by user')
+  } catch (error) {
+    console.error('Failed to cancel recording:', error)
+    sendToRenderer('recording:error', String(error))
+  } finally {
+    isProcessing = false
+  }
+}
+
 function allPttKeysPressed(): boolean {
   return pttRequiredKeys.every(k => pttActiveKeys.has(k))
 }
 
 function setupPushToTalk(hotkey: string): void {
+  // Clean up previous listeners to prevent duplication
+  uIOhook.removeAllListeners('keydown')
+  uIOhook.removeAllListeners('keyup')
+
   pttRequiredKeys = parseHotkeyToKeycodes(hotkey)
   pttActiveKeys.clear()
+  lastPttState = false // Reset state
   
   if (pttRequiredKeys.length === 0) {
     console.error('Could not parse hotkey for push-to-talk:', hotkey)
@@ -187,20 +254,43 @@ function setupPushToTalk(hotkey: string): void {
   uIOhook.on('keydown', (e) => {
     pttActiveKeys.add(e.keycode)
     
-    if (!isRecordingActive && !isProcessing && allPttKeysPressed()) {
-      const now = Date.now()
-      if (now - lastHotkeyTime < DEBOUNCE_MS) return
-      lastHotkeyTime = now
-      startRecording()
+    const currentState = allPttKeysPressed()
+    
+    // Handle transition from Not Pressed -> Pressed
+    if (currentState && !lastPttState) {
+      if (!isRecordingActive && !isProcessing) {
+        // Start recording (fresh press)
+        const now = Date.now()
+        if (now - lastHotkeyTime < DEBOUNCE_MS) return
+        lastHotkeyTime = now
+        startRecording()
+      } else if (isRecordingActive && isLocked && !isProcessing) {
+        // Stop recording (pressed again while locked)
+        const now = Date.now()
+        if (now - lastHotkeyTime < DEBOUNCE_MS) return
+        lastHotkeyTime = now
+        stopRecording()
+      }
     }
+    
+    lastPttState = currentState
   })
   
   uIOhook.on('keyup', (e) => {
     pttActiveKeys.delete(e.keycode)
     
-    if (isRecordingActive && !isProcessing && !allPttKeysPressed()) {
-      stopRecording()
+    const currentState = allPttKeysPressed()
+    
+    // Handle transition from Pressed -> Not Pressed
+    if (!currentState && lastPttState) {
+      if (isRecordingActive && !isLocked && !isProcessing) {
+        // Stop recording (released and NOT locked)
+        stopRecording()
+      }
+      // If locked, we do nothing - recording continues
     }
+    
+    lastPttState = currentState
   })
   
   if (!uiohookStarted) {

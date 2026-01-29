@@ -1,5 +1,7 @@
 # SpeakEasy Backend
 
+[← Back to Main Documentation](../README.md)
+
 FastAPI-based backend service for SpeakEasy voice transcription.
 
 ## Quick Start

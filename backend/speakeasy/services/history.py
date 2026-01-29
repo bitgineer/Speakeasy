@@ -269,6 +269,12 @@ class HistoryService:
             cursor_created_at, cursor_id = decode_cursor(cursor)
 
         if search:
+            # Sanitize search query for FTS5
+            # Escape double quotes and wrap in double quotes to treat as a literal string/phrase
+            # This prevents syntax errors with single quotes or FTS5 keywords
+            sanitized = search.replace('"', '""')
+            search_query = f'"{sanitized}"'
+
             # Use FTS5 for full-text search
             count_cursor_db = await self._db.execute(
                 """
@@ -276,7 +282,7 @@ class HistoryService:
                 INNER JOIN transcriptions_fts fts ON t.rowid = fts.rowid
                 WHERE transcriptions_fts MATCH ?
                 """,
-                (search,),
+                (search_query,),
             )
             total = (await count_cursor_db.fetchone())[0]
 
@@ -291,7 +297,7 @@ class HistoryService:
                     ORDER BY t.created_at DESC, t.id DESC
                     LIMIT ?
                     """,
-                    (search, cursor_created_at, cursor_created_at, cursor_id, limit),
+                    (search_query, cursor_created_at, cursor_created_at, cursor_id, limit),
                 )
             else:
                 # Offset-based pagination with search (backward compatible)
@@ -303,7 +309,7 @@ class HistoryService:
                     ORDER BY t.created_at DESC, t.id DESC
                     LIMIT ? OFFSET ?
                     """,
-                    (search, limit, offset),
+                    (search_query, limit, offset),
                 )
         else:
             count_cursor_db = await self._db.execute("SELECT COUNT(*) FROM transcriptions")

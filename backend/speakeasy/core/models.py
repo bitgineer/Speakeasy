@@ -12,6 +12,17 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional, Set
 
+# Suppress noisy NeMo/ML library logs BEFORE importing them
+# These must be set before the libraries are imported
+os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
+os.environ.setdefault("NUMEXPR_MAX_THREADS", "8")  # Also prevents the thread warning
+
+# Suppress warnings at module level
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module="nemo")
+warnings.filterwarnings("ignore", category=FutureWarning, module="nemo")
+
 import numpy as np
 
 if TYPE_CHECKING:
@@ -55,9 +66,10 @@ class TranscriptionResult:
     """Result from a transcription operation."""
 
     text: str
-    duration_ms: int
+    duration_ms: int  # Audio recording duration in milliseconds
     language: Optional[str] = None
     model_used: Optional[str] = None
+    processing_ms: Optional[int] = None  # Time taken to transcribe (for debugging)
 
 
 class ModelWrapper:

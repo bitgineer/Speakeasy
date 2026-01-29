@@ -473,12 +473,25 @@ class TranscriberService:
         """
         recording = self.stop_recording()
 
+        # Get the actual audio recording duration in milliseconds
+        audio_duration_ms = int(recording.duration_seconds * 1000)
+
         # Use the transcribe method which handles chunking automatically
-        return self.transcribe(
+        result = self.transcribe(
             audio_data=recording.audio_data,
             sample_rate=recording.sample_rate,
             language=language,
             progress_callback=progress_callback,
+        )
+
+        # Replace processing time with actual audio duration
+        # Store processing time separately for debugging
+        return TranscriptionResult(
+            text=result.text,
+            duration_ms=audio_duration_ms,  # Actual audio recording duration
+            language=result.language,
+            model_used=result.model_used,
+            processing_ms=result.duration_ms,  # Keep the transcription processing time
         )
 
     def cancel_recording(self) -> None:

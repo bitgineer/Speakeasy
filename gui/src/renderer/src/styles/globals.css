@@ -67,11 +67,11 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600 rounded;
+    @apply bg-[var(--color-border-strong)] rounded;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500;
+    @apply bg-[var(--color-text-muted)];
   }
   
   /* Focus styles */
@@ -157,7 +157,7 @@
   
   /* Label styles */
   .label {
-    @apply block text-sm font-medium text-gray-300 mb-1;
+    @apply block text-sm font-medium text-[var(--color-text-secondary)] mb-1;
   }
   
   /* Badge styles */
@@ -166,23 +166,23 @@
   }
   
   .badge-green {
-    @apply badge bg-green-900 text-green-300;
+    @apply badge bg-[var(--color-success-muted)] text-[var(--color-success)];
   }
   
   .badge-blue {
-    @apply badge bg-blue-900 text-blue-300;
+    @apply badge bg-[var(--color-info-muted)] text-[var(--color-info)];
   }
   
   .badge-yellow {
-    @apply badge bg-yellow-900 text-yellow-300;
+    @apply badge bg-[var(--color-warning-muted)] text-[var(--color-warning)];
   }
   
   .badge-red {
-    @apply badge bg-red-900 text-red-300;
+    @apply badge bg-[var(--color-error-muted)] text-[var(--color-error)];
   }
   
   .badge-gray {
-    @apply badge bg-gray-700 text-gray-300;
+    @apply badge bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)];
   }
 }
 

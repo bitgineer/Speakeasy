@@ -10,19 +10,22 @@ import { useHistoryStore, useAppStore } from '../store'
 import HistoryItem from '../components/HistoryItem'
 import HistoryItemSkeleton from '../components/HistoryItemSkeleton'
 import ExportDialog from '../components/ExportDialog'
+import Pagination from '../components/Pagination'
 import { perfMonitor } from '../utils/performance'
 
 export default function Dashboard(): JSX.Element {
   const { 
     items, 
     total, 
+    limit,
+    currentPage,
+    totalPages,
     searchQuery, 
     isLoading, 
-    isLoadingMore,
-    hasMore,
     error,
     fetchHistory,
-    loadMore,
+    goToPage,
+    setPageSize,
     search,
     deleteItem,
     clearError
@@ -70,34 +73,6 @@ export default function Dashboard(): JSX.Element {
        perfMonitor.markEnd('history-fetch')
      })
    }, [fetchHistory])
-  
-  // Infinite scroll handler - using ref for stable reference
-  const handleScrollRef = useRef<() => void>(() => {})
-  
-  handleScrollRef.current = useCallback(() => {
-    if (!listRef.current || isLoadingMore || !hasMore) return
-    
-    const { scrollTop, scrollHeight, clientHeight } = listRef.current
-    if (scrollHeight - scrollTop - clientHeight < 200) {
-      loadMore()
-    }
-  }, [isLoadingMore, hasMore, loadMore])
-  
-  // Set up scroll listener with proper cleanup
-  useEffect(() => {
-    const listElement = listRef.current
-    if (!listElement) return
-    
-    const handleScroll = (): void => {
-      handleScrollRef.current()
-    }
-    
-    listElement.addEventListener('scroll', handleScroll, { passive: true })
-    
-    return () => {
-      listElement.removeEventListener('scroll', handleScroll)
-    }
-  }, [])
   
    // Search handler with debounce
    const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,39 +123,39 @@ export default function Dashboard(): JSX.Element {
   
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-3 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between">
+      <div className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Recording status */}
           {isRecording ? (
-            <div className="flex items-center gap-2 text-red-400">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <div className="flex items-center gap-2 text-[var(--color-recording)]">
+              <div className="w-2 h-2 rounded-full bg-[var(--color-recording)] animate-pulse" />
               <span className="text-sm font-medium">Recording...</span>
             </div>
           ) : modelLoaded ? (
-            <div className="flex items-center gap-2 text-green-400">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
+            <div className="flex items-center gap-2 text-[var(--color-success)]">
+              <div className="w-2 h-2 rounded-full bg-[var(--color-success)]" />
               <span className="text-sm">Ready</span>
               {modelName && (
-                <span className="text-xs text-gray-500">({modelName})</span>
+                <span className="text-xs text-[var(--color-text-muted)]">({modelName})</span>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-yellow-400">
-              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+            <div className="flex items-center gap-2 text-[var(--color-warning)]">
+              <div className="w-2 h-2 rounded-full bg-[var(--color-warning)]" />
               <span className="text-sm">No model loaded</span>
             </div>
           )}
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-[var(--color-text-muted)]">
             {total > 0 && (
               <span>{total} transcription{total !== 1 ? 's' : ''}</span>
             )}
           </div>
           <button
             onClick={() => setShowExportDialog(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 hover:text-white rounded-lg transition-colors border border-gray-600"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors border border-[var(--color-border)]"
             title="Export history (Ctrl+E)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +167,7 @@ export default function Dashboard(): JSX.Element {
       </div>
       
       {/* Search bar */}
-      <div className="px-4 py-3 border-b border-gray-700">
+      <div className="px-4 py-3 border-b border-[var(--color-border)]">
         <form onSubmit={handleSearchSubmit} className="relative">
           <input
             ref={searchInputRef}
@@ -203,7 +178,7 @@ export default function Dashboard(): JSX.Element {
             className="input pl-10 pr-4"
           />
           <svg 
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]"
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -222,7 +197,7 @@ export default function Dashboard(): JSX.Element {
                  search('')
                  setIsSearching(false)
                }}
-               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+               className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
              >
                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -231,8 +206,8 @@ export default function Dashboard(): JSX.Element {
            )}
         </form>
         {isSearching && (
-          <div className="mt-2 flex items-center gap-2 text-sm text-gray-400 px-1">
-            <div className="w-3 h-3 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin" />
+          <div className="mt-2 flex items-center gap-2 text-sm text-[var(--color-text-muted)] px-1">
+            <div className="w-3 h-3 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
             <span>Searching...</span>
           </div>
         )}
@@ -240,11 +215,11 @@ export default function Dashboard(): JSX.Element {
       
       {/* Error message */}
       {error && (
-        <div className="mx-4 mt-4 p-3 bg-red-900/50 border border-red-700 rounded-lg flex items-center justify-between">
-          <span className="text-red-300 text-sm">{error}</span>
+        <div className="mx-4 mt-4 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
+          <span className="text-[var(--color-error)] text-sm">{error}</span>
           <button
             onClick={clearError}
-            className="text-red-400 hover:text-red-300"
+            className="text-[var(--color-error)] hover:opacity-80"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -268,15 +243,15 @@ export default function Dashboard(): JSX.Element {
         ) : items.length === 0 ? (
           // Empty state
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 mb-4 text-gray-600">
+            <div className="w-16 h-16 mb-4 text-[var(--color-text-disabled)]">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-300 mb-1">
+            <h3 className="text-lg font-medium text-[var(--color-text-secondary)] mb-1">
               {searchQuery ? 'No results found' : 'No transcriptions yet'}
             </h3>
-            <p className="text-gray-500 text-sm max-w-xs">
+            <p className="text-[var(--color-text-muted)] text-sm max-w-xs">
               {searchQuery 
                 ? 'Try a different search term'
                 : 'Press your hotkey to start recording. Your transcriptions will appear here.'
@@ -314,23 +289,22 @@ export default function Dashboard(): JSX.Element {
                 </div>
               ))}
             </div>
-            
-            {/* Load more indicator */}
-            {isLoadingMore && (
-              <div className="flex justify-center py-4">
-                <div className="w-6 h-6 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin" />
-              </div>
-            )}
-            
-            {/* End of list */}
-            {!hasMore && items.length > 0 && (
-              <p className="text-center text-gray-500 text-sm py-4">
-                No more transcriptions
-              </p>
-            )}
           </>
         )}
       </div>
+      
+      {/* Pagination controls */}
+      {!isLoading && items.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+          isLoading={isLoading}
+        />
+      )}
       
       <ExportDialog 
         isOpen={showExportDialog} 
