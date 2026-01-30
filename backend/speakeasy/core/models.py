@@ -457,7 +457,7 @@ class ModelWrapper:
             if self.model_type == ModelType.WHISPER:
                 text = self._transcribe_whisper(audio_data, language)
             elif self.model_type == ModelType.PARAKEET:
-                text = self._transcribe_parakeet(audio_data)
+                text = self._transcribe_parakeet(audio_data, sample_rate)
             elif self.model_type == ModelType.CANARY:
                 text = self._transcribe_canary(audio_data, sample_rate, language)
             elif self.model_type == ModelType.VOXTRAL:
@@ -490,16 +490,42 @@ class ModelWrapper:
         )
         return " ".join(segment.text.strip() for segment in segments)
 
-    def _transcribe_parakeet(self, audio_data: "NDArray[np.float32]") -> str:
+    def _transcribe_parakeet(self, audio_data: "NDArray[np.float32]", sample_rate: int) -> str:
         """Transcribe using NVIDIA Parakeet."""
+        import soundfile as sf
         import torch
 
-        with torch.inference_mode():
-            out = self._model.transcribe([audio_data])
-        return out[0].text if out else ""
+        temp_wav_path = None
+        temp_manifest_path = None
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                temp_wav_path = f.name
+                sf.write(f.name, audio_data, sample_rate)
+
+            duration = len(audio_data) / sample_rate
+            manifest_data = [
+                {
+                    "audio_filepath": temp_wav_path,
+                    "text": "",
+                    "duration": duration,
+                }
+            ]
+            temp_manifest_path = safe_write_manifest(manifest_data)
+
+            with torch.inference_mode():
+                out = self._model.transcribe(temp_manifest_path)
+            return out[0].text if out else ""
+
+        finally:
+            safe_delete(temp_wav_path)
+            safe_delete(temp_manifest_path)
 
     def _transcribe_canary(
-        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str]
+        self,
+        audio_data: "NDArray[np.float32]",
+        sample_rate: int,
+        language: Optional[str],
     ) -> str:
         """Transcribe using NVIDIA Canary."""
         import soundfile as sf
@@ -511,15 +537,26 @@ class ModelWrapper:
         else:
             source_lang, target_lang = lang_parts
 
-        temp_path = None
+        temp_wav_path = None
+        temp_manifest_path = None
         try:
-            # Windows-safe temp file handling: close file before passing path to other libraries
+            # Windows-safe temp file handling
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                temp_path = f.name
+                temp_wav_path = f.name
                 sf.write(f.name, audio_data, sample_rate)
 
+            duration = len(audio_data) / sample_rate
+            manifest_data = [
+                {
+                    "audio_filepath": temp_wav_path,
+                    "text": "",
+                    "duration": duration,
+                }
+            ]
+            temp_manifest_path = safe_write_manifest(manifest_data)
+
             out = self._model.transcribe(
-                audio=[temp_path],
+                audio=temp_manifest_path,
                 source_lang=source_lang,
                 target_lang=target_lang,
             )
@@ -527,11 +564,8 @@ class ModelWrapper:
         except Exception:
             raise
         finally:
-            if temp_path and os.path.exists(temp_path):
-                try:
-                    os.unlink(temp_path)
-                except Exception:
-                    pass
+            safe_delete(temp_wav_path)
+            safe_delete(temp_manifest_path)
 
     def _transcribe_voxtral(
         self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str]
@@ -618,11 +652,7 @@ class ModelWrapper:
         except Exception:
             raise
         finally:
-            if temp_path and os.path.exists(temp_path):
-                try:
-                    os.unlink(temp_path)
-                except Exception:
-                    pass
+            safe_delete(temp_path)
 
 
 _gpu_info_cache = None
