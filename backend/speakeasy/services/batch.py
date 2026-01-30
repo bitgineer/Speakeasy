@@ -440,33 +440,51 @@ class BatchService:
                     },
                 )
 
-                try:
-                    # Transcribe the file
-                    result = await asyncio.to_thread(
-                        transcriber.transcribe_file,
-                        bf.file_path,
-                        language,
-                    )
+                # Retry logic: 1 retry allowed
+                max_retries = 1
+                last_error = None
 
-                    # Save to history
-                    record = await history_service.add(
-                        text=result.text,
-                        duration_ms=result.duration_ms,
-                        model_used=result.model_used,
-                        language=result.language,
-                    )
+                for attempt in range(max_retries + 1):
+                    try:
+                        # Transcribe the file
+                        result = await asyncio.to_thread(
+                            transcriber.transcribe_file,
+                            bf.file_path,
+                            language,
+                        )
 
-                    bf.status = BatchFileStatus.COMPLETED
-                    bf.transcription_id = record.id
-                    completed_count += 1
+                        # Save to history
+                        record = await history_service.add(
+                            text=result.text,
+                            duration_ms=result.duration_ms,
+                            model_used=result.model_used,
+                            language=result.language,
+                        )
 
-                    logger.debug(f"Completed transcription for {bf.filename}")
+                        bf.status = BatchFileStatus.COMPLETED
+                        bf.transcription_id = record.id
+                        bf.error = None  # Clear any previous error from retry
+                        completed_count += 1
 
-                except Exception as e:
-                    logger.error(f"Failed to transcribe {bf.filename}: {e}")
-                    bf.status = BatchFileStatus.FAILED
-                    bf.error = str(e)
-                    failed_count += 1
+                        logger.debug(f"Completed transcription for {bf.filename}")
+                        break  # Success, exit retry loop
+
+                    except Exception as e:
+                        last_error = e
+                        if attempt < max_retries:
+                            logger.warning(
+                                f"Transcription failed for {bf.filename} (attempt {attempt + 1}/{max_retries + 1}), retrying: {e}"
+                            )
+                            await asyncio.sleep(1)  # Brief pause before retry
+                            continue
+                        else:
+                            # Final failure after retries
+                            logger.error(
+                                f"Failed to transcribe {bf.filename} after {max_retries + 1} attempts: {e}"
+                            )
+                            bf.status = BatchFileStatus.FAILED
+                            bf.error = str(e)
+                            failed_count += 1
 
                 await self._update_file_status(bf)
 
