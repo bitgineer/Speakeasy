@@ -69,8 +69,9 @@ export function createRecordingIndicator(): BrowserWindow {
 
   // Size for the new minimal pill UI (horizontal)
   // Match visible pill dimensions (h-12 = 48px) to avoid invisible hit area
-  const indicatorWidth = 250
-  const indicatorHeight = 48
+  // Update: Increased for overlay expansion and shadow effects
+  const indicatorWidth = 800
+  const indicatorHeight = 200
   const bottomMargin = 50 // Distance from bottom of work area
 
   recordingIndicator = new BrowserWindow({
@@ -97,9 +98,8 @@ export function createRecordingIndicator(): BrowserWindow {
     }
   })
 
-  // Allow mouse events for the cancel button, but ignore elsewhere
-  // The component handles click-through areas
-  recordingIndicator.setIgnoreMouseEvents(false)
+  // Start with pass-through enabled (renderer will toggle when hovering interactive elements)
+  recordingIndicator.setIgnoreMouseEvents(true, { forward: true })
 
   // Load the recording indicator page
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -118,17 +118,6 @@ export function createRecordingIndicator(): BrowserWindow {
  */
 export function showRecordingIndicator(): void {
   if (recordingIndicator && !recordingIndicator.isDestroyed()) {
-    // Position at bottom center, above taskbar
-    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
-    const indicatorWidth = 200
-    const indicatorHeight = 48
-    const bottomMargin = 50
-    
-    recordingIndicator.setPosition(
-      Math.round(screenWidth / 2 - indicatorWidth / 2),
-      screenHeight - indicatorHeight - bottomMargin
-    )
-    
     // Enforce "Always On Top" aggressively
     recordingIndicator.setAlwaysOnTop(true, 'screen-saver')
     recordingIndicator.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
@@ -136,6 +125,24 @@ export function showRecordingIndicator(): void {
     
     // Ensure it doesn't steal focus (which might lower z-index on some OSs)
     recordingIndicator.setSkipTaskbar(true)
+  }
+}
+
+/**
+ * Resize the recording indicator window to fit content
+ * Called from renderer when content size changes
+ */
+export function resizeRecordingIndicator(width: number, height: number): void {
+  if (recordingIndicator && !recordingIndicator.isDestroyed()) {
+    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
+    const bottomMargin = 50
+    
+    // Update size and re-center horizontally
+    recordingIndicator.setSize(Math.round(width), Math.round(height))
+    recordingIndicator.setPosition(
+      Math.round(screenWidth / 2 - width / 2),
+      screenHeight - height - bottomMargin
+    )
   }
 }
 
