@@ -52,15 +52,27 @@ Plans:
 **Details:**
 Refactor CSS to scope background styles to layout components instead of global body tags.
 
-### Phase 03.3: Center Overlay Positioning (INSERTED)
+### Phase 03.3: Center Overlay Positioning (INSERTED) - Complete
 
-**Goal:** [Urgent work - to be planned]
+**Goal:** Implement active display tracking for the recording overlay.
 **Depends on:** Phase 3.2
-**Plans:** 0 plans
+**Status:** complete
+**Plans:** 1 plans
+**Completed:** Fri Jan 30 2026
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 03.3 to break down)
+- [x] 03.3-01-PLAN.md — Overlay Tracking Logic
 
 **Details:**
 Center the overlay to the user's center of the screen on the X axis. The overlay follows the mouse across screen but in the same position (height a few pixels above taskbar).
 
+### Phase 03.4: Fix Batch Transcription (INSERTED)
+
+**Goal:** Fix batch transcription attribute error and implement UI status feedback.
+**Depends on:** Phase 3.3
+**Status:** planned
+**Plans:** 0 plans
+
+**Details:**
+- Fix Backend: `TranscriberService` object has no attribute `transcribe_file` error.
+- Fix Frontend: User is unaware of failure status; add visual indication of batch progress/errors.
