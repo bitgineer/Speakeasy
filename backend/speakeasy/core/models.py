@@ -5,9 +5,11 @@ Provides a unified interface for loading and running different model types.
 """
 
 import atexit
+import json
 import logging
 import os
 import tempfile
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional, Set
@@ -37,14 +39,43 @@ logger = logging.getLogger(__name__)
 _temp_files_to_cleanup: Set[str] = set()
 
 
+def safe_delete(path: str, max_retries: int = 5, base_delay: float = 0.1) -> None:
+    """
+    Safely delete a file with retries to handle transient Windows file locks.
+    """
+    if not path or not os.path.exists(path):
+        return
+
+    for i in range(max_retries):
+        try:
+            os.unlink(path)
+            return
+        except PermissionError:
+            if i == max_retries - 1:
+                logger.warning(f"Failed to delete temp file after {max_retries} retries: {path}")
+            time.sleep(base_delay * (2**i))
+        except Exception as e:
+            logger.warning(f"Error deleting temp file {path}: {e}")
+            return
+
+
+def safe_write_manifest(manifest_data: list) -> str:
+    """
+    Write manifest data to a temp file safely for Windows.
+    Closes the handle immediately so other processes can read it.
+    """
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8", suffix=".json") as f:
+        for item in manifest_data:
+            f.write(json.dumps(item) + "\n")
+        temp_path = f.name
+
+    return temp_path
+
+
 def _cleanup_temp_files_at_exit():
     """Emergency cleanup of temp files at process exit."""
     for path in list(_temp_files_to_cleanup):
-        try:
-            if os.path.exists(path):
-                os.unlink(path)
-        except Exception:
-            pass
+        safe_delete(path)
 
 
 atexit.register(_cleanup_temp_files_at_exit)
