@@ -5,7 +5,7 @@
  */
 
 import { ipcMain, dialog, app } from 'electron'
-import { showMainWindow, hideMainWindow, showRecordingIndicator, hideRecordingIndicator } from './windows'
+import { showMainWindow, hideMainWindow, showRecordingIndicator, hideRecordingIndicator, resizeRecordingIndicator, getRecordingIndicator } from './windows'
 import { isBackendRunning, getBackendPort } from './backend'
 import { registerGlobalHotkey, unregisterGlobalHotkey, getCurrentHotkey, getHotkeyMode, cancelRecording, isRecording } from './hotkey'
 
@@ -38,6 +38,17 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('indicator:hide', () => {
     hideRecordingIndicator()
+  })
+
+  ipcMain.handle('indicator:resize', (_, width: number, height: number) => {
+    resizeRecordingIndicator(width, height)
+  })
+
+  ipcMain.handle('indicator:setIgnoreMouseEvents', (_, ignore: boolean, options?: { forward: boolean }) => {
+    const indicator = getRecordingIndicator()
+    if (indicator && !indicator.isDestroyed()) {
+      indicator.setIgnoreMouseEvents(ignore, options)
+    }
   })
 
   // Backend status
