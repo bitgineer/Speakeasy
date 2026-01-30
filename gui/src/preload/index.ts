@@ -18,6 +18,8 @@ const api = {
   hideIndicator: () => ipcRenderer.invoke('indicator:hide'),
   resizeIndicator: (width: number, height: number) => ipcRenderer.invoke('indicator:resize', width, height),
   setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => ipcRenderer.invoke('indicator:setIgnoreMouseEvents', ignore, options),
+  startRecording: () => ipcRenderer.invoke('recording:start'),
+  stopRecording: () => ipcRenderer.invoke('recording:stop'),
   cancelRecording: () => ipcRenderer.invoke('recording:cancel'),
   
   // Backend

@@ -116,7 +116,7 @@ function normalizeHotkey(hotkey: string): string {
     .join('+')
 }
 
-async function startRecording(): Promise<void> {
+export async function startRecording(): Promise<void> {
   if (isRecordingActive || isProcessing) return
   
   isProcessing = true
@@ -158,7 +158,7 @@ async function startRecording(): Promise<void> {
   }
 }
 
-async function stopRecording(): Promise<void> {
+export async function stopRecording(): Promise<void> {
   if (!isRecordingActive || isProcessing) return
   
   // Clear lock timer
@@ -176,6 +176,9 @@ async function stopRecording(): Promise<void> {
     setTrayRecording(false)
     // Don't hide indicator - keep it visible in idle state
     // hideRecordingIndicator()
+
+    // Notify renderer immediately that recording has stopped and processing started
+    sendToRenderer('recording:processing')
     
     const response = await fetch('http://127.0.0.1:8765/api/transcribe/stop', {
       method: 'POST',

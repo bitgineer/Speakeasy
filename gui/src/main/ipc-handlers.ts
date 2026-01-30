@@ -7,7 +7,7 @@
 import { ipcMain, dialog, app } from 'electron'
 import { showMainWindow, hideMainWindow, showRecordingIndicator, hideRecordingIndicator, resizeRecordingIndicator, getRecordingIndicator } from './windows'
 import { isBackendRunning, getBackendPort } from './backend'
-import { registerGlobalHotkey, unregisterGlobalHotkey, getCurrentHotkey, getHotkeyMode, cancelRecording, isRecording } from './hotkey'
+import { registerGlobalHotkey, unregisterGlobalHotkey, getCurrentHotkey, getHotkeyMode, cancelRecording, isRecording, startRecording, stopRecording } from './hotkey'
 
 /**
  * Setup all IPC handlers
@@ -23,6 +23,14 @@ export function setupIpcHandlers(): void {
   })
 
   // Recording controls
+  ipcMain.handle('recording:start', async () => {
+    await startRecording()
+  })
+
+  ipcMain.handle('recording:stop', async () => {
+    await stopRecording()
+  })
+
   ipcMain.handle('recording:cancel', async () => {
     await cancelRecording()
   })
