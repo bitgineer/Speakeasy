@@ -4,7 +4,7 @@
  * Displays a single transcription record with copy and delete actions.
  */
 
-import { useState, memo } from 'react'
+import { useState, memo, useEffect, useRef } from 'react'
 import type { TranscriptionRecord } from '../api/types'
 import ExportDialog from './ExportDialog'
 
@@ -58,10 +58,29 @@ function HistoryItem({ item, onDelete }: HistoryItemProps): JSX.Element {
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
+  const [showOriginal, setShowOriginal] = useState(false)
+  const [isFlashing, setIsFlashing] = useState(false)
+  const prevTextRef = useRef(item.text)
+  
+  // Check if this item was AI-enhanced
+  const isAiEnhanced = item.is_ai_enhanced || (item.original_text && item.original_text !== item.text)
+  
+  // Flash effect when text updates (e.g. from AI enhancement)
+  useEffect(() => {
+    if (prevTextRef.current !== item.text) {
+      setIsFlashing(true)
+      const timer = setTimeout(() => setIsFlashing(false), 2000)
+      prevTextRef.current = item.text
+      return () => clearTimeout(timer)
+    }
+  }, [item.text])
+  
+  // Get the text to display based on toggle state
+  const displayText = showOriginal && item.original_text ? item.original_text : item.text
   
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(item.text)
+      await navigator.clipboard.writeText(displayText)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
@@ -80,7 +99,12 @@ function HistoryItem({ item, onDelete }: HistoryItemProps): JSX.Element {
   }
   
   return (
-    <div className={`card p-4 hover:bg-[var(--color-bg-elevated)] transition-colors group transition-opacity duration-200 ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}>
+    <div className={`
+      group relative p-4 rounded-lg border border-[var(--color-border)]
+      bg-[var(--color-surface-hover)] transition-all duration-500
+      hover:border-[var(--color-border-strong)]
+      ${isFlashing ? 'ring-2 ring-yellow-500/50 bg-yellow-500/10 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : ''}
+    `}>
       {/* Header with metadata */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
@@ -99,6 +123,28 @@ function HistoryItem({ item, onDelete }: HistoryItemProps): JSX.Element {
             <>
               <span className="text-[var(--color-border-strong)]">|</span>
               <span className="badge-blue">{item.language.toUpperCase()}</span>
+            </>
+          )}
+          {isAiEnhanced && (
+            <>
+              <span className="text-[var(--color-border-strong)]">|</span>
+              <button
+                onClick={() => setShowOriginal(!showOriginal)}
+                className={`
+                  flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all
+                  ${!showOriginal 
+                    ? 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/20 hover:border-fuchsia-500/40' 
+                    : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] border border-transparent hover:text-[var(--color-text-primary)]'}
+                `}
+                title={showOriginal ? 'Switch to Enhanced' : 'Switch to Original'}
+              >
+                {!showOriginal && (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                {!showOriginal ? 'Enhanced' : 'Original'}
+              </button>
             </>
           )}
         </div>
@@ -178,7 +224,7 @@ function HistoryItem({ item, onDelete }: HistoryItemProps): JSX.Element {
       
       {/* Text content */}
       <p className="text-[var(--color-text-primary)] whitespace-pre-wrap break-words leading-relaxed">
-        {item.text}
+        {displayText}
       </p>
 
       <ExportDialog

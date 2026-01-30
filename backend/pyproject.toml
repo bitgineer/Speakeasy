@@ -36,6 +36,10 @@ dependencies = [
     "faster-whisper>=1.0.0",
     "torch>=2.0.0",
     "nemo_toolkit[asr]>=2.0.0",
+
+    # Grammar Correction
+    "transformers>=4.56.0",
+    "huggingface_hub[hf_xet]>=0.21",
     
     # Voxtral support (optional heavy dependencies)
     # "transformers>=4.56",

@@ -107,7 +107,9 @@ function MainLayout(): JSX.Element {
           duration_ms: response.duration_ms ?? 0,
           model_used: response.model_used ?? null,
           language: response.language ?? null,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          original_text: null,
+          is_ai_enhanced: false
         }
         addItem(record)
       }
@@ -131,7 +133,7 @@ function MainLayout(): JSX.Element {
       <Sidebar />
       
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-h-0 overflow-auto">
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -186,6 +188,12 @@ declare global {
       hideWindow: () => Promise<void>
       showIndicator: () => Promise<void>
       hideIndicator: () => Promise<void>
+      resizeIndicator: (width: number, height: number) => Promise<void>
+      setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => Promise<void>
+      startRecording: () => Promise<void>
+      stopRecording: () => Promise<void>
+      cancelRecording: () => Promise<void>
+      getRecordingStatus: () => Promise<boolean>
       getBackendStatus: () => Promise<{ running: boolean; port: number }>
       getBackendPort: () => Promise<number>
       registerHotkey: (hotkey: string, mode?: string) => Promise<boolean>
@@ -197,6 +205,8 @@ declare global {
       showMessage: (options: Electron.MessageBoxOptions) => Promise<Electron.MessageBoxReturnValue>
       onNavigate: (callback: (path: string) => void) => () => void
       onRecordingStart: (callback: () => void) => () => void
+      onRecordingLocked?: (callback: () => void) => () => void
+      onRecordingProcessing: (callback: () => void) => () => void
       onRecordingComplete: (callback: (result: unknown) => void) => () => void
       onRecordingError: (callback: (error: string) => void) => () => void
     }

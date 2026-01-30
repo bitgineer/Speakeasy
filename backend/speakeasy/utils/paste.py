@@ -242,26 +242,41 @@ def type_text(text: str, interval: float = 0.01) -> None:
         time.sleep(interval)
 
 
-def insert_text(text: str, use_clipboard: bool = True) -> None:
+def insert_text(
+    text: str,
+    use_clipboard: bool = True,
+    keep_in_clipboard: bool = False,
+) -> None:
     """
     Insert text into the active window.
 
     Args:
         text: Text to insert
         use_clipboard: If True, use clipboard paste. If False, type directly.
+        keep_in_clipboard: If True, leave the text in the clipboard after pasting.
     """
     if use_clipboard:
-        from .clipboard import backup_clipboard, restore_clipboard, set_clipboard
+        try:
+            from .clipboard import backup_clipboard, restore_clipboard, set_clipboard
 
-        # Backup, set, paste, restore
-        backup_clipboard()
-        if set_clipboard(text):
-            paste_to_active_window()
-            time.sleep(0.1)  # Wait for paste to complete
-            restore_clipboard()
-        else:
-            # Fallback to typing if clipboard fails
-            logger.warning("Clipboard failed, falling back to typing")
+            # Backup if we aren't keeping the new text
+            if not keep_in_clipboard:
+                backup_clipboard()
+
+            if set_clipboard(text):
+                paste_to_active_window()
+                time.sleep(0.1)  # Wait for paste to complete
+
+                # Restore only if we aren't keeping the new text
+                if not keep_in_clipboard:
+                    restore_clipboard()
+            else:
+                # Fallback to typing if clipboard fails
+                logger.warning("Clipboard failed, falling back to typing")
+                type_text(text)
+
+        except Exception as e:
+            logger.error(f"Clipboard paste failed: {e}")
             type_text(text)
     else:
         type_text(text)

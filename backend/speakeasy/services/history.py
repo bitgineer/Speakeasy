@@ -28,9 +28,23 @@ class TranscriptionRecord:
     model_used: Optional[str]
     language: Optional[str]
     created_at: datetime
+    original_text: Optional[str] = None  # Original text before AI enhancement
 
     # All valid field names for projection
-    VALID_FIELDS = {"id", "text", "duration_ms", "model_used", "language", "created_at"}
+    VALID_FIELDS = {
+        "id",
+        "text",
+        "duration_ms",
+        "model_used",
+        "language",
+        "created_at",
+        "original_text",
+    }
+
+    @property
+    def is_ai_enhanced(self) -> bool:
+        """Check if this transcription was AI-enhanced (grammar corrected)."""
+        return self.original_text is not None and self.original_text != self.text
 
     def to_dict(self, fields: Optional[set[str]] = None) -> dict:
         """
@@ -46,6 +60,8 @@ class TranscriptionRecord:
             "model_used": self.model_used,
             "language": self.language,
             "created_at": self.created_at.isoformat(),
+            "original_text": self.original_text,
+            "is_ai_enhanced": self.is_ai_enhanced,
         }
         if fields is None:
             return all_data
@@ -109,7 +125,8 @@ class HistoryService:
                 duration_ms INTEGER,
                 model_used TEXT,
                 language TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                original_text TEXT
             )
         """)
 
@@ -148,7 +165,29 @@ class HistoryService:
         """)
 
         await self._db.commit()
+
+        # Run migrations for existing databases
+        await self._migrate_schema()
+
         logger.info(f"History database initialized at {self.db_path}")
+
+    async def _migrate_schema(self) -> None:
+        """Run schema migrations for existing databases."""
+        if not self._db:
+            return
+
+        # Check if original_text column exists
+        cursor = await self._db.execute("PRAGMA table_info(transcriptions)")
+        columns = await cursor.fetchall()
+        column_names = {col[1] for col in columns}
+
+        if "original_text" not in column_names:
+            logger.info("Migrating database: adding original_text column")
+            await self._db.execute("""
+                ALTER TABLE transcriptions ADD COLUMN original_text TEXT
+            """)
+            await self._db.commit()
+            logger.info("Migration complete: original_text column added")
 
     async def close(self) -> None:
         """Close the database connection."""
@@ -156,21 +195,51 @@ class HistoryService:
             await self._db.close()
             self._db = None
 
+    async def update_text(
+        self,
+        record_id: str,
+        new_text: str,
+        original_text: str,
+    ) -> None:
+        """
+        Update the text of an existing transcription (e.g. after grammar correction).
+
+        Args:
+            record_id: The ID of the record to update
+            new_text: The corrected text
+            original_text: The original text (to preserve it)
+        """
+        if not self._db:
+            raise RuntimeError("Database not initialized")
+
+        await self._db.execute(
+            """
+            UPDATE transcriptions 
+            SET text = ?, original_text = ?
+            WHERE id = ?
+            """,
+            (new_text, original_text, record_id),
+        )
+        await self._db.commit()
+        logger.debug(f"Updated transcription {record_id} with corrected text")
+
     async def add(
         self,
         text: str,
         duration_ms: int,
         model_used: Optional[str] = None,
         language: Optional[str] = None,
+        original_text: Optional[str] = None,
     ) -> TranscriptionRecord:
         """
         Add a new transcription to history.
 
         Args:
-            text: The transcribed text
+            text: The transcribed text (may be grammar-corrected)
             duration_ms: Duration of transcription in milliseconds
             model_used: Name of the model used
             language: Language of the transcription
+            original_text: Original text before AI enhancement (if applicable)
 
         Returns:
             The created TranscriptionRecord
@@ -183,10 +252,10 @@ class HistoryService:
 
         await self._db.execute(
             """
-            INSERT INTO transcriptions (id, text, duration_ms, model_used, language, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO transcriptions (id, text, duration_ms, model_used, language, created_at, original_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (record_id, text, duration_ms, model_used, language, created_at),
+            (record_id, text, duration_ms, model_used, language, created_at, original_text),
         )
         await self._db.commit()
 
@@ -199,6 +268,7 @@ class HistoryService:
             model_used=model_used,
             language=language,
             created_at=created_at,
+            original_text=original_text,
         )
 
     async def get(self, record_id: str) -> Optional[TranscriptionRecord]:
@@ -230,6 +300,7 @@ class HistoryService:
             model_used=row["model_used"],
             language=row["language"],
             created_at=datetime.fromisoformat(row["created_at"]),
+            original_text=row["original_text"] if "original_text" in row.keys() else None,
         )
 
     async def list(
@@ -346,6 +417,7 @@ class HistoryService:
                 model_used=row["model_used"],
                 language=row["language"],
                 created_at=datetime.fromisoformat(row["created_at"]),
+                original_text=row["original_text"] if "original_text" in row.keys() else None,
             )
             for row in rows
         ]
@@ -399,11 +471,12 @@ class HistoryService:
         Get statistics about the history.
 
         Returns:
-            Dictionary with stats
+            Dictionary with stats including activity counts by time period
         """
         if not self._db:
             raise RuntimeError("Database not initialized")
 
+        # Basic stats
         cursor = await self._db.execute("""
             SELECT 
                 COUNT(*) as total_count,
@@ -414,9 +487,37 @@ class HistoryService:
         """)
         row = await cursor.fetchone()
 
+        # Activity counts by time period (using SQLite date functions)
+        # Today: created_at >= start of today (00:00:00)
+        cursor = await self._db.execute("""
+            SELECT COUNT(*) as today_count
+            FROM transcriptions
+            WHERE date(created_at) = date('now', 'localtime')
+        """)
+        today_row = await cursor.fetchone()
+
+        # This week: created_at >= start of this week (Sunday)
+        cursor = await self._db.execute("""
+            SELECT COUNT(*) as week_count
+            FROM transcriptions
+            WHERE date(created_at) >= date('now', 'localtime', 'weekday 0', '-7 days')
+        """)
+        week_row = await cursor.fetchone()
+
+        # This month: created_at >= start of this month
+        cursor = await self._db.execute("""
+            SELECT COUNT(*) as month_count
+            FROM transcriptions
+            WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime')
+        """)
+        month_row = await cursor.fetchone()
+
         return {
             "total_count": row["total_count"] or 0,
             "total_duration_ms": row["total_duration_ms"] or 0,
             "first_transcription": row["first_transcription"],
             "last_transcription": row["last_transcription"],
+            "today_count": today_row["today_count"] or 0,
+            "this_week_count": week_row["week_count"] or 0,
+            "this_month_count": month_row["month_count"] or 0,
         }

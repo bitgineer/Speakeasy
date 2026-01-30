@@ -216,6 +216,10 @@ class WebSocketClient {
     return this.on('transcription', callback)
   }
 
+  onTranscriptionUpdate(callback: EventCallback<TranscriptionEvent>): () => void {
+    return this.on('transcription_update', callback)
+  }
+
   onError(callback: EventCallback<ErrorEvent>): () => void {
     return this.on('error', callback)
   }
