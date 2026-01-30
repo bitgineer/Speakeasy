@@ -187,7 +187,7 @@ class ModelWrapper:
             Exception: If download fails
         """
         from huggingface_hub import snapshot_download
-        from huggingface_hub.utils import tqdm as hf_tqdm
+        from huggingface_hub.utils import tqdm as hf_tqdm, LocalEntryNotFoundError
         from tqdm import tqdm
 
         # Track cumulative progress across all files
@@ -249,6 +249,21 @@ class ModelWrapper:
                     hf_model_name = f"Systran/faster-whisper-{model_name}"
             else:
                 hf_model_name = model_name
+
+            # First, check if the model is already available locally
+            try:
+                local_dir = snapshot_download(
+                    repo_id=hf_model_name,
+                    local_files_only=True,
+                    tqdm_class=None,  # Suppress progress bar
+                )
+                logger.info(f"Model found in cache: {local_dir}")
+                # Signal completion immediately since we're using cache
+                progress_callback(1, 1)
+                return local_dir
+            except (LocalEntryNotFoundError, FileNotFoundError, OSError):
+                # Not found locally or incomplete, proceed to download
+                pass
 
             logger.info(f"Pre-downloading model: {hf_model_name}")
 
