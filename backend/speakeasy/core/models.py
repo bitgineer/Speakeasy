@@ -465,18 +465,27 @@ class ModelWrapper:
         else:
             source_lang, target_lang = lang_parts
 
+        temp_path = None
         try:
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as f:
+            # Windows-safe temp file handling: close file before passing path to other libraries
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
                 temp_path = f.name
-                sf.write(temp_path, audio_data, sample_rate)
-                out = self._model.transcribe(
-                    audio=[temp_path],
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                )
-                return out[0].text.strip() if out and len(out) > 0 else ""
+                sf.write(f.name, audio_data, sample_rate)
+
+            out = self._model.transcribe(
+                audio=[temp_path],
+                source_lang=source_lang,
+                target_lang=target_lang,
+            )
+            return out[0].text.strip() if out and len(out) > 0 else ""
         except Exception:
             raise
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except Exception:
+                    pass
 
     def _transcribe_voxtral(
         self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str]
@@ -515,70 +524,97 @@ class ModelWrapper:
         import soundfile as sf
         import torch
 
+        temp_path = None
         try:
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp_audio:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_audio:
+                temp_path = tmp_audio.name
                 sf.write(tmp_audio.name, audio_data, sample_rate)
-                audio_path = tmp_audio.name
 
-                class FileWrapper:
-                    def __init__(self, file_obj):
-                        self.file = file_obj
+            audio_path = temp_path
 
-                with open(audio_path, "rb") as f:
-                    wrapped_file = FileWrapper(f)
+            class FileWrapper:
+                def __init__(self, file_obj):
+                    self.file = file_obj
 
-                    openai_req = {
-                        "model": self.model_name,
-                        "file": wrapped_file,
-                    }
-                    if language and language != "auto":
-                        openai_req["language"] = language
+            with open(audio_path, "rb") as f:
+                wrapped_file = FileWrapper(f)
 
-                    tr = self._transcription_request_cls.from_openai(openai_req)
-                    tok = self._processor.tokenizer.tokenizer.encode_transcription(tr)
+                openai_req = {
+                    "model": self.model_name,
+                    "file": wrapped_file,
+                }
+                if language and language != "auto":
+                    openai_req["language"] = language
 
-                    input_features = self._processor.feature_extractor(
-                        audio_data,
-                        sampling_rate=sample_rate,
-                        return_tensors="pt",
-                    ).input_features.to(self._model.device)
+                tr = self._transcription_request_cls.from_openai(openai_req)
+                tok = self._processor.tokenizer.tokenizer.encode_transcription(tr)
 
-                    if hasattr(tok, "tokens") and tok.tokens is not None:
-                        token_ids = torch.tensor([tok.tokens], device=self._model.device)
-                    else:
-                        logger.warning("Token IDs might be invalid")
-                        return ""
+                input_features = self._processor.feature_extractor(
+                    audio_data,
+                    sampling_rate=sample_rate,
+                    return_tensors="pt",
+                ).input_features.to(self._model.device)
 
-                    with torch.no_grad():
-                        ids = self._model.generate(
-                            input_features=input_features,
-                            input_ids=token_ids,
-                            max_new_tokens=500,
-                            num_beams=1,
-                        )
+                if hasattr(tok, "tokens") and tok.tokens is not None:
+                    token_ids = torch.tensor([tok.tokens], device=self._model.device)
+                else:
+                    logger.warning("Token IDs might be invalid")
+                    return ""
+
+                with torch.no_grad():
+                    ids = self._model.generate(
+                        input_features=input_features,
+                        input_ids=token_ids,
+                        max_new_tokens=500,
+                        num_beams=1,
+                    )
                     return self._processor.batch_decode(ids, skip_special_tokens=True)[0]
         except Exception:
             raise
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except Exception:
+                    pass
+
+
+_gpu_info_cache = None
+_gpu_info_last_check = 0
+GPU_INFO_CACHE_TTL = 5.0  # seconds
 
 
 def get_gpu_info() -> dict:
     """Get GPU information for model recommendations."""
+    global _gpu_info_cache, _gpu_info_last_check
+    import time
+
+    # Return cached result if valid
+    if _gpu_info_cache and (time.time() - _gpu_info_last_check < GPU_INFO_CACHE_TTL):
+        return _gpu_info_cache
+
     try:
         import torch
 
         if not torch.cuda.is_available():
-            return {"available": False, "name": None, "vram_gb": 0}
+            result = {"available": False, "name": None, "vram_gb": 0}
+        else:
+            device = torch.cuda.current_device()
+            props = torch.cuda.get_device_properties(device)
+            vram_gb = props.total_memory / (1024**3)
 
-        device = torch.cuda.current_device()
-        props = torch.cuda.get_device_properties(device)
-        vram_gb = props.total_memory / (1024**3)
+            result = {
+                "available": True,
+                "name": props.name,
+                "vram_gb": round(vram_gb, 1),
+                "cuda_version": torch.version.cuda,
+            }
 
-        return {
-            "available": True,
-            "name": props.name,
-            "vram_gb": round(vram_gb, 1),
-            "cuda_version": torch.version.cuda,
-        }
+        # Update cache
+        _gpu_info_cache = result
+        _gpu_info_last_check = time.time()
+        return result
+
     except Exception as e:
         logger.error(f"Error getting GPU info: {e}")
         return {"available": False, "name": None, "vram_gb": 0}
