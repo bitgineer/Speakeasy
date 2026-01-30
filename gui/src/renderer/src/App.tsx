@@ -107,7 +107,9 @@ function MainLayout(): JSX.Element {
           duration_ms: response.duration_ms ?? 0,
           model_used: response.model_used ?? null,
           language: response.language ?? null,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          original_text: null,
+          is_ai_enhanced: false
         }
         addItem(record)
       }
@@ -203,6 +205,7 @@ declare global {
       showMessage: (options: Electron.MessageBoxOptions) => Promise<Electron.MessageBoxReturnValue>
       onNavigate: (callback: (path: string) => void) => () => void
       onRecordingStart: (callback: () => void) => () => void
+      onRecordingLocked?: (callback: () => void) => () => void
       onRecordingProcessing: (callback: () => void) => () => void
       onRecordingComplete: (callback: (result: unknown) => void) => () => void
       onRecordingError: (callback: (error: string) => void) => () => void
