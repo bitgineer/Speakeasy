@@ -7,6 +7,7 @@
 import { BrowserWindow, shell, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { startOverlayTracking, stopOverlayTracking, updatePosition } from './overlay-positioner'
 
 let mainWindow: BrowserWindow | null = null
 let recordingIndicator: BrowserWindow | null = null
@@ -101,6 +102,15 @@ export function createRecordingIndicator(): BrowserWindow {
   // Start with pass-through enabled (renderer will toggle when hovering interactive elements)
   recordingIndicator.setIgnoreMouseEvents(true, { forward: true })
 
+  // Start tracking the cursor to keep the overlay on the active display
+  startOverlayTracking(recordingIndicator)
+
+  // Clean up tracking when window is closed
+  recordingIndicator.on('closed', () => {
+    stopOverlayTracking()
+    recordingIndicator = null
+  })
+
   // Load the recording indicator page
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     recordingIndicator.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/recording-indicator`)
@@ -125,6 +135,9 @@ export function showRecordingIndicator(): void {
     
     // Ensure it doesn't steal focus (which might lower z-index on some OSs)
     recordingIndicator.setSkipTaskbar(true)
+    
+    // Ensure position is correct when showing
+    updatePosition(recordingIndicator)
   }
 }
 
@@ -134,15 +147,7 @@ export function showRecordingIndicator(): void {
  */
 export function resizeRecordingIndicator(width: number, height: number): void {
   if (recordingIndicator && !recordingIndicator.isDestroyed()) {
-    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
-    const bottomMargin = 50
-    
-    // Update size and re-center horizontally
-    recordingIndicator.setSize(Math.round(width), Math.round(height))
-    recordingIndicator.setPosition(
-      Math.round(screenWidth / 2 - width / 2),
-      screenHeight - height - bottomMargin
-    )
+    updatePosition(recordingIndicator, width, height)
   }
 }
 
