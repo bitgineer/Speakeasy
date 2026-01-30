@@ -97,3 +97,16 @@ Plans:
 - Investigate and fix `CUDA error: an illegal memory access was encountered` during batch transcription.
 - Ensure the application handles CUDA errors gracefully (e.g., re-initializing the model or falling back to CPU) without crashing the entire batch.
 - Fix "State change callback error: no running event loop" log spam.
+
+### Phase 03.6: Fix Windows File Locking (INSERTED)
+
+**Goal:** Fix [WinError 32] file access errors during batch transcription caused by manifest file contention.
+**Depends on:** Phase 3.5
+**Status:** planned
+**Plans:** 0 plans
+
+**Details:**
+- Investigate manifest file creation and usage in the transcription pipeline.
+- Ensure temporary files are closed/released before being accessed by other processes or libraries (Lhotse/NeMo).
+- Fix the race condition causing `The process cannot access the file because it is being used by another process`.
+
