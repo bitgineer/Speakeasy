@@ -470,6 +470,27 @@ class BatchService:
                         break  # Success, exit retry loop
 
                     except Exception as e:
+                        # Check for CUDA/GPU errors - Immediate failure & reload
+                        error_msg = str(e)
+                        if "CUDA" in error_msg or "illegal memory access" in error_msg:
+                            logger.critical(
+                                f"CUDA Error encountered on {bf.filename}. Attempting soft restart."
+                            )
+
+                            # Reload model
+                            try:
+                                if hasattr(transcriber, "reload_model"):
+                                    await asyncio.to_thread(transcriber.reload_model)
+                                else:
+                                    logger.error("Transcriber missing reload_model method")
+                            except Exception as reload_err:
+                                logger.critical(f"Failed to reload model: {reload_err}")
+
+                            bf.status = BatchFileStatus.FAILED
+                            bf.error = "GPU Error - Model Reloaded"
+                            failed_count += 1
+                            break
+
                         last_error = e
                         if attempt < max_retries:
                             logger.warning(
