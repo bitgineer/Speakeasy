@@ -6,7 +6,7 @@ import { RecordingPill } from './Overlay/RecordingPill'
 import { TranscribingLine } from './Overlay/TranscribingLine'
 
 export default function RecordingIndicator(): JSX.Element | null {
-  const [status, setStatus] = useState<'recording' | 'transcribing' | 'idle'>('idle')
+  const [status, setStatus] = useState<'recording' | 'transcribing' | 'idle' | 'locked'>('idle')
   const [duration, setDuration] = useState(0)
   const startTimeRef = useRef<number>(0)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -15,12 +15,15 @@ export default function RecordingIndicator(): JSX.Element | null {
   
   // Timer effect
   useEffect(() => {
-    if (status !== 'recording') {
+    if (status !== 'recording' && status !== 'locked') {
       return
     }
     
-    startTimeRef.current = Date.now()
-    setDuration(0)
+    // If start time hasn't been set (e.g. page refresh during recording), start from now
+    if (startTimeRef.current === 0) {
+      startTimeRef.current = Date.now()
+    }
+
     const interval = setInterval(() => {
       setDuration(Date.now() - startTimeRef.current)
     }, 100)
@@ -80,6 +83,11 @@ export default function RecordingIndicator(): JSX.Element | null {
     const unsubStart = window.api?.onRecordingStart(() => {
       setStatus('recording')
       setDuration(0)
+      startTimeRef.current = Date.now()
+    })
+    
+    const unsubLocked = window.api?.onRecordingLocked?.(() => {
+      setStatus('locked')
     })
     
     const unsubProcessing = window.api?.onRecordingProcessing(() => {
@@ -88,14 +96,17 @@ export default function RecordingIndicator(): JSX.Element | null {
 
     const unsubComplete = window.api?.onRecordingComplete(() => {
       setStatus('idle')
+      startTimeRef.current = 0
     })
     
     const unsubError = window.api?.onRecordingError(() => {
       setStatus('idle')
+      startTimeRef.current = 0
     })
     
     return () => {
       unsubStart?.()
+      unsubLocked?.()
       unsubProcessing?.()
       unsubComplete?.()
       unsubError?.()
@@ -121,7 +132,7 @@ export default function RecordingIndicator(): JSX.Element | null {
         window.api?.hideIndicator?.()
       }
     } else {
-      // Recording/Transcribing
+      // Recording/Locked/Transcribing
       window.api?.showIndicator?.()
     }
   }, [status, settings])
@@ -144,8 +155,12 @@ export default function RecordingIndicator(): JSX.Element | null {
             <IdlePill onClick={handleStart} />
           )}
           
-          {status === 'recording' && (
-            <RecordingPill durationMs={duration} onStop={handleStop} />
+          {(status === 'recording' || status === 'locked') && (
+            <RecordingPill 
+              durationMs={duration} 
+              onStop={handleStop} 
+              isLocked={status === 'locked'}
+            />
           )}
           
           {status === 'transcribing' && (
