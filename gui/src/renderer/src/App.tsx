@@ -188,6 +188,10 @@ declare global {
       hideIndicator: () => Promise<void>
       resizeIndicator: (width: number, height: number) => Promise<void>
       setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => Promise<void>
+      startRecording: () => Promise<void>
+      stopRecording: () => Promise<void>
+      cancelRecording: () => Promise<void>
+      getRecordingStatus: () => Promise<boolean>
       getBackendStatus: () => Promise<{ running: boolean; port: number }>
       getBackendPort: () => Promise<number>
       registerHotkey: (hotkey: string, mode?: string) => Promise<boolean>
