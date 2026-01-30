@@ -78,9 +78,10 @@ export default function AppearanceSettings(): JSX.Element {
     clearError
   } = useSettingsStore()
 
-  const [selectedTheme, setSelectedTheme] = useState('default')
+  // Initialize from settings if available, otherwise null (not 'default')
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle')
-  const originalTheme = useRef(selectedTheme)
+  const originalTheme = useRef<string | null>(null)
 
   useKeyboardShortcuts({
     onSave: () => handleSave(),
@@ -88,6 +89,9 @@ export default function AppearanceSettings(): JSX.Element {
   })
 
   useEffect(() => {
+    // Don't track dirty state until settings are loaded
+    if (selectedTheme === null) return
+    
     const isDirty = selectedTheme !== originalTheme.current
     if (isDirty && saveStatus !== 'saving') {
       setSaveStatus('unsaved')
@@ -107,12 +111,16 @@ export default function AppearanceSettings(): JSX.Element {
     }
   }, [settings])
 
-  // Apply theme immediately for preview
+  // Apply theme immediately for preview - but only after initial load
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', selectedTheme)
+    if (selectedTheme) {
+      document.documentElement.setAttribute('data-theme', selectedTheme)
+    }
   }, [selectedTheme])
 
   const handleSave = async (): Promise<void> => {
+    if (!selectedTheme) return
+    
     setSaveStatus('saving')
     const success = await updateSettings({
       theme: selectedTheme
@@ -199,7 +207,7 @@ export default function AppearanceSettings(): JSX.Element {
                   value={theme.id}
                   checked={selectedTheme === theme.id}
                   onChange={() => handleThemeChange(theme.id)}
-                  disabled={isSaving}
+                  disabled={isSaving || selectedTheme === null}
                   className="sr-only"
                 />
                 

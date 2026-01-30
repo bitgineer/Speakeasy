@@ -229,7 +229,9 @@ export function initHistoryWebSocket(): void {
       duration_ms: event.duration_ms,
       model_used: null,
       language: null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      original_text: null,
+      is_ai_enhanced: false
     }
     
     // Only add if not already in the list and no search filter is active
@@ -241,6 +243,28 @@ export function initHistoryWebSocket(): void {
       // If search is active, we still increment total but don't add to visible items
       // User can clear search to see the new item
       useHistoryStore.setState(state => ({ total: state.total + 1 }))
+    }
+  })
+
+  // Listen for updates (e.g. grammar correction)
+  wsClient.onTranscriptionUpdate((event: TranscriptionEvent) => {
+    const { items } = useHistoryStore.getState()
+    const index = items.findIndex(item => item.id === event.id)
+    
+    if (index !== -1) {
+      const updatedItems = [...items]
+      // Update with new data (casting to any to access extra fields if needed)
+      // The event from backend contains full record data
+      const updateData = event as unknown as TranscriptionRecord
+      
+      updatedItems[index] = {
+        ...updatedItems[index],
+        text: event.text,
+        original_text: updateData.original_text || updatedItems[index].original_text,
+        is_ai_enhanced: updateData.is_ai_enhanced || updatedItems[index].is_ai_enhanced
+      }
+      
+      useHistoryStore.setState({ items: updatedItems })
     }
   })
 }

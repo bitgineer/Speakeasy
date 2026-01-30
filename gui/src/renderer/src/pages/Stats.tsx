@@ -88,7 +88,8 @@ export default function Stats(): JSX.Element {
     setRefreshing(false)
   }
   
-  // Calculate additional stats from items
+  // Calculate additional stats from items (word counts, records)
+  // Note: Activity counts (today/week/month) now come from backend stats API
   const extendedStats = useMemo(() => {
     if (!items.length) {
       return {
@@ -96,10 +97,7 @@ export default function Stats(): JSX.Element {
         avgWordsPerTranscription: 0,
         avgDuration: 0,
         longestTranscription: null as typeof items[0] | null,
-        shortestTranscription: null as typeof items[0] | null,
-        todayCount: 0,
-        thisWeekCount: 0,
-        thisMonthCount: 0
+        shortestTranscription: null as typeof items[0] | null
       }
     }
     
@@ -116,25 +114,12 @@ export default function Stats(): JSX.Element {
     const longestTranscription = sortedByLength[0] || null
     const shortestTranscription = sortedByLength[sortedByLength.length - 1] || null
     
-    const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const weekStart = new Date(todayStart)
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    
-    const todayCount = items.filter(item => new Date(item.created_at) >= todayStart).length
-    const thisWeekCount = items.filter(item => new Date(item.created_at) >= weekStart).length
-    const thisMonthCount = items.filter(item => new Date(item.created_at) >= monthStart).length
-    
     return {
       totalWords,
       avgWordsPerTranscription,
       avgDuration,
       longestTranscription,
-      shortestTranscription,
-      todayCount,
-      thisWeekCount,
-      thisMonthCount
+      shortestTranscription
     }
   }, [items])
   
@@ -230,15 +215,15 @@ export default function Stats(): JSX.Element {
           <div className="space-y-4">
             <div className="flex items-center justify-between py-2 border-b border-[var(--color-border)]">
               <span className="text-sm text-[var(--color-text-secondary)]">Today</span>
-              <span className="text-lg font-semibold text-[var(--color-accent)]">{extendedStats.todayCount}</span>
+              <span className="text-lg font-semibold text-[var(--color-accent)]">{stats?.today_count ?? 0}</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-[var(--color-border)]">
               <span className="text-sm text-[var(--color-text-secondary)]">This Week</span>
-              <span className="text-lg font-semibold text-[var(--color-accent)]">{extendedStats.thisWeekCount}</span>
+              <span className="text-lg font-semibold text-[var(--color-accent)]">{stats?.this_week_count ?? 0}</span>
             </div>
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-[var(--color-text-secondary)]">This Month</span>
-              <span className="text-lg font-semibold text-[var(--color-accent)]">{extendedStats.thisMonthCount}</span>
+              <span className="text-lg font-semibold text-[var(--color-accent)]">{stats?.this_month_count ?? 0}</span>
             </div>
           </div>
         </section>

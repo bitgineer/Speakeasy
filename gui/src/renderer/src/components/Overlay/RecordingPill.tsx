@@ -19,7 +19,7 @@ export function RecordingPill({ durationMs, onStop, isLocked }: RecordingPillPro
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="flex items-center gap-4 bg-black/90 text-white px-4 py-2.5 rounded-full backdrop-blur-md shadow-2xl border border-red-500/20"
+      className="flex items-center gap-4 bg-black/90 text-white px-4 py-2.5 rounded-full backdrop-blur-md shadow-2xl outline-none ring-0 border-0"
     >
       <div className="relative flex items-center justify-center w-3 h-3">
         <motion.div

@@ -1,4 +1,3 @@
-import React from 'react'
 import { motion } from 'motion/react'
 import { Mic } from 'lucide-react'
 
@@ -14,7 +13,7 @@ export function IdlePill({ onClick }: IdlePillProps): JSX.Element {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="group flex items-center gap-2 bg-black/80 text-white p-2.5 rounded-full backdrop-blur-md shadow-xl border border-white/10 overflow-hidden hover:pr-5 transition-all duration-300"
+      className="group flex items-center gap-2 bg-black/80 text-white p-2.5 rounded-full backdrop-blur-md shadow-xl overflow-hidden hover:pr-5 transition-all duration-300 outline-none ring-0 border-0"
     >
       <div className="p-1 bg-white/10 rounded-full group-hover:bg-red-500/20 transition-colors">
         <Mic className="w-5 h-5 text-zinc-300 group-hover:text-red-500 transition-colors" />
