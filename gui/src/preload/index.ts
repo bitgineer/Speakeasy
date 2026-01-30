@@ -16,6 +16,8 @@ const api = {
   // Recording indicator
   showIndicator: () => ipcRenderer.invoke('indicator:show'),
   hideIndicator: () => ipcRenderer.invoke('indicator:hide'),
+  resizeIndicator: (width: number, height: number) => ipcRenderer.invoke('indicator:resize', width, height),
+  setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => ipcRenderer.invoke('indicator:setIgnoreMouseEvents', ignore, options),
   cancelRecording: () => ipcRenderer.invoke('recording:cancel'),
   
   // Backend
@@ -55,6 +57,12 @@ const api = {
     const handler = (_event: Electron.IpcRendererEvent, result: unknown) => callback(result)
     ipcRenderer.on('recording:complete', handler)
     return () => ipcRenderer.removeListener('recording:complete', handler)
+  },
+  
+  onRecordingProcessing: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('recording:processing', handler)
+    return () => ipcRenderer.removeListener('recording:processing', handler)
   },
   
   onRecordingError: (callback: (error: string) => void) => {

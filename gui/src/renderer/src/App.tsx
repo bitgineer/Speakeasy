@@ -131,7 +131,7 @@ function MainLayout(): JSX.Element {
       <Sidebar />
       
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-h-0 overflow-auto">
         <Suspense fallback={<LoadingSpinner />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -186,6 +186,8 @@ declare global {
       hideWindow: () => Promise<void>
       showIndicator: () => Promise<void>
       hideIndicator: () => Promise<void>
+      resizeIndicator: (width: number, height: number) => Promise<void>
+      setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => Promise<void>
       getBackendStatus: () => Promise<{ running: boolean; port: number }>
       getBackendPort: () => Promise<number>
       registerHotkey: (hotkey: string, mode?: string) => Promise<boolean>
@@ -197,6 +199,7 @@ declare global {
       showMessage: (options: Electron.MessageBoxOptions) => Promise<Electron.MessageBoxReturnValue>
       onNavigate: (callback: (path: string) => void) => () => void
       onRecordingStart: (callback: () => void) => () => void
+      onRecordingProcessing: (callback: () => void) => () => void
       onRecordingComplete: (callback: (result: unknown) => void) => () => void
       onRecordingError: (callback: (error: string) => void) => () => void
     }
