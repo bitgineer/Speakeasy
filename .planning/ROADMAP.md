@@ -70,13 +70,26 @@ Center the overlay to the user's center of the screen on the X axis. The overlay
 
 **Goal:** Fix batch transcription attribute error and implement UI status feedback.
 **Depends on:** Phase 3.3
-**Status:** planned
+**Status:** complete
 **Plans:** 2 plans
+**Completed:** Fri Jan 30 2026
 
 Plans:
-- [ ] 03.4-01-PLAN.md — Backend Fix & Retry Logic
-- [ ] 03.4-02-PLAN.md — UI Error Feedback Improvements
+- [x] 03.4-01-PLAN.md — Backend Fix & Retry Logic
+- [x] 03.4-02-PLAN.md — UI Error Feedback Improvements
 
 **Details:**
 - Fix Backend: `TranscriberService` object has no attribute `transcribe_file` error.
 - Fix Frontend: User is unaware of failure status; add visual indication of batch progress/errors.
+
+### Phase 03.5: Stabilize Batch Transcription (INSERTED)
+
+**Goal:** Fix CUDA illegal memory access errors and ensure robust error recovery during batch processing.
+**Depends on:** Phase 3.4
+**Status:** planned
+**Plans:** 0 plans
+
+**Details:**
+- Investigate and fix `CUDA error: an illegal memory access was encountered` during batch transcription.
+- Ensure the application handles CUDA errors gracefully (e.g., re-initializing the model or falling back to CPU) without crashing the entire batch.
+- Fix "State change callback error: no running event loop" log spam.
