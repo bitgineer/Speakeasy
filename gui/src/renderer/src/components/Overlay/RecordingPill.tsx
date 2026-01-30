@@ -1,13 +1,13 @@
-import React from 'react'
 import { motion } from 'motion/react'
-import { Square } from 'lucide-react'
+import { Square, Lock } from 'lucide-react'
 
 interface RecordingPillProps {
   durationMs: number
   onStop: () => void
+  isLocked?: boolean
 }
 
-export function RecordingPill({ durationMs, onStop }: RecordingPillProps): JSX.Element {
+export function RecordingPill({ durationMs, onStop, isLocked }: RecordingPillProps): JSX.Element {
   const seconds = Math.floor(durationMs / 1000)
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
@@ -29,6 +29,17 @@ export function RecordingPill({ durationMs, onStop }: RecordingPillProps): JSX.E
         />
         <div className="relative w-2.5 h-2.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
       </div>
+
+      {isLocked && (
+        <motion.div
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          className="-ml-1"
+        >
+          <Lock className="w-4 h-4 text-red-400" />
+        </motion.div>
+      )}
 
       <span className="font-mono text-lg font-medium tracking-wide min-w-[60px] text-center">
         {time}
