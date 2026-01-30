@@ -453,6 +453,59 @@ class TranscriberService:
             model_used=self._model.model_name if self._model else None,
         )
 
+    def transcribe_file(
+        self,
+        file_path: str,
+        language: Optional[str] = None,
+        progress_callback: Optional[TranscriptionProgressCallback] = None,
+    ) -> TranscriptionResult:
+        """
+        Transcribe an audio file.
+
+        Args:
+            file_path: Path to the audio file
+            language: Language code or 'auto'
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            TranscriptionResult with transcribed text
+        """
+        if not self.is_model_loaded:
+            raise RuntimeError("No model loaded")
+
+        try:
+            # Use faster_whisper's robust audio decoding (handles ffmpeg, resampling to 16k)
+            from faster_whisper.audio import decode_audio
+
+            audio_data = decode_audio(file_path, sampling_rate=self.SAMPLE_RATE)
+        except ImportError:
+            # Fallback if faster_whisper is not importable (should be rare in prod)
+            logger.warning("faster_whisper not found, falling back to soundfile")
+            import soundfile as sf
+            import scipy.signal
+
+            audio, sr = sf.read(file_path, dtype="float32")
+            if len(audio.shape) > 1:
+                audio = audio.mean(axis=1)
+
+            if sr != self.SAMPLE_RATE:
+                # Resample using scipy
+                number_of_samples = round(len(audio) * float(self.SAMPLE_RATE) / sr)
+                audio_data = scipy.signal.resample(audio, number_of_samples)
+            else:
+                audio_data = audio
+
+        except Exception as e:
+            logger.error(f"Error reading audio file {file_path}: {e}")
+            raise
+
+        return self.transcribe(
+            audio_data=audio_data,
+            sample_rate=self.SAMPLE_RATE,
+            language=language,
+            progress_callback=progress_callback,
+        )
+
     def stop_and_transcribe(
         self,
         language: Optional[str] = None,
