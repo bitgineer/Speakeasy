@@ -71,7 +71,11 @@ Center the overlay to the user's center of the screen on the X axis. The overlay
 **Goal:** Fix batch transcription attribute error and implement UI status feedback.
 **Depends on:** Phase 3.3
 **Status:** planned
-**Plans:** 0 plans
+**Plans:** 2 plans
+
+Plans:
+- [ ] 03.4-01-PLAN.md — Backend Fix & Retry Logic
+- [ ] 03.4-02-PLAN.md — UI Error Feedback Improvements
 
 **Details:**
 - Fix Backend: `TranscriberService` object has no attribute `transcribe_file` error.
