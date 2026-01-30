@@ -42,10 +42,25 @@ Address the recording Locked: (Long press) there is no UI indication that we hav
 
 **Goal:** Remove the background from the recording overlay to allow true transparency.
 **Depends on:** Phase 3
+**Status:** complete
 **Plans:** 1 plans
+**Completed:** Fri Jan 30 2026
 
 Plans:
-- [ ] 03.2-01-PLAN.md — CSS Architecture Refactor
+- [x] 03.2-01-PLAN.md — CSS Architecture Refactor
 
 **Details:**
 Refactor CSS to scope background styles to layout components instead of global body tags.
+
+### Phase 03.3: Center Overlay Positioning (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Depends on:** Phase 3.2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 03.3 to break down)
+
+**Details:**
+Center the overlay to the user's center of the screen on the X axis. The overlay follows the mouse across screen but in the same position (height a few pixels above taskbar).
+
