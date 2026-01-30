@@ -203,16 +203,23 @@ class GrammarProcessor:
 
     def __init__(
         self,
-        model_name: str = "grammarly/coedit-base",
+        model_name: Optional[str] = None,
         device: str = "auto",
     ):
         """
         Initialize the grammar processor.
 
         Args:
-            model_name: HuggingFace model identifier
+            model_name: HuggingFace model identifier. If None, uses default from GRAMMAR_MODELS.
             device: Device to use ('auto', 'cuda', or 'cpu')
         """
+        if model_name is None:
+            # Import here to avoid circular dependency issues if moved,
+            # though it's in the same file.
+            # Actually, get_default_grammar_model is defined below, so we can't call it easily?
+            # It's a module level function, so inside method it's fine.
+            model_name = get_default_grammar_model()
+
         self.model_name = model_name
         self.device = device
         self._model = None
