@@ -400,6 +400,7 @@ class GrammarProcessor:
     def correct(
         self,
         text: str,
+        task: str = "fix",
         max_length: int = 512,
         num_beams: int = 1,
     ) -> str:
@@ -411,6 +412,7 @@ class GrammarProcessor:
 
         Args:
             text: Input text to correct
+            task: Task to perform ("fix", "coherence", etc.)
             max_length: Maximum output length per sentence
             num_beams: Number of beams for beam search (1 = greedy, faster)
 
@@ -428,9 +430,18 @@ class GrammarProcessor:
                 logger.warning(f"Failed to load grammar model, using original text: {e}")
                 return text
 
-        # Get model info for prompt prefix
+        # Get model info for prompt template
         model_info = self._get_model_info()
-        prompt_prefix = model_info.prompt_prefix if model_info else ""
+        template = "{text}"
+
+        if model_info:
+            if task in model_info.supported_tasks:
+                template = model_info.supported_tasks[task]
+            else:
+                logger.warning(
+                    f"Task '{task}' not supported by model '{self.model_name}', falling back to default"
+                )
+                template = model_info.prompt_template
 
         # Split into sentences
         sentences = self._split_into_sentences(text)
@@ -441,7 +452,7 @@ class GrammarProcessor:
 
         try:
             # Prepare batch inputs
-            input_texts = [f"{prompt_prefix}{s}" if prompt_prefix else s for s in sentences]
+            input_texts = [template.format(text=s) for s in sentences]
 
             # Tokenize batch
             inputs = self._tokenizer(
