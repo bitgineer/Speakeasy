@@ -47,32 +47,7 @@ export default function RecordingIndicator(): JSX.Element | null {
     updateWindowSize()
   }, [status, duration, updateWindowSize])
   
-  // Force transparent background on mount
-  useEffect(() => {
-    // Save original styles
-    const originalHtmlBg = document.documentElement.style.background
-    const originalBodyBg = document.body.style.background
-    const originalBodyOverflow = document.body.style.overflow
-    
-    // Apply transparent styles with !important to override Tailwind classes
-    document.documentElement.style.setProperty('background', 'transparent', 'important')
-    document.body.style.setProperty('background', 'transparent', 'important')
-    document.body.style.setProperty('overflow', 'hidden', 'important')
-    
-    // Initial settings fetch
-    fetchSettings()
-    
-    // Poll settings to react to changes (simple sync)
-    const interval = setInterval(() => fetchSettings(), 2000)
-    
-    return () => {
-      // Restore styles on unmount
-      document.documentElement.style.background = originalHtmlBg
-      document.body.style.background = originalBodyBg
-      document.body.style.overflow = originalBodyOverflow
-      clearInterval(interval)
-    }
-  }, [fetchSettings])
+
   
   // Listen for recording events
   useEffect(() => {
