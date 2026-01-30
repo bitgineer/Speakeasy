@@ -14,6 +14,8 @@ import asyncio
 import logging
 import threading
 import time
+import gc
+import torch
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional
@@ -95,6 +97,12 @@ class TranscriberService:
         self._device_name: Optional[str] = None
         self._device_id: Optional[int] = None
 
+        # Asyncio loop for thread-safe callbacks
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
+
     @property
     def state(self) -> TranscriberState:
         """Get current state."""
@@ -105,7 +113,11 @@ class TranscriberService:
         self._state = state
         if self._on_state_change:
             try:
-                self._on_state_change(state)
+                # Thread-safe callback dispatch
+                if self._loop and self._loop.is_running():
+                    self._loop.call_soon_threadsafe(self._on_state_change, state)
+                else:
+                    self._on_state_change(state)
             except Exception as e:
                 logger.error(f"State change callback error: {e}")
 
@@ -139,6 +151,15 @@ class TranscriberService:
                 that receives (downloaded_bytes, total_bytes) and returns
                 True to continue or False to cancel
         """
+        # Save args for reload
+        self._last_load_args = {
+            "model_type": model_type,
+            "model_name": model_name,
+            "device": device,
+            "compute_type": compute_type,
+            "progress_callback": progress_callback,
+        }
+
         self._set_state(TranscriberState.LOADING)
 
         try:
@@ -162,6 +183,25 @@ class TranscriberService:
             logger.error(f"Failed to load model: {e}")
             self._set_state(TranscriberState.ERROR)
             raise
+
+    def reload_model(self) -> None:
+        """
+        Reload the current model to recover from errors (e.g. CUDA).
+        """
+        if not hasattr(self, "_last_load_args") or not self._last_load_args:
+            logger.warning("Cannot reload model: no model loaded yet")
+            return
+
+        logger.info("Reloading model...")
+        self.unload_model()
+
+        # Force cleanup
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        # Re-load
+        self.load_model(**self._last_load_args)
 
     def unload_model(self) -> None:
         """Unload the current model."""
