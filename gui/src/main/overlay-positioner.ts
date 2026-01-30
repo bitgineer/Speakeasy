@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, Rectangle } from 'electron'
+import { BrowserWindow, screen } from 'electron'
 
 let trackingInterval: NodeJS.Timeout | null = null
 let currentDisplayId: number | null = null
@@ -55,7 +55,7 @@ export function updatePosition(window: BrowserWindow, width?: number, height?: n
   
   const targetWidth = width || bounds.width
   const targetHeight = height || bounds.height
-  const bottomMargin = 50
+  const bottomMargin = 20
 
   const x = Math.round(workArea.x + (workArea.width / 2) - (targetWidth / 2))
   const y = Math.round(workArea.y + workArea.height - targetHeight - bottomMargin)
