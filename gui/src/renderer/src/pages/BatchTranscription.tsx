@@ -349,7 +349,7 @@ export default function BatchTranscription(): JSX.Element {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-[var(--color-text-secondary)] truncate">{file.filename}</p>
                       {file.error && (
-                        <p className="text-xs text-[var(--color-error)] truncate">{file.error}</p>
+                        <p className="text-xs text-[var(--color-error)] mt-0.5 break-words" title={file.error}>{file.error}</p>
                       )}
                     </div>
                   </div>
