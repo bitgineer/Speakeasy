@@ -8,7 +8,7 @@ license = { text = "MIT" }
 authors = [
     { name = "SpeakEasy Contributors" }
 ]
-keywords = ["speech-to-text", "transcription", "asr", "whisper", "parakeet", "voice"]
+keywords = ["speech-to-text", "transcription", "asr", "whisper", "parakeet", "voice", "vibe-coding", "voice-coding", "local-ai", "privacy", "productivity", "offline"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",

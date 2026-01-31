@@ -4,6 +4,18 @@
   "description": "Open Source Voice Transcription - Desktop App",
   "main": "./out/main/index.js",
   "author": "SpeakEasy Contributors",
+  "keywords": [
+    "electron",
+    "react",
+    "speech-to-text",
+    "transcription",
+    "voice-coding",
+    "vibe-coding",
+    "local-ai",
+    "privacy",
+    "whisper",
+    "nemo"
+  ],
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
