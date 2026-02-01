@@ -156,7 +156,7 @@ export default function AppearanceSettings(): JSX.Element {
           <Palette className="w-6 h-6 text-[var(--color-accent-primary)]" />
           <h1 className="text-2xl font-bold">Appearance</h1>
         </div>
-        <SaveStatusIndicator status={saveStatus} onSave={saveSettings} />
+        <SaveStatusIndicator status={saveStatus} onSave={handleSave} />
       </div>
 
       <div className="space-y-6 flex-1 flex flex-col">
