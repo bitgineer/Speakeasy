@@ -20,13 +20,13 @@
 /* Custom base styles */
 @layer base {
   html {
-    @apply scroll-smooth;
+    @apply scroll-smooth overflow-hidden;
     /* Fluid type scale: 14px on small screens, 16px on large screens */
     font-size: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
   }
 
   body {
-    @apply text-[var(--color-text-primary)];
+    @apply text-[var(--color-text-primary)] h-full overflow-hidden;
     font-family: var(--font-family-geist);
     font-optical-sizing: auto;
     font-variant-settings: normal;
