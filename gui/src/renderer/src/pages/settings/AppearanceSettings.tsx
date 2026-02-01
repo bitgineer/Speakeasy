@@ -149,45 +149,15 @@ export default function AppearanceSettings(): JSX.Element {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Appearance</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">Customize the look and feel of the application</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <SaveStatusIndicator status={saveStatus} />
-          <button
-            onClick={handleSave}
-            disabled={isSaving || saveStatus === 'idle' || saveStatus === 'saved'}
-            className="btn-primary"
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
+    <div className="p-6 max-w-2xl min-h-full flex flex-col">
+      <div className="flex items-center gap-3 mb-6">
+        <Palette className="w-6 h-6 text-[var(--color-accent-primary)]" />
+        <h1 className="text-2xl font-bold">Appearance</h1>
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="mb-6 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-error)] text-sm">{error}</span>
-          <button onClick={clearError} className="text-[var(--color-error)] hover:opacity-80">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      <div className="space-y-6">
-        {/* Theme Selection */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Theme</h2>
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            Choose a color theme for the application. Changes are previewed immediately.
-          </p>
-          
+      <div className="space-y-6 flex-1 flex flex-col">
+        <section className="card p-4 flex-1">
+          <h2 className="text-lg font-semibold mb-4">Theme</h2>
           <div className="grid grid-cols-1 gap-3">
             {themes.map((theme) => (
               <label
