@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
+import { Palette } from 'lucide-react'
 import { useSettingsStore } from '../../store'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
