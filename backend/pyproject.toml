@@ -3,12 +3,7 @@ name = "speakeasy"
 version = "0.1.0"
 description = "Open Source Voice Transcription with GUI - Backend Service"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
-license = { text = "MIT" }
-authors = [
-    { name = "SpeakEasy Contributors" }
-]
-keywords = ["speech-to-text", "transcription", "asr", "whisper", "parakeet", "voice", "vibe-coding", "voice-coding", "local-ai", "privacy", "productivity", "offline"]
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",
@@ -17,7 +12,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
 ]
 

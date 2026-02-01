@@ -68,15 +68,20 @@ Check our [Releases](https://github.com/yourusername/speakeasy/releases) page fo
 ### Option 2: Run from Source
 
 **Prerequisites:**
-- Python 3.10+
+- Python 3.10 - 3.12 (Python 3.13+ is not yet supported)
 - Node.js 18+
 - [UV](https://github.com/astral-sh/uv) (Recommended)
 - FFmpeg
 
+**Automatic Setup (Windows):**
+Simply run `install.bat` in the root directory. It will install Python 3.12 and all dependencies automatically.
+
+**Manual Setup:**
+
 **1. Setup Backend**
 ```bash
 cd backend
-uv venv
+uv venv --python 3.12
 uv pip install -e .
 ```
 

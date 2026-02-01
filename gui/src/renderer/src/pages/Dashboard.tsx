@@ -282,9 +282,10 @@ export default function Dashboard(): JSX.Element {
                     paddingBottom: '0.75rem', // Equivalent to space-y-3 gap
                   }}
                 >
-                  <HistoryItem 
-                    item={items[virtualItem.index]} 
+                  <HistoryItem
+                    item={items[virtualItem.index]}
                     onDelete={handleDelete}
+                    index={virtualItem.index}
                   />
                 </div>
               ))}

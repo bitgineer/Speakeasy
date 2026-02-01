@@ -35,17 +35,27 @@ export default function RecordingIndicator(): JSX.Element | null {
   const updateWindowSize = useCallback(() => {
     if (contentRef.current) {
       const rect = contentRef.current.getBoundingClientRect()
-      // Add buffer for shadows (shadow-xl needs space)
-      const width = Math.ceil(rect.width) + 40
-      const height = Math.ceil(rect.height) + 40
+      // Small buffer for hover zone (OverlayContainer has p-2)
+      const width = Math.ceil(rect.width) + 8
+      const height = Math.ceil(rect.height) + 8
       window.api?.resizeIndicator?.(width, height)
     }
   }, [])
-  
-  // Update window size when content changes
+
+  // Use ResizeObserver to catch dynamic size changes (hover, animations, etc.)
   useLayoutEffect(() => {
-    updateWindowSize()
-  }, [status, duration, updateWindowSize])
+    if (!contentRef.current) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateWindowSize()
+    })
+
+    resizeObserver.observe(contentRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [updateWindowSize])
   
 
   
@@ -123,26 +133,24 @@ export default function RecordingIndicator(): JSX.Element | null {
 
   return (
     <div className="flex items-center justify-center w-full h-full overflow-hidden">
-      {/* Wrapper to capture dimensions including shadows */}
-      <div ref={contentRef} className="p-4">
-        <OverlayContainer className="flex items-center justify-center">
-          {status === 'idle' && (
-            <IdlePill onClick={handleStart} />
-          )}
-          
-          {(status === 'recording' || status === 'locked') && (
-            <RecordingPill 
-              durationMs={duration} 
-              onStop={handleStop} 
-              isLocked={status === 'locked'}
-            />
-          )}
-          
-          {status === 'transcribing' && (
-            <TranscribingLine />
-          )}
-        </OverlayContainer>
-      </div>
+      {/* Just the pill button - no background layers */}
+      <OverlayContainer ref={contentRef} className="flex items-center justify-center">
+        {status === 'idle' && (
+          <IdlePill onClick={handleStart} />
+        )}
+
+        {(status === 'recording' || status === 'locked') && (
+          <RecordingPill
+            durationMs={duration}
+            onStop={handleStop}
+            isLocked={status === 'locked'}
+          />
+        )}
+
+        {status === 'transcribing' && (
+          <TranscribingLine />
+        )}
+      </OverlayContainer>
     </div>
   )
 }

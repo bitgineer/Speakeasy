@@ -68,11 +68,10 @@ export function createMainWindow(): BrowserWindow {
 export function createRecordingIndicator(): BrowserWindow {
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
 
-  // Size for the new minimal pill UI (horizontal)
-  // Match visible pill dimensions (h-12 = 48px) to avoid invisible hit area
-  // Update: Increased for overlay expansion and shadow effects
-  const indicatorWidth = 800
-  const indicatorHeight = 200
+  // Size for the minimal pill UI - will be dynamically resized
+  // Start with a reasonable small size, content will resize to fit
+  const indicatorWidth = 300
+  const indicatorHeight = 80
   const bottomMargin = 50 // Distance from bottom of work area
 
   recordingIndicator = new BrowserWindow({
@@ -116,7 +115,7 @@ export function createRecordingIndicator(): BrowserWindow {
     recordingIndicator.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/recording-indicator`)
   } else {
     recordingIndicator.loadFile(join(__dirname, '../renderer/index.html'), {
-      hash: '/recording-indicator'
+      hash: '#/recording-indicator'
     })
   }
 

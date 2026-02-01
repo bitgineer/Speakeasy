@@ -69,12 +69,12 @@ export default function ModelSettings(): JSX.Element {
     }
   }, [localSettings, saveStatus, originalSettings])
 
-  // Fetch settings and available models on mount
-  // Only downloaded models (cache info) requires manual sync
+  // Fetch settings, available models, and cached models on mount
   useEffect(() => {
     fetchSettings()
     fetchModels() // Auto-fetch available models for dropdowns
-  }, [fetchSettings, fetchModels])
+    fetchCacheInfo() // Auto-fetch cached models for display
+  }, [fetchSettings, fetchModels, fetchCacheInfo])
 
   useEffect(() => {
     if (isDownloading) {

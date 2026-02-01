@@ -11,6 +11,7 @@ import ExportDialog from './ExportDialog'
 interface HistoryItemProps {
   item: TranscriptionRecord
   onDelete: (id: string) => Promise<void>
+  index?: number
 }
 
 function formatDuration(ms: number): string {
@@ -53,27 +54,25 @@ function formatDate(dateString: string): string {
   }
 }
 
-function HistoryItem({ item, onDelete }: HistoryItemProps): JSX.Element {
+function HistoryItem({ item, onDelete, index }: HistoryItemProps): JSX.Element {
   const [copied, setCopied] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
   const [showOriginal, setShowOriginal] = useState(false)
-  const [isFlashing, setIsFlashing] = useState(false)
-  const prevTextRef = useRef(item.text)
-  
-  // Check if this item was AI-enhanced
-  const isAiEnhanced = item.is_ai_enhanced || (item.original_text && item.original_text !== item.text)
-  
-  // Flash effect when text updates (e.g. from AI enhancement)
-  useEffect(() => {
-    if (prevTextRef.current !== item.text) {
-      setIsFlashing(true)
-      const timer = setTimeout(() => setIsFlashing(false), 2000)
-      prevTextRef.current = item.text
-      return () => clearTimeout(timer)
-    }
-  }, [item.text])
+const [isFlashing, setIsFlashing] = useState(false)
+const prevTextRef = useRef(item.text)
+
+// Flash effect only for the newest transcription (first item) when text updates
+useEffect(() => {
+  // Only flash if this is the newest item (index 0) and text actually changed
+  if (index === 0 && prevTextRef.current !== item.text) {
+    setIsFlashing(true)
+    const timer = setTimeout(() => setIsFlashing(false), 2000)
+    prevTextRef.current = item.text
+    return () => clearTimeout(timer)
+  }
+}, [item.text, index])
   
   // Get the text to display based on toggle state
   const displayText = showOriginal && item.original_text ? item.original_text : item.text
@@ -125,7 +124,7 @@ function HistoryItem({ item, onDelete }: HistoryItemProps): JSX.Element {
               <span className="badge-blue">{item.language.toUpperCase()}</span>
             </>
           )}
-          {isAiEnhanced && (
+          {item.is_ai_enhanced && (
             <>
               <span className="text-[var(--color-border-strong)]">|</span>
               <button

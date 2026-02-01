@@ -370,6 +370,7 @@ class TranscriberService:
         sample_rate: int = 16000,
         language: Optional[str] = None,
         progress_callback: Optional[TranscriptionProgressCallback] = None,
+        instruction: Optional[str] = None,
     ) -> TranscriptionResult:
         """
         Transcribe audio data with optional chunked processing for long recordings.
@@ -380,6 +381,7 @@ class TranscriberService:
             language: Language code or 'auto'
             progress_callback: Optional callback for progress updates during long transcriptions.
                 Receives (current_chunk, total_chunks, chunk_text) for each completed chunk.
+            instruction: Optional instruction or system prompt (e.g. for grammar correction)
 
         Returns:
             TranscriptionResult with transcribed text
@@ -402,6 +404,7 @@ class TranscriberService:
                     sample_rate=sample_rate,
                     language=language,
                     progress_callback=progress_callback,
+                    instruction=instruction,
                 )
             else:
                 # Standard single-pass transcription
@@ -409,6 +412,7 @@ class TranscriberService:
                     audio_data=audio_data,
                     sample_rate=sample_rate,
                     language=language,
+                    instruction=instruction,
                 )
                 # Report completion for single-pass
                 if progress_callback:
@@ -427,6 +431,7 @@ class TranscriberService:
         sample_rate: int,
         language: Optional[str],
         progress_callback: Optional[TranscriptionProgressCallback],
+        instruction: Optional[str] = None,
     ) -> TranscriptionResult:
         """
         Transcribe long audio in chunks with progress reporting.
@@ -436,6 +441,7 @@ class TranscriberService:
             sample_rate: Sample rate
             language: Language code
             progress_callback: Progress callback
+            instruction: Optional instruction
 
         Returns:
             Combined TranscriptionResult
@@ -470,6 +476,7 @@ class TranscriberService:
                 audio_data=chunk_data,
                 sample_rate=sample_rate,
                 language=language,
+                instruction=instruction,
             )
 
             chunk_text = chunk_result.text.strip()
@@ -498,6 +505,7 @@ class TranscriberService:
         file_path: str,
         language: Optional[str] = None,
         progress_callback: Optional[TranscriptionProgressCallback] = None,
+        instruction: Optional[str] = None,
     ) -> TranscriptionResult:
         """
         Transcribe an audio file.
@@ -506,6 +514,7 @@ class TranscriberService:
             file_path: Path to the audio file
             language: Language code or 'auto'
             progress_callback: Optional callback for progress updates
+            instruction: Optional instruction
 
         Returns:
             TranscriptionResult with transcribed text
@@ -544,12 +553,14 @@ class TranscriberService:
             sample_rate=self.SAMPLE_RATE,
             language=language,
             progress_callback=progress_callback,
+            instruction=instruction,
         )
 
     def stop_and_transcribe(
         self,
         language: Optional[str] = None,
         progress_callback: Optional[TranscriptionProgressCallback] = None,
+        instruction: Optional[str] = None,
     ) -> TranscriptionResult:
         """
         Stop recording and transcribe immediately.
@@ -560,6 +571,7 @@ class TranscriberService:
             language: Language code or 'auto'
             progress_callback: Optional callback for progress updates during long transcriptions.
                 Receives (current_chunk, total_chunks, chunk_text) for each completed chunk.
+            instruction: Optional instruction
 
         Returns:
             TranscriptionResult with transcribed text
@@ -575,6 +587,7 @@ class TranscriberService:
             sample_rate=recording.sample_rate,
             language=language,
             progress_callback=progress_callback,
+            instruction=instruction,
         )
 
         # Replace processing time with actual audio duration

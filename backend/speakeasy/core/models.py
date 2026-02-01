@@ -396,9 +396,10 @@ class ModelWrapper:
         )
         from pydantic_extra_types.language_code import LanguageAlpha2
 
-        # Create extended TranscriptionRequest with optional language
+        # Create extended TranscriptionRequest with optional language and prompt
         class TranscriptionRequest(_TR):
             language: Optional[LanguageAlpha2] = None
+            prompt: Optional[str] = None
 
         self._transcription_request_cls = TranscriptionRequest
         self._processor = AutoProcessor.from_pretrained(self.model_name)
@@ -434,6 +435,7 @@ class ModelWrapper:
         audio_data: "NDArray[np.float32]",
         sample_rate: int = 16000,
         language: Optional[str] = None,
+        instruction: Optional[str] = None,
     ) -> TranscriptionResult:
         """
         Transcribe audio data and return result.
@@ -442,6 +444,7 @@ class ModelWrapper:
             audio_data: Numpy array of audio samples (float32, mono)
             sample_rate: Sample rate in Hz (default 16000)
             language: Language code or 'auto' for auto-detection
+            instruction: Optional instruction or system prompt
 
         Returns:
             TranscriptionResult with transcribed text and metadata
@@ -461,7 +464,7 @@ class ModelWrapper:
             elif self.model_type == ModelType.CANARY:
                 text = self._transcribe_canary(audio_data, sample_rate, language)
             elif self.model_type == ModelType.VOXTRAL:
-                text = self._transcribe_voxtral(audio_data, sample_rate, language)
+                text = self._transcribe_voxtral(audio_data, sample_rate, language, instruction)
             else:
                 raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -568,7 +571,7 @@ class ModelWrapper:
             safe_delete(temp_manifest_path)
 
     def _transcribe_voxtral(
-        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str]
+        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str], instruction: Optional[str] = None
     ) -> str:
         """Transcribe using Mistral Voxtral with chunking for long audio."""
         MAX_DURATION_SECONDS = 30
@@ -588,17 +591,19 @@ class ModelWrapper:
             full_text = ""
             for i, chunk in enumerate(chunks):
                 try:
-                    result = self._transcribe_voxtral_chunk(chunk, sample_rate, language)
+                    # Pass instruction to each chunk? Or maybe only the first?
+                    # For consistency, passing to all chunks ensures style/grammar correction applies to all.
+                    result = self._transcribe_voxtral_chunk(chunk, sample_rate, language, instruction)
                     if result.strip():
                         full_text += result + " "
                 except Exception as e:
                     logger.error(f"Failed to transcribe chunk {i}: {e}")
             return full_text.strip()
         else:
-            return self._transcribe_voxtral_chunk(audio_data, sample_rate, language)
+            return self._transcribe_voxtral_chunk(audio_data, sample_rate, language, instruction)
 
     def _transcribe_voxtral_chunk(
-        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str]
+        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str], instruction: Optional[str] = None
     ) -> str:
         """Transcribe a single chunk using Voxtral."""
         import soundfile as sf
@@ -625,6 +630,9 @@ class ModelWrapper:
                 }
                 if language and language != "auto":
                     openai_req["language"] = language
+                
+                if instruction:
+                    openai_req["prompt"] = instruction
 
                 tr = self._transcription_request_cls.from_openai(openai_req)
                 tok = self._processor.tokenizer.tokenizer.encode_transcription(tr)

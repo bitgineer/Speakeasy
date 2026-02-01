@@ -1,5 +1,5 @@
 import { Tray, Menu, nativeImage, app } from 'electron'
-import { showMainWindow } from './windows'
+import { showMainWindow, getMainWindow } from './windows'
 
 let tray: Tray | null = null
 let isRecording = false
@@ -65,8 +65,7 @@ function buildContextMenu(): Menu {
       label: 'Settings',
       click: () => {
         showMainWindow()
-        const { BrowserWindow } = require('electron')
-        const mainWindow = BrowserWindow.getAllWindows()[0]
+        const mainWindow = getMainWindow()
         if (mainWindow) {
           mainWindow.webContents.send('navigate', '/settings')
         }
