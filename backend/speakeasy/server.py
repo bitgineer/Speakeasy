@@ -69,6 +69,8 @@ class TranscribeStartResponse(BaseModel):
 class TranscribeStopRequest(BaseModel):
     auto_paste: bool = True
     language: Optional[str] = Field(None, max_length=10)
+    instruction: Optional[str] = Field(None, max_length=1000)
+    grammar_correction: bool = False
 
 
 class TranscribeStopResponse(BaseModel):
@@ -93,10 +95,17 @@ class SettingsUpdateRequest(BaseModel):
     language: Optional[str] = Field(None, max_length=10)
     device_name: Optional[str] = Field(None, max_length=200)
     hotkey: Optional[str] = Field(None, max_length=50)
+    hotkey_mode: Optional[str] = Field(None, pattern=r"^(toggle|push-to-talk)$")
     auto_paste: Optional[bool] = None
     show_recording_indicator: Optional[bool] = None
+    always_show_indicator: Optional[bool] = None
+    theme: Optional[str] = Field(None, max_length=50)
     enable_text_cleanup: Optional[bool] = None
     custom_filler_words: Optional[list[str]] = Field(None, max_length=100)
+    enable_grammar_correction: Optional[bool] = None
+    grammar_model: Optional[str] = Field(None, max_length=200)
+    grammar_device: Optional[str] = Field(None, pattern=r"^(cuda|cpu|auto)$")
+    server_port: Optional[int] = Field(None, ge=1024, le=65535)
 
     @field_validator("hotkey")
     @classmethod
@@ -409,6 +418,12 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
         settings = settings_service.get() if settings_service else None
         language = body.language or (settings.language if settings else "auto")
 
+        # Construct instruction if grammar correction is requested
+        instruction = body.instruction
+        if body.grammar_correction and not instruction:
+            # Default instruction for grammar correction if not provided
+            instruction = "Transcribe the audio exactly as spoken, but correct any grammatical errors. Maintain the original language."
+
         # Create progress callback for long transcriptions
         def on_transcription_progress(
             current_chunk: int, total_chunks: int, chunk_text: str
@@ -430,6 +445,7 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
         result: TranscriptionResult = transcriber.stop_and_transcribe(
             language=language,
             progress_callback=on_transcription_progress,
+            instruction=instruction,
         )
 
         # Apply text cleanup if enabled
