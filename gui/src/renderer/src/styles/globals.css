@@ -58,20 +58,24 @@
   
   /* Scrollbar styling */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
   }
   
   ::-webkit-scrollbar-track {
-    @apply bg-[var(--color-bg-secondary)];
+    background-color: transparent;
+    border-radius: 9999px;
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-[var(--color-border-strong)] rounded;
+    background-color: var(--color-border-strong);
+    border-radius: 9999px;
+    border: 2px solid var(--color-bg-primary); /* Creates padding effect against track */
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-[var(--color-text-muted)];
+    background-color: var(--color-text-muted);
   }
   
   /* Focus styles */
