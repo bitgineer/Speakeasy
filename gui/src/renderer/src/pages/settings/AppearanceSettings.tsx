@@ -151,9 +151,12 @@ export default function AppearanceSettings(): JSX.Element {
 
   return (
     <div className="p-6 max-w-2xl min-h-full flex flex-col">
-      <div className="flex items-center gap-3 mb-6">
-        <Palette className="w-6 h-6 text-[var(--color-accent-primary)]" />
-        <h1 className="text-2xl font-bold">Appearance</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Palette className="w-6 h-6 text-[var(--color-accent-primary)]" />
+          <h1 className="text-2xl font-bold">Appearance</h1>
+        </div>
+        <SaveStatusIndicator status={saveStatus} onSave={saveSettings} />
       </div>
 
       <div className="space-y-6 flex-1 flex flex-col">

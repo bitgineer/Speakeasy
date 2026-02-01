@@ -374,9 +374,9 @@
 [data-theme="kanagawa"] {
   /* Background Colors */
   --color-bg-primary: #1f1f28;
-  --color-bg-secondary: #16161d;
-  --color-bg-tertiary: #2a2a37;
-  --color-bg-elevated: #363646;
+  --color-bg-secondary: #2a2a37; /* Lightened from #16161d for elevation */
+  --color-bg-tertiary: #363646;
+  --color-bg-elevated: #16161d;
 
   /* Text Colors */
   --color-text-primary: #dcd7ba;
@@ -432,9 +432,9 @@
 [data-theme="ayu"] {
   /* Background Colors */
   --color-bg-primary: #0b0e14;
-  --color-bg-secondary: #0d1017;
-  --color-bg-tertiary: #131721;
-  --color-bg-elevated: #1a1f29;
+  --color-bg-secondary: #131721; /* Lightened from #0d1017 for better contrast */
+  --color-bg-tertiary: #1a1f29;
+  --color-bg-elevated: #242936;
 
   /* Text Colors */
   --color-text-primary: #bfbdb6;
@@ -490,9 +490,9 @@
 [data-theme="one-dark"] {
   /* Background Colors */
   --color-bg-primary: #282c34;
-  --color-bg-secondary: #21252b;
-  --color-bg-tertiary: #2c323c;
-  --color-bg-elevated: #3a3f4b;
+  --color-bg-secondary: #2c313a; /* Lightened from #21252b to match elevation */
+  --color-bg-tertiary: #3a3f4b;
+  --color-bg-elevated: #21252b;
 
   /* Text Colors */
   --color-text-primary: #abb2bf;
