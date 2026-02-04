@@ -337,6 +337,23 @@ async def health_check():
     )
 
 
+@app.post("/api/transcribe/start", response_model=TranscribeStartResponse)
+async def transcribe_start():
+    """Start recording audio."""
+    if not transcriber:
+        raise HTTPException(status_code=503, detail="Transcriber not initialized")
+
+    try:
+        transcriber.start_recording()
+        return TranscribeStartResponse(status="started")
+    except RuntimeError as e:
+        # Handle "No model loaded" or other runtime errors
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to start recording: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/transcribe/stop", response_model=TranscribeStopResponse)
 @limiter.limit("10/minute")
 async def transcribe_stop(request: Request, body: TranscribeStopRequest):
@@ -1037,26 +1054,6 @@ async def models_unload():
 
     transcriber.unload_model()
     return {"status": "unloaded"}
-
-
-@app.get("/api/models/recommend")
-async def models_recommend(needs_translation: bool = False):
-    """Get model recommendation based on hardware."""
-    gpu_info = get_gpu_info()
-    vram_gb = gpu_info.get("vram_gb", 0)
-
-    model_type, model_name = recommend_model(vram_gb, needs_translation)
-
-    return {
-        "recommendation": {
-            "model_type": model_type,
-            "model_name": model_name,
-        },
-        "gpu": gpu_info,
-        "reason": f"Based on {vram_gb}GB VRAM"
-        if gpu_info["available"]
-        else "No GPU detected, using CPU model",
-    }
 
 
 # --- Model Download Progress ---
