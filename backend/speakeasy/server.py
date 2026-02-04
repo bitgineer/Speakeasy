@@ -313,6 +313,29 @@ app.add_middleware(
 )
 
 
+@app.get("/api/health", response_model=HealthResponse)
+async def health_check():
+    """Check backend health and status."""
+    model_loaded = False
+    model_name = None
+
+    if transcriber:
+        model_loaded = transcriber.is_model_loaded
+        if transcriber._model:
+            model_name = transcriber._model.model_name
+
+    gpu_info = get_gpu_info()
+
+    return HealthResponse(
+        status="ok",
+        state=transcriber.state.value if transcriber else "not_initialized",
+        model_loaded=model_loaded,
+        model_name=model_name,
+        gpu_available=gpu_info["available"],
+        gpu_name=gpu_info["name"],
+        gpu_vram_gb=gpu_info["vram_gb"],
+    )
+
 
 @app.post("/api/transcribe/stop", response_model=TranscribeStopResponse)
 @limiter.limit("10/minute")
