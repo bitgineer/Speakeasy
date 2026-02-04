@@ -5,6 +5,8 @@ echo ==========================================
 echo SpeakEasy Backend Reinstall
 echo ==========================================
 
+cd /d "%~dp0"
+
 echo [INFO] Attempting to close lingering processes...
 taskkill /F /IM uvicorn.exe >nul 2>&1
 taskkill /F /IM python.exe >nul 2>&1
