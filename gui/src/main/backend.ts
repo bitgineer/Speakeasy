@@ -45,18 +45,29 @@ function getPythonCommand(): { cmd: string, args: string[] } {
       console.log('[Backend] Using uv to run backend')
       return { cmd: 'uv', args: ['run', '-m', 'speakeasy', '--port', String(backendPort)] }
   }
+
+  // Check for venv in backend directory (standard install location)
+  const backendVenvPython = isWin
+    ? join(rootDir, 'backend', '.venv', 'Scripts', 'python.exe')
+    : join(rootDir, 'backend', '.venv', 'bin', 'python')
+
+  if (existsSync(backendVenvPython)) {
+    console.log(`[Backend] Using backend venv python: ${backendVenvPython}`)
+    return { cmd: backendVenvPython, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
+  }
     
-  const venvPython = isWin
+  // Check for venv in root directory (legacy/dev override)
+  const rootVenvPython = isWin
     ? join(rootDir, '.venv', 'Scripts', 'python.exe')
     : join(rootDir, '.venv', 'bin', 'python')
 
-  if (existsSync(venvPython)) {
-    console.log(`[Backend] Using venv python: ${venvPython}`)
-    return { cmd: venvPython, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
+  if (existsSync(rootVenvPython)) {
+    console.log(`[Backend] Using root venv python: ${rootVenvPython}`)
+    return { cmd: rootVenvPython, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
   }
   
   // Fallback to system python
-  console.log(`[Backend] Venv not found at ${venvPython}, using system python: ${pythonExec}`)
+  console.log(`[Backend] Venv not found at ${backendVenvPython} or ${rootVenvPython}, using system python: ${pythonExec}`)
   return { cmd: pythonExec, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
 }
 
