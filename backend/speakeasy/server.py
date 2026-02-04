@@ -195,16 +195,20 @@ async def lifespan(app: FastAPI):
     if settings.model_name:
         try:
             logger.info(f"Auto-loading model: {settings.model_type}/{settings.model_name}")
-            transcriber.load_model(
+            # Run in a separate thread to not block startup
+            import threading
+            threading.Thread(target=lambda: transcriber.load_model(
                 model_type=settings.model_type,
                 model_name=settings.model_name,
                 device=settings.device,
                 compute_type=settings.compute_type,
-            )
+            )).start()
         except Exception as e:
             logger.warning(f"Failed to auto-load model: {e}")
 
     logger.info("SpeakEasy backend started")
+    # Debug print to confirm server file version
+    print("DEBUG: SpeakEasy server.py loaded. Endpoints registered: /api/models/cache")
 
     yield
 
@@ -294,113 +298,20 @@ def validate_origin(origin: str, allowed_origins: list[str]) -> bool:
     # Check localhost with dynamic ports in development
     is_dev = os.environ.get("SPEAKEASY_ENV", "development").lower() == "development"
     if is_dev:
-        localhost_pattern = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
-        if re.match(localhost_pattern, origin):
+        if origin.startswith("http://localhost:") or origin.startswith("http://127.0.0.1:"):
             return True
 
     return False
 
 
-# Get configured allowed origins
-ALLOWED_ORIGINS = get_allowed_origins()
-
-# CORS middleware for Electron
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-
-@app.middleware("http")
-async def cors_origin_validation(request: Request, call_next):
-    """
-    Additional CORS origin validation middleware.
-
-    Validates Origin header against allowed list before processing request.
-    """
-    origin = request.headers.get("origin")
-
-    # Skip validation for requests without origin (same-origin, curl, etc.)
-    if origin is None:
-        return await call_next(request)
-
-    # Validate origin
-    if not validate_origin(origin, ALLOWED_ORIGINS):
-        logger.warning(f"Rejected request from unauthorized origin: {origin}")
-        return JSONResponse(
-            status_code=403,
-            content={"detail": "Origin not allowed"},
-        )
-
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def security_headers(request: Request, call_next):
-    """Add security headers to all responses and block TRACE method."""
-    if request.method == "TRACE":
-        return JSONResponse(
-            status_code=405,
-            content={"detail": "Method not allowed"},
-        )
-
-    response = await call_next(request)
-
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; "
-        "connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*"
-    )
-
-    return response
-
-
-# --- Health ---
-
-
-@app.get("/api/health", response_model=HealthResponse)
-async def health():
-    """Get service health and status."""
-    gpu_info = get_gpu_info()
-
-    return HealthResponse(
-        status="ok",
-        state=transcriber.state.value if transcriber else "not_initialized",
-        model_loaded=transcriber.is_model_loaded if transcriber else False,
-        model_name=transcriber._model.model_name if transcriber and transcriber._model else None,
-        gpu_available=gpu_info["available"],
-        gpu_name=gpu_info.get("name"),
-        gpu_vram_gb=gpu_info.get("vram_gb"),
-    )
-
-
-# --- Transcription ---
-
-
-@app.post("/api/transcribe/start", response_model=TranscribeStartResponse)
-@limiter.limit("10/minute")
-async def transcribe_start(request: Request):
-    """Start recording audio."""
-    if not transcriber:
-        raise HTTPException(status_code=503, detail="Transcriber not initialized")
-
-    if not transcriber.is_model_loaded:
-        raise HTTPException(status_code=400, detail="No model loaded")
-
-    try:
-        transcriber.start_recording()
-        return TranscribeStartResponse(status="recording")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/transcribe/stop", response_model=TranscribeStopResponse)
@@ -985,18 +896,6 @@ async def models_recommend(needs_translation: bool = False):
     }
 
 
-@app.get("/api/models/{model_type}")
-async def models_by_type(model_type: str):
-    """Get models of a specific type."""
-    if model_type not in MODEL_INFO:
-        raise HTTPException(status_code=404, detail=f"Unknown model type: {model_type}")
-
-    return {
-        "models": get_available_models(model_type),
-        "languages": get_languages_for_model(model_type),
-        "compute_types": get_compute_types(model_type),
-        "info": MODEL_INFO[model_type],
-    }
 
 
 @app.post("/api/models/load")
@@ -1168,7 +1067,9 @@ async def models_downloaded():
 @app.get("/api/models/cache")
 async def models_cache_info():
     """Get model cache information including disk usage."""
+    logger.info("Accessing model cache endpoint")
     return get_cache_info()
+
 
 
 @app.delete("/api/models/cache")
@@ -1185,6 +1086,20 @@ async def models_cache_clear(request: Request, model_name: Optional[str] = None)
         return {"status": "cleared", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/models/{model_type}")
+async def models_by_type(model_type: str):
+    """Get models of a specific type."""
+    if model_type not in MODEL_INFO:
+        raise HTTPException(status_code=404, detail=f"Unknown model type: {model_type}")
+
+    return {
+        "models": get_available_models(model_type),
+        "languages": get_languages_for_model(model_type),
+        "compute_types": get_compute_types(model_type),
+        "info": MODEL_INFO[model_type],
+    }
 
 
 # --- Audio Devices ---

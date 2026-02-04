@@ -79,7 +79,7 @@ export function createRecordingIndicator(): BrowserWindow {
     height: indicatorHeight,
     x: Math.round(screenWidth / 2 - indicatorWidth / 2),
     y: screenHeight - indicatorHeight - bottomMargin,
-    show: true, // Show immediately on startup (Always On)
+    show: false, // Hidden by default, renderer will show it based on settings
     frame: false,
     transparent: true,
     backgroundColor: '#00000000', // Restore this to fix visibility

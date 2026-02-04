@@ -54,7 +54,7 @@ if (!gotTheLock) {
     // Create windows
     createMainWindow()
     createRecordingIndicator()
-    showRecordingIndicator() // Ensure it's shown and positioned correctly
+    // showRecordingIndicator() - Removed to respect initial settings (hidden by default)
     
     // Create system tray
     createTray()
