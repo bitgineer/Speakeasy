@@ -6,12 +6,35 @@ import { RecordingPill } from './Overlay/RecordingPill'
 import { TranscribingLine } from './Overlay/TranscribingLine'
 
 export default function RecordingIndicator(): JSX.Element | null {
-  const [status, setStatus] = useState<'recording' | 'transcribing' | 'idle' | 'locked'>('idle')
+  const [status, setStatus] = useState<'recording' | 'transcribing' | 'idle' | 'locked' | 'loading'>('idle')
   const [duration, setDuration] = useState(0)
   const startTimeRef = useRef<number>(0)
   const contentRef = useRef<HTMLDivElement>(null)
   
   const { settings, fetchSettings } = useSettingsStore()
+
+  // Listen for backend loading status
+  useEffect(() => {
+    // Poll for status or listen for events if available
+    // For now we can use the window.api if exposed, or rely on AppStore status if we can access it.
+    // Since this is a separate window, we might need to rely on IPC events for status updates.
+    
+    const checkStatus = async () => {
+        try {
+            const health = await window.api?.checkHealth?.()
+            if (health && health.state === 'loading') {
+                setStatus('loading')
+            } else if (status === 'loading' && health && health.state === 'ready') {
+                setStatus('idle')
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+    
+    const interval = setInterval(checkStatus, 1000)
+    return () => clearInterval(interval)
+  }, [status])
   
   // Timer effect
   useEffect(() => {
@@ -100,16 +123,19 @@ export default function RecordingIndicator(): JSX.Element | null {
   
   // Manage visibility based on settings
   useEffect(() => {
+    // If settings haven't loaded yet, don't do anything to avoid flashing
     if (!settings) return
     
     const showFeature = settings.show_recording_indicator ?? true
     const alwaysShow = settings.always_show_indicator ?? true
     
+    // If the entire feature is disabled, hide it regardless of state
     if (!showFeature) {
       window.api?.hideIndicator?.()
       return
     }
     
+    // Feature is enabled, check specific states
     if (status === 'idle') {
       if (alwaysShow) {
         window.api?.showIndicator?.()
@@ -117,7 +143,7 @@ export default function RecordingIndicator(): JSX.Element | null {
         window.api?.hideIndicator?.()
       }
     } else {
-      // Recording/Locked/Transcribing
+      // Recording/Locked/Transcribing/Loading -> Always show
       window.api?.showIndicator?.()
     }
   }, [status, settings])
@@ -135,6 +161,15 @@ export default function RecordingIndicator(): JSX.Element | null {
     <div className="flex items-center justify-center w-full h-full overflow-hidden">
       {/* Just the pill button - no background layers */}
       <OverlayContainer ref={contentRef} className="flex items-center justify-center">
+        {status === 'loading' && (
+             <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-secondary)] rounded-full border border-[var(--color-border)] select-none animate-pulse">
+                <div className="w-3 h-3 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-medium text-[var(--color-text-primary)] whitespace-nowrap">
+                  Loading...
+                </span>
+             </div>
+        )}
+
         {status === 'idle' && (
           <IdlePill onClick={handleStart} />
         )}

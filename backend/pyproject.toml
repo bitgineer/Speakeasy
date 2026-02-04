@@ -104,3 +104,23 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning",
 ]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch", marker = "sys_platform == 'win32'" },
+  { index = "pytorch", marker = "sys_platform == 'linux'" },
+]
+torchaudio = [
+  { index = "pytorch", marker = "sys_platform == 'win32'" },
+  { index = "pytorch", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+  { index = "pytorch", marker = "sys_platform == 'win32'" },
+  { index = "pytorch", marker = "sys_platform == 'linux'" },
+]
+

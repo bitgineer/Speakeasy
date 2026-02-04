@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 
 interface SaveStatusIndicatorProps {
   status: 'idle' | 'unsaved' | 'saving' | 'saved';
+  onSave?: () => void;
   className?: string;
 }
 
 export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
   status,
+  onSave,
   className = '',
 }) => {
   const [isVisible, setIsVisible] = useState(true);
@@ -47,6 +49,14 @@ export const SaveStatusIndicator: React.FC<SaveStatusIndicatorProps> = ({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
           </span>
           <span className="text-gray-400">Unsaved changes</span>
+          {onSave && (
+              <button 
+                  onClick={onSave}
+                  className="ml-2 px-3 py-1 text-xs font-semibold text-[var(--color-bg-primary)] bg-[var(--color-accent)] rounded-md hover:opacity-90 transition-opacity"
+              >
+                  Save
+              </button>
+          )}
         </>
       )}
 

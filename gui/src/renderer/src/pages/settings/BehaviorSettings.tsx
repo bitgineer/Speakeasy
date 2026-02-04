@@ -297,8 +297,8 @@ export default function BehaviorSettings(): JSX.Element {
             </label>
 
             {/* Always show indicator toggle */}
-            {localSettings.show_recording_indicator && (
-              <label className="flex items-center justify-between cursor-pointer ml-6 pl-4 border-l-2 border-[var(--color-border)] animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className={`transition-all duration-300 overflow-hidden ${localSettings.show_recording_indicator ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
+              <label className="flex items-center justify-between cursor-pointer ml-6 pl-4 border-l-2 border-[var(--color-border)] mt-4">
                 <div>
                   <span className="text-[var(--color-text-primary)]">Always show "Ready" status</span>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
@@ -316,7 +316,7 @@ export default function BehaviorSettings(): JSX.Element {
                   <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
                 </div>
               </label>
-            )}
+            </div>
           </div>
         </section>
 

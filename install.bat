@@ -24,40 +24,31 @@ echo.
 REM -------------------------------------------------------------------------
 REM 1. Check/Install UV
 REM -------------------------------------------------------------------------
-echo [STEP 1/5] Checking for 'uv' package manager...
+echo [STEP 1/3] Checking for 'uv' package manager...
+set "USE_UV=false"
+
 where uv >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [INFO] 'uv' not found in PATH. Installing...
-    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to install uv.
-        pause
-        exit /b 1
-    )
-    REM Add likely install locations to PATH for this session
-    set "PATH=%LOCALAPPDATA%\bin;%USERPROFILE%\.cargo\bin;%PATH%"
-) else (
+if %errorlevel% equ 0 (
     echo [OK] 'uv' found.
+    set "USE_UV=true"
+) else (
+    echo [INFO] 'uv' not found. Attempting to install...
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    if !errorlevel! equ 0 (
+        echo [OK] 'uv' installed.
+        set "USE_UV=true"
+        REM Update PATH locally for this session
+        set "PATH=%LOCALAPPDATA%\bin;%USERPROFILE%\.cargo\bin;%PATH%"
+    ) else (
+        echo [WARN] Failed to install uv. Will fall back to standard Python.
+    )
 )
 
 REM -------------------------------------------------------------------------
-REM 2. Install Python
+REM 2. Setup Backend Environment
 REM -------------------------------------------------------------------------
 echo.
-echo [STEP 2/5] Ensuring Python %PYTHON_TARGET_VERSION% is installed...
-call uv python install %PYTHON_TARGET_VERSION%
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to install Python %PYTHON_TARGET_VERSION% via uv.
-    pause
-    exit /b 1
-)
-echo [OK] Python %PYTHON_TARGET_VERSION% is ready.
-
-REM -------------------------------------------------------------------------
-REM 3. Setup Backend Environment
-REM -------------------------------------------------------------------------
-echo.
-echo [STEP 3/5] Setting up Backend Virtual Environment...
+echo [STEP 2/3] Setting up Backend Environment...
 
 if not exist "backend" (
     echo [ERROR] 'backend' directory not found in: %CD%
@@ -67,39 +58,55 @@ if not exist "backend" (
 
 cd backend
 
-echo [INFO] Creating venv (Python %PYTHON_TARGET_VERSION%)...
-call uv venv --python %PYTHON_TARGET_VERSION% --allow-existing
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to create virtual environment.
-    cd ..
-    pause
-    exit /b 1
-)
-
-REM -------------------------------------------------------------------------
-REM 4. Install Dependencies
-REM -------------------------------------------------------------------------
-echo.
-echo [STEP 4/5] Installing dependencies...
-echo [INFO] This might take a few minutes. Please wait.
-
-call uv pip install -e .
-if %errorlevel% neq 0 (
-    echo.
-    echo [ERROR] Failed to install backend dependencies.
-    echo [INFO] Please check the error message above.
-    cd ..
-    pause
-    exit /b 1
+if "!USE_UV!"=="true" (
+    echo [INFO] Using 'uv' for backend setup...
+    
+    echo [INFO] Ensuring Python %PYTHON_TARGET_VERSION%...
+    call uv python install %PYTHON_TARGET_VERSION%
+    
+    echo [INFO] Creating venv...
+    call uv venv --python %PYTHON_TARGET_VERSION% --allow-existing
+    
+    echo [INFO] Installing dependencies...
+    call uv pip install -e .
+    if !errorlevel! neq 0 (
+        echo [ERROR] Dependency installation failed.
+        cd ..
+        pause
+        exit /b 1
+    )
+) else (
+    echo [INFO] Using standard Python for backend setup...
+    
+    where python >nul 2>nul
+    if !errorlevel! neq 0 (
+        echo [ERROR] 'python' not found. Please install Python manually.
+        cd ..
+        pause
+        exit /b 1
+    )
+    
+    echo [INFO] Creating venv...
+    python -m venv .venv
+    
+    echo [INFO] Installing dependencies...
+    call .venv\Scripts\activate.bat
+    pip install -e .
+    if !errorlevel! neq 0 (
+        echo [ERROR] Dependency installation failed.
+        cd ..
+        pause
+        exit /b 1
+    )
 )
 
 cd ..
 
 REM -------------------------------------------------------------------------
-REM 5. Install Frontend Dependencies
+REM 3. Install Frontend Dependencies
 REM -------------------------------------------------------------------------
 echo.
-echo [STEP 5/5] Installing Frontend Dependencies (npm)...
+echo [STEP 3/3] Installing Frontend Dependencies (npm)...
 if exist "gui" (
     cd gui
     

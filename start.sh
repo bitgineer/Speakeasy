@@ -6,27 +6,14 @@ echo "=========================================="
 echo "SpeakEasy Startup Script"
 echo "=========================================="
 
-# Trap to kill background processes on exit
-trap 'kill 0' SIGINT
+# Ensure we are in the script directory
+cd "$(dirname "$0")"
 
 # -------------------------------------------------------------------------
-# 1. Start Backend
+# 1. Start Frontend (which handles Backend)
 # -------------------------------------------------------------------------
-echo "[INFO] Starting Backend Server..."
-if [ -d "backend" ]; then
-    cd backend
-    uv run uvicorn speakeasy.main:app --reload &
-    BACKEND_PID=$!
-    cd ..
-else
-    echo "[ERROR] 'backend' directory not found!"
-    exit 1
-fi
+echo "[INFO] Starting Application..."
 
-# -------------------------------------------------------------------------
-# 2. Start Frontend
-# -------------------------------------------------------------------------
-echo "[INFO] Starting Frontend (GUI)..."
 if [ -d "gui" ]; then
     cd gui
     
@@ -36,17 +23,13 @@ if [ -d "gui" ]; then
         npm install
     fi
     
-    npm run dev &
-    FRONTEND_PID=$!
+    echo "[INFO] Starting Electron App..."
+    npm run dev
     cd ..
 else
     echo "[ERROR] 'gui' directory not found!"
-    kill $BACKEND_PID
     exit 1
 fi
 
 echo ""
-echo "[SUCCESS] Services launched."
-echo "Press Ctrl+C to stop all services."
-
-wait
+echo "[SUCCESS] Application exited."

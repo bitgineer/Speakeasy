@@ -23,10 +23,11 @@ from typing import TYPE_CHECKING, Callable, Optional
 import numpy as np
 import sounddevice as sd
 
-from .models import ModelWrapper, ProgressCallback, TranscriptionResult
+from .models import ProgressCallback, TranscriptionResult
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+    from .models import ModelWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,9 @@ class TranscriberService:
             # Unload existing model if any
             if self._model:
                 self._model.unload()
+
+            # Lazy import to speed up initial startup
+            from .models import ModelWrapper
 
             # Create and load new model
             self._model = ModelWrapper(

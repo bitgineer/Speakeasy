@@ -6,27 +6,15 @@ echo SpeakEasy Startup Script
 echo ==========================================
 
 REM -------------------------------------------------------------------------
-REM 1. Start Backend
+REM 1. Start Frontend (which handles Backend)
 REM -------------------------------------------------------------------------
-echo [INFO] Starting Backend Server...
-if exist "backend" (
-    cd backend
-    REM Start backend in a new command window
-    start "SpeakEasy Backend" cmd /k "uv run uvicorn speakeasy.server:app --reload"
-    cd ..
-) else (
-    echo [ERROR] 'backend' directory not found!
-    pause
-    exit /b 1
-)
+echo [INFO] Starting Application...
 
-REM -------------------------------------------------------------------------
-REM 2. Start Frontend
-REM -------------------------------------------------------------------------
-echo [INFO] Starting Frontend (GUI)...
+cd /d "%~dp0"
+
 if exist "gui" (
     cd gui
-    REM Check if node_modules exists, offer to install if missing
+    REM Check if node_modules exists
     if not exist "node_modules" (
         echo [WARN] node_modules not found in gui.
         echo [INFO] Running npm install...
@@ -38,8 +26,10 @@ if exist "gui" (
         )
     )
     
-    REM Start frontend in a new command window
-    start "SpeakEasy Frontend" cmd /k "npm run dev"
+    echo [INFO] Starting Electron App...
+    REM This will start the electron app, which spawns the backend
+    npm run dev
+    
     cd ..
 ) else (
     echo [ERROR] 'gui' directory not found!
@@ -48,7 +38,6 @@ if exist "gui" (
 )
 
 echo.
-echo [SUCCESS] Both services launched in separate windows.
-echo You can close this window now.
-timeout /t 5 >nul
+echo [SUCCESS] Application exited.
+timeout /t 3 >nul
 exit

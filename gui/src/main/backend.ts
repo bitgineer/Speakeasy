@@ -18,14 +18,33 @@ const BACKEND_STARTUP_TIMEOUT = 120000 // 120 seconds for first-time model downl
 const isWin = process.platform === 'win32'
 const pythonExec = isWin ? 'python.exe' : 'python3'
 
-// Find python executable
-function getPythonPath(): string {
+// Find python executable or uv
+function getPythonCommand(): { cmd: string, args: string[] } {
   // Check for venv in root project directory
-  // In dev: We are in gui/out/main. Project root is 3 levels up from gui folder.
-  // app.getAppPath() returns the gui folder in dev.
   const rootDir = app.isPackaged 
     ? process.resourcesPath
     : join(app.getAppPath(), '../') // Go up from gui to SpeakEasy root
+
+  // Check for UV first (only in dev/unpacked mode or if available in path)
+  // We prefer UV if it's available and we see a uv.lock file
+  const uvLockPath = join(rootDir, 'backend', 'uv.lock')
+  
+  // Simple check if 'uv' is in PATH. 
+  // In a real app, we might want a more robust check (e.g. execSync('uv --version'))
+  // but for now, we'll assume if they installed with our script, uv is in path.
+  let uvAvailable = false
+  try {
+     const { execSync } = require('child_process')
+     execSync('uv --version', { stdio: 'ignore' })
+     uvAvailable = true
+  } catch (e) {
+     uvAvailable = false
+  }
+
+  if (uvAvailable && existsSync(uvLockPath)) {
+      console.log('[Backend] Using uv to run backend')
+      return { cmd: 'uv', args: ['run', '-m', 'speakeasy', '--port', String(backendPort)] }
+  }
     
   const venvPython = isWin
     ? join(rootDir, '.venv', 'Scripts', 'python.exe')
@@ -33,12 +52,12 @@ function getPythonPath(): string {
 
   if (existsSync(venvPython)) {
     console.log(`[Backend] Using venv python: ${venvPython}`)
-    return venvPython
+    return { cmd: venvPython, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
   }
   
   // Fallback to system python
   console.log(`[Backend] Venv not found at ${venvPython}, using system python: ${pythonExec}`)
-  return pythonExec
+  return { cmd: pythonExec, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
 }
 
 function getBackendPath(): string {
@@ -95,14 +114,14 @@ export async function startBackend(): Promise<void> {
     return
   }
   
-  const pythonPath = getPythonPath()
+  const { cmd, args } = getPythonCommand()
   const backendPath = getBackendPath()
   
-  console.log(`Starting backend: ${pythonPath} -m speakeasy --port ${backendPort}`)
+  console.log(`Starting backend: ${cmd} ${args.join(' ')}`)
   console.log(`Backend path: ${backendPath}`)
   
   try {
-    backendProcess = spawn(pythonPath, ['-m', 'speakeasy', '--port', String(backendPort)], {
+    backendProcess = spawn(cmd, args, {
       cwd: backendPath,
       env: {
         ...process.env,

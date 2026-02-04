@@ -14,35 +14,34 @@ echo ""
 # -------------------------------------------------------------------------
 # 1. Check/Install UV
 # -------------------------------------------------------------------------
-echo "[STEP 1/4] Checking for 'uv' package manager..."
-if ! command -v uv &> /dev/null; then
-    echo "[INFO] 'uv' not found. Installing..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    
-    # Source the cargo env to get uv in path immediately if possible
-    if [ -f "$HOME/.cargo/env" ]; then
-        . "$HOME/.cargo/env"
-    else
-        # Fallback for path
-        export PATH="$HOME/.cargo/bin:$PATH"
-    fi
-else
+echo "[STEP 1/3] Checking for 'uv' package manager..."
+
+USE_UV=false
+
+if command -v uv &> /dev/null; then
     echo "[OK] 'uv' found."
+    USE_UV=true
+else
+    echo "[INFO] 'uv' not found. Attempting to install..."
+    if curl -LsSf https://astral.sh/uv/install.sh | sh; then
+        echo "[OK] 'uv' installed."
+        # Source the cargo env to get uv in path immediately
+        if [ -f "$HOME/.cargo/env" ]; then
+            . "$HOME/.cargo/env"
+        else
+            export PATH="$HOME/.cargo/bin:$PATH"
+        fi
+        USE_UV=true
+    else
+        echo "[WARN] Failed to install 'uv'. Will fall back to standard Python/pip."
+    fi
 fi
 
 # -------------------------------------------------------------------------
-# 2. Install Python
+# 2. Setup Backend (UV or Fallback)
 # -------------------------------------------------------------------------
 echo ""
-echo "[STEP 2/4] Ensuring Python $PYTHON_VERSION is installed..."
-uv python install $PYTHON_VERSION
-echo "[OK] Python $PYTHON_VERSION is ready."
-
-# -------------------------------------------------------------------------
-# 3. Setup Backend Environment
-# -------------------------------------------------------------------------
-echo ""
-echo "[STEP 3/4] Setting up Backend Virtual Environment..."
+echo "[STEP 2/3] Setting up Backend Environment..."
 
 if [ ! -d "backend" ]; then
     echo "[ERROR] 'backend' directory not found in: $(pwd)"
@@ -51,26 +50,48 @@ fi
 
 cd backend
 
-echo "[INFO] Creating venv..."
-# Using the version specified in .python-version or variable
-uv venv --python $PYTHON_VERSION --allow-existing
-
-# -------------------------------------------------------------------------
-# 4. Install Dependencies
-# -------------------------------------------------------------------------
-echo ""
-echo "[STEP 4/4] Installing dependencies..."
-echo "[INFO] This might take a few minutes..."
-
-uv pip install -e .
+if [ "$USE_UV" = true ]; then
+    echo "[INFO] Using 'uv' for backend setup..."
+    
+    # Install Python via uv
+    echo "[INFO] Ensuring Python $PYTHON_VERSION..."
+    uv python install $PYTHON_VERSION
+    
+    # Create venv
+    echo "[INFO] Creating venv..."
+    uv venv --python $PYTHON_VERSION --allow-existing
+    
+    # Install dependencies
+    echo "[INFO] Installing dependencies..."
+    echo "[INFO] This might take a few minutes..."
+    uv pip install -e .
+else
+    echo "[INFO] Using standard Python for backend setup..."
+    
+    # Check for python3
+    if ! command -v python3 &> /dev/null; then
+        echo "[ERROR] 'python3' is required but not found."
+        exit 1
+    fi
+    
+    # Create venv
+    echo "[INFO] Creating venv with python3..."
+    python3 -m venv .venv
+    
+    # Activate and install
+    echo "[INFO] Activating venv and installing dependencies..."
+    # We must activate in the current shell to use pip
+    . .venv/bin/activate
+    pip install -e .
+fi
 
 cd ..
 
 # -------------------------------------------------------------------------
-# 5. Install Frontend Dependencies
+# 3. Install Frontend Dependencies
 # -------------------------------------------------------------------------
 echo ""
-echo "[STEP 5/5] Installing Frontend Dependencies (npm)..."
+echo "[STEP 3/3] Installing Frontend Dependencies (npm)..."
 if [ -d "gui" ]; then
     cd gui
     
