@@ -150,7 +150,7 @@ export default function AppearanceSettings(): JSX.Element {
   }
 
   return (
-    <div className="p-6 max-w-2xl min-h-full flex flex-col">
+    <div className="p-6 max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Palette className="w-6 h-6 text-[var(--color-accent-primary)]" />
@@ -159,8 +159,8 @@ export default function AppearanceSettings(): JSX.Element {
         <SaveStatusIndicator status={saveStatus} onSave={handleSave} />
       </div>
 
-      <div className="space-y-6 flex-1 flex flex-col">
-        <section className="card p-4 flex-1">
+      <div className="space-y-6">
+        <section className="card p-4">
           <h2 className="text-lg font-semibold mb-4">Theme</h2>
           <div className="grid grid-cols-1 gap-3">
             {themes.map((theme) => (
