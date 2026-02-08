@@ -4,7 +4,18 @@
 
 FastAPI-based backend service for SpeakEasy voice transcription.
 
+## Requirements
+
+- **Python**: 3.10 to 3.12
+- **FFmpeg**: Required for audio processing. Ensure it is installed and added to your system PATH.
+  - Windows: `winget install Gyan.FFmpeg`
+  - Linux: `sudo apt install ffmpeg`
+  - macOS: `brew install ffmpeg`
+- **Windows Users**: Microsoft Visual C++ 14.0 or greater is required for building some dependencies (like `texterrors`).
+  - Install "Desktop development with C++" workload from [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+
 ## Quick Start
+
 
 ```bash
 # Install dependencies

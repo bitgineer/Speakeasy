@@ -7,6 +7,15 @@ Run with: python -m speakeasy
 import argparse
 import logging
 import sys
+import warnings
+
+# Suppress known warnings from dependencies
+# These are safe to ignore as they don't affect functionality in our usage
+warnings.filterwarnings("ignore", category=SyntaxWarning, module="lhotse")
+warnings.filterwarnings("ignore", category=SyntaxWarning, module="pydub")
+warnings.filterwarnings(
+    "ignore", category=RuntimeWarning, message="coroutine 'broadcast' was never awaited"
+)
 
 
 def setup_logging(verbose: bool = False) -> None:

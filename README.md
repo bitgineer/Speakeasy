@@ -69,9 +69,10 @@ Check our [Releases](https://github.com/yourusername/speakeasy/releases) page fo
 
 **Prerequisites:**
 - Python 3.10 - 3.12 (Python 3.13+ is not yet supported)
-- Node.js 18+
+- Node.js 18+ (LTS)
 - [UV](https://github.com/astral-sh/uv) (Recommended)
-- FFmpeg
+- **FFmpeg**: Must be in your system PATH.
+- **Windows Only**: [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++ workload) - Required for some dependencies.
 
 **Automatic Setup (Windows):**
 Simply run `install.bat` in the root directory. It will install Python 3.12 and all dependencies automatically.
@@ -82,7 +83,13 @@ Simply run `install.bat` in the root directory. It will install Python 3.12 and 
 ```bash
 cd backend
 uv venv --python 3.12
-uv pip install -e .
+
+# Install dependencies with GPU optimization (if NVIDIA GPU detected)
+# Windows:
+nvidia-smi >nul 2>&1 && uv pip install -e ".[cuda]" || uv pip install -e .
+
+# macOS/Linux:
+nvidia-smi > /dev/null 2>&1 && uv pip install -e ".[cuda]" || uv pip install -e .
 ```
 
 **2. Setup Frontend**
