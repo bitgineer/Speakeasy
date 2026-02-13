@@ -3,126 +3,191 @@
 <div align="center">
   <img src="docs/images/logo.png" alt="SpeakEasy Logo" width="120" height="120" />
   <h1>SpeakEasy</h1>
-  <h3>The Vibe Coding Companion</h3>
+  <h3>Privacy-First Voice-to-Text for Developers</h3>
   <p>
-    Code at the speed of thought. Transcribe your voice into any application.<br/>
-    <b>Privately. Locally. Instantly.</b>
+    Local AI transcription that runs 100% offline. Code at the speed of thought.<br/>
+    <b>Private. Open Source. No Cloud Required.</b>
   </p>
   
   <p align="center">
-    <a href="#-downloads">Download</a> •
+    <a href="#-quick-start">Install</a> •
     <a href="#-features">Features</a> •
-    <a href="#-how-it-works">How It Works</a> •
-    <a href="#-community">Community</a>
+    <a href="#-architecture">Architecture</a> •
+    <a href="#-contributing">Contribute</a>
   </p>
 
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square" alt="Platform Support" />
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/Privacy-100%25%20Local-success?style=flat-square" alt="Privacy Focused" />
-  <img src="https://img.shields.io/badge/Model-Whisper%20%7C%20NeMo%20%7C%20Voxtral-purple?style=flat-square" alt="AI Models" />
+  <p>
+    <img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-blue?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAxOGMtNC40MTggMC04LTMuNTgyLTgtOHMzLjU4Mi04IDgtOCA4IDMuNTgyIDggOC0zLjU4MiA4LTggOHoiLz48L3N2Zz4=" alt="Platform Support" />
+    <img src="https://img.shields.io/github/license/razing/speakeasy?style=flat-square&color=green" alt="License MIT" />
+    <img src="https://img.shields.io/badge/privacy-100%25%20local-success?style=flat-square" alt="Privacy First" />
+    <img src="https://img.shields.io/badge/ai-whisper%20%7C%20nemo%20%7C%20voxtral-purple?style=flat-square" alt="AI Models" />
+    <img src="https://img.shields.io/github/stars/razing/speakeasy?style=flat-square&color=yellow" alt="GitHub Stars" />
+  </p>
 </div>
 
 ---
 
-## 🌊 Why SpeakEasy?
+## Overview
 
-**SpeakEasy** is designed for the **vibe coding** era. When you're in the flow, typing can feel like a bottleneck. SpeakEasy removes that friction, letting you dictate code, documentation, emails, and ideas directly into your active window with near-zero latency.
+**SpeakEasy** is an open-source, privacy-focused voice-to-text application built for developers, writers, and privacy-conscious users. Unlike cloud-based transcription services like Otter.ai or Rev.ai, SpeakEasy runs entirely on your local machine using open-source AI models like **OpenAI Whisper**, **NVIDIA NeMo**, and **Mistral Voxtral**.
 
-Unlike cloud-based solutions that send your voice to a server, SpeakEasy runs **entirely on your machine**. Your voice data never leaves your device.
+- 🎙️ **Real-time transcription** with near-zero latency
+- 🔒 **100% offline** - no internet required, no data leaves your device
+- ⚡ **GPU accelerated** - CUDA support for NVIDIA graphics cards
+- 💻 **Cross-platform** - Windows, macOS, and Linux
 
-### 🚀 Built for the "Vibe Coding" Community
-- **Stay in the Flow**: Don't break your train of thought to type. Just hold the hotkey and speak.
-- **Code with Voice**: Perfect for commenting code, writing commit messages, or drafting documentation.
-- **Total Privacy**: Corporate secrets and personal thoughts stay safe. No cloud API keys required.
+## Why SpeakEasy?
 
-## ✨ Key Features
+**Privacy First**: Your voice data never leaves your computer. No API keys, no cloud uploads, no privacy concerns.
 
-### 🎙️ Instant Transcription
-- **Universal Input**: Works in VS Code, Cursor, Slack, Discord, Obsidian, or any other app.
-- **Global Hotkey**: Press a key, speak, release. Text appears instantly.
-- **Smart Formatting**: Automatic punctuation and capitalization (or raw text if you prefer).
+**Open Source**: Fully transparent codebase. No hidden telemetry or data collection.
 
-### 🧠 State-of-the-Art AI
-We support the best open-source models optimized for consumer hardware:
-- **OpenAI Whisper**: The gold standard for accuracy.
-- **NVIDIA Parakeet/Canary**: Ultra-low latency for real-time responsiveness.
-- **Mistral Voxtral**: Large language model accuracy for complex dictation.
-- **GPU Acceleration**: Automatic CUDA detection for blazing fast performance on NVIDIA GPUs.
+**Developer-Friendly**: Works seamlessly with VS Code, Cursor, Obsidian, Slack, and any application that accepts text input.
 
-### 🛠️ Power User Tools
-- **Transcription History**: Searchable database of everything you've said. Never lose an idea.
-- **Batch Processing**: Transcribe hours of audio files by dragging and dropping.
-- **Export Options**: JSON, TXT, SRT, VTT, and CSV exports.
+**Vibe Coding Ready**: Stay in your creative flow. Dictate code, comments, documentation, and ideas without breaking concentration.
 
-## 📸 Screenshots
+## Features
 
-<p align="center">
-  <img src="docs/images/screenshot-dashboard.png" alt="SpeakEasy Dashboard" width="100%">
-</p>
+### Core Transcription
 
-## 🏁 Quick Start
+| Feature | Description |
+|---------|-------------|
+| **Global Hotkey** | Press and hold to transcribe into any active window |
+| **Universal Compatibility** | Works with any application (IDEs, editors, browsers, chat apps) |
+| **Smart Formatting** | Automatic punctuation, capitalization, and formatting |
+| **Multi-Model Support** | Choose between Whisper, NeMo, or Voxtral based on your needs |
+| **Audio File Processing** | Batch transcribe MP3, WAV, M4A, and more |
 
-### Option 1: Download the App (Coming Soon)
-Check our [Releases](https://github.com/yourusername/speakeasy/releases) page for the latest installers for Windows, macOS, and Linux.
+### Privacy & Security
 
-### Option 2: Run from Source
+- ✅ Zero network calls for transcription
+- ✅ Local model storage and inference
+- ✅ No account or signup required
+- ✅ No usage tracking or telemetry
 
-**Prerequisites:**
-- Python 3.10 - 3.12 (Python 3.13+ is not yet supported)
-- Node.js 18+ (LTS)
-- [UV](https://github.com/astral-sh/uv) (Recommended)
-- **FFmpeg**: Must be in your system PATH.
-- **Windows Only**: [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++ workload) - Required for some dependencies.
+### Power Features
 
-**Automatic Setup (Windows):**
-Simply run `install.bat` in the root directory. It will install Python 3.12 and all dependencies automatically.
+- **Transcription History**: Searchable database of all your transcriptions
+- **Export Options**: JSON, TXT, SRT, VTT, CSV formats
+- **Custom Hotkeys**: Configure global shortcuts to your preference
+- **System Tray Integration**: Quick access without cluttering your dock
 
-**Manual Setup:**
+## Quick Start
 
-**1. Setup Backend**
+### Prerequisites
+
+- **Python 3.10 - 3.12** (Python 3.13+ not yet supported)
+- **Node.js 18+** (LTS)
+- **FFmpeg** (must be in system PATH)
+- **UV** package manager (recommended)
+- **Windows**: Visual C++ Build Tools
+
+### Installation
+
+**Windows (Automatic)**:
 ```bash
+git clone https://github.com/bitgineer/speakeasy.git
+cd speakeasy
+install.bat
+```
+
+**Manual Setup**:
+
+```bash
+# Clone repository
+git clone https://github.com/bitgineer/speakeasy.git
+cd speakeasy
+
+# Setup backend
 cd backend
 uv venv --python 3.12
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -e ".[cuda]"  # Or without CUDA: uv pip install -e .
 
-# Install dependencies with GPU optimization (if NVIDIA GPU detected)
-# Windows:
-nvidia-smi >nul 2>&1 && uv pip install -e ".[cuda]" || uv pip install -e .
-
-# macOS/Linux:
-nvidia-smi > /dev/null 2>&1 && uv pip install -e ".[cuda]" || uv pip install -e .
-```
-
-**2. Setup Frontend**
-```bash
+# Setup frontend
 cd ../gui
 npm install
-```
-
-**3. Launch**
-```bash
-# Inside the gui directory
 npm run dev
 ```
 
-## 🏗 Architecture
+## Architecture
 
-SpeakEasy combines a high-performance **Python FastAPI** backend for AI inference with a sleek **Electron + React** frontend.
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│   Electron UI   │◄───►│   Python API     │◄───►│   AI Models     │
+│   (React)       │     │   (FastAPI)      │     │   (Whisper/etc) │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                               │
+                               ▼
+                        ┌──────────────────┐
+                        │   SQLite DB      │
+                        │   (History)      │
+                        └──────────────────┘
+```
 
-| Component | Tech Stack | Responsibility |
-|-----------|------------|----------------|
-| **Backend** | Python, PyTorch, CTranslate2 | Model inference, audio processing, database |
-| **Frontend** | Electron, React, Tailwind | UI, global hotkeys, system tray |
+**Tech Stack**:
+- **Frontend**: Electron + React + Tailwind CSS
+- **Backend**: Python + FastAPI
+- **AI**: PyTorch, CTranslate2, ONNX Runtime
+- **Database**: SQLite
 
-## 🤝 Contributing
+## Supported Models
 
-We welcome contributions from the community! Whether it's adding new models, improving the UI, or fixing bugs.
+| Model | Use Case | Hardware |
+|-------|----------|----------|
+| **OpenAI Whisper** | General purpose, high accuracy | CPU/GPU |
+| **NVIDIA NeMo** | Real-time, ultra-low latency | GPU recommended |
+| **Mistral Voxtral** | Complex dictation, long-form | GPU required |
 
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Contributing
 
-## 📄 License
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
-MIT © SpeakEasy Contributors
+- Reporting bugs and requesting features
+- Setting up your development environment
+- Code style and submission process
+- Review and approval workflow
+
+## Roadmap
+
+- [ ] VS Code extension
+- [ ] Custom wake words
+- [ ] Voice commands (beyond transcription)
+- [ ] Mobile companion app
+- [ ] Plugin system for custom post-processing
+
+See [GitHub Issues](https://github.com/razing/speakeasy/issues) for detailed backlog.
+
+## Alternatives Comparison
+
+| Feature | SpeakEasy | Otter.ai | Whisper API | Dragon |
+|---------|-----------|----------|-------------|--------|
+| **Privacy** | ✅ 100% offline | ❌ Cloud only | ❌ Cloud only | ❌ Cloud required |
+| **Cost** | Free | $10-20/mo | $0.006/min | $500+ |
+| **Open Source** | ✅ Yes | ❌ No | ✅ Yes (API) | ❌ No |
+| **Local Models** | ✅ Yes | ❌ No | ❌ No | ⚠️ Limited |
+| **Cross-Platform** | ✅ Yes | ✅ Yes | N/A | ❌ Windows only |
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Acknowledgments
+
+- [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition model
+- [NVIDIA NeMo](https://github.com/NVIDIA/NeMo) - Speech AI toolkit
+- [Mistral AI](https://mistral.ai/) - Voxtral models
+- [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) - Optimized inference
+
+---
+
+<div align="center">
+  <p>
+    <b>Star ⭐ this repo if you find it useful!</b>
+  </p>
+  <p>
+    <a href="https://github.com/bitgineer/speakeasy/issues">Report Bug</a> •
+    <a href="https://github.com/bitgineer/speakeasy/issues">Request Feature</a> •
+    <a href="https://github.com/bitgineer/speakeasy/discussions">Discussions</a>
+  </p>
+</div>
