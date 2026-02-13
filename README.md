@@ -78,7 +78,7 @@
 - **Custom Hotkeys**: Configure global shortcuts to your preference
 - **System Tray**: Quick access without cluttering your dock
 - **CLI Support**: Command-line transcription for automation
-- **Plugin System** (coming soon): Custom post-processing scripts
+- **Plugin System**: Custom post-processing scripts (WIP)
 
 ## 🚀 Quick Start
 

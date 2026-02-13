@@ -16,17 +16,28 @@ FastAPI-based backend service for SpeakEasy voice transcription.
 
 ## Quick Start
 
+We use [uv](https://github.com/astral-sh/uv) for fast Python package management.
 
 ```bash
+# Install uv if not already installed
+# macOS/Linux: curl -LsSf https://astral.sh/uv/install.sh | sh
+# Windows: powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
 # Install dependencies
 cd backend
-pip install -e .
+uv sync --all-extras --dev
 
 # Run the server
-python -m speakeasy
+uv run python -m speakeasy
 
 # Or with options
-python -m speakeasy --host 0.0.0.0 --port 8765 --verbose
+uv run python -m speakeasy --host 0.0.0.0 --port 8765 --verbose
+```
+
+Alternatively, activate the virtual environment first:
+```bash
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m speakeasy
 ```
 
 ## API Endpoints
