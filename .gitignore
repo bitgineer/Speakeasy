@@ -120,3 +120,4 @@ user_data/
 # Application specific
 logs/
 transcription.log
+.ckb
