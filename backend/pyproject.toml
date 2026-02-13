@@ -21,11 +21,12 @@ dependencies = [
     "uvicorn[standard]>=0.27.0",
     "websockets>=12.0",
     "slowapi>=0.1.9",
-    
+
     # Audio
     "sounddevice>=0.4.6",
     "numpy>=1.24.0",
-    
+    "scipy>=1.11.0",
+
     # ASR Models
     "faster-whisper>=1.0.0",
     "torch>=2.0.0",
@@ -34,27 +35,32 @@ dependencies = [
     # Grammar Correction
     "transformers>=4.56.0",
     "huggingface_hub[hf_xet]>=0.21",
-    
+
     # Voxtral support (optional heavy dependencies)
     # "transformers>=4.56",
     # "mistral-common[audio]>=1.5.0",
     # "bitsandbytes>=0.45.0",
-    
+
     # Utilities
     "pynput>=1.7.6",
     "pyperclip>=1.8.2",
-    
+
     # Database
     "aiosqlite>=0.19.0",
-    
+
     # Settings
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
+    "cuda-python>=12.3; sys_platform == 'linux' or sys_platform == 'win32'",
+    "dill>=0.3.0",
 ]
 
 [project.optional-dependencies]
 linux = [
     "pulsectl>=23.5.0",
+]
+cuda = [
+    "cuda-python>=12.3",
 ]
 voxtral = [
     "transformers>=4.56",
@@ -123,4 +129,3 @@ torchvision = [
   { index = "pytorch", marker = "sys_platform == 'win32'" },
   { index = "pytorch", marker = "sys_platform == 'linux'" },
 ]
-

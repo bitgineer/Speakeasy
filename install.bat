@@ -170,7 +170,10 @@ echo [INFO] Now in: %CD%
 echo [INFO] Now in: %CD% >> "%INSTALL_LOG%"
 
 echo [CHECKPOINT] About to check USE_UV flag >> "%INSTALL_LOG%"
-if "!USE_UV!"=="true" (
+if "!USE_UV!"=="true" goto :SetupUV
+goto :SetupPython
+
+:SetupUV
     echo [INFO] Using 'uv' for backend setup...
     echo [INFO] Using 'uv' for backend setup... >> "%INSTALL_LOG%"
 
@@ -215,17 +218,25 @@ if "!USE_UV!"=="true" (
     echo [INFO] You will see progress output below...
     echo.
 
-    if "!HAS_CUDA!"=="true" (
+    if "!HAS_CUDA!"=="true" goto :InstallCudaUV
+    goto :InstallCpuUV
+
+    :InstallCudaUV
         echo [INFO] Installing with CUDA optimization for faster transcription...
         echo [INFO] GPU detected - enabling CUDA support...
         call uv pip install -e ".[cuda]"
         
         echo [INFO] Ensuring cuda-python is installed...
-        call uv pip install "cuda-python>=12.3"
-    ) else (
+        call uv pip install "dill"
+call uv pip install "cuda-python>=12.3"
+        goto :InstallDoneUV
+
+    :InstallCpuUV
         echo [INFO] Installing in CPU mode (no GPU detected)...
         call uv pip install -e .
-    )
+        goto :InstallDoneUV
+
+    :InstallDoneUV
 
     if !errorlevel! neq 0 (
         echo [ERROR] Core dependency installation failed.
@@ -242,7 +253,9 @@ if "!USE_UV!"=="true" (
         echo [INFO] CUDA optimizations enabled for 20-30%% faster transcription.
         echo [INFO] CUDA optimizations enabled. >> "%INSTALL_LOG%"
     )
-) else (
+    goto :BackendSetupDone
+
+:SetupPython
     echo [CHECKPOINT] UV not enabled, using standard Python >> "%INSTALL_LOG%"
     echo [INFO] Using standard Python for backend setup...
     echo [INFO] Using standard Python for backend setup... >> "%INSTALL_LOG%"
@@ -308,17 +321,24 @@ if "!USE_UV!"=="true" (
     echo [INFO] You will see progress output below...
     echo.
 
-    if "!HAS_CUDA!"=="true" (
+    if "!HAS_CUDA!"=="true" goto :InstallCudaPip
+    goto :InstallCpuPip
+
+    :InstallCudaPip
         echo [INFO] Installing with CUDA optimization for faster transcription...
         echo [INFO] GPU detected - enabling CUDA support...
         pip install -e ".[cuda]"
         
         echo [INFO] Ensuring cuda-python is installed...
         pip install "cuda-python>=12.3"
-    ) else (
+        goto :InstallDonePip
+
+    :InstallCpuPip
         echo [INFO] Installing in CPU mode (no GPU detected)...
         pip install -e .
-    )
+        goto :InstallDonePip
+
+    :InstallDonePip
 
     if !errorlevel! neq 0 (
         echo [ERROR] Core dependency installation failed.
@@ -335,7 +355,9 @@ if "!USE_UV!"=="true" (
         echo [INFO] CUDA optimizations enabled for 20-30%% faster transcription.
         echo [INFO] CUDA optimizations enabled. >> "%INSTALL_LOG%"
     )
-)
+    goto :BackendSetupDone
+
+:BackendSetupDone
 
 cd ..
 
@@ -354,7 +376,7 @@ if exist "gui" (
     if !errorlevel! neq 0 (
         echo [ERROR] npm is not installed or not in PATH.
         echo [ERROR] npm is not installed or not in PATH. >> "%INSTALL_LOG%"
-        echo [ERROR] Please install Node.js (LTS) from https://nodejs.org/
+        echo [ERROR] Please install Node.js ^(LTS^) from https://nodejs.org/
         cd ..
         pause
         exit /b 1
@@ -365,7 +387,7 @@ if exist "gui" (
     echo [INFO] Found npm !NPM_VERSION!
     echo [INFO] Found npm !NPM_VERSION! >> "%INSTALL_LOG%"
 
-    echo [INFO] Running npm install (this may take 2-3 minutes)...
+    echo [INFO] Running npm install ^(this may take 2-3 minutes^)...
     call npm install
     if !errorlevel! neq 0 (
         echo [ERROR] Frontend installation failed.

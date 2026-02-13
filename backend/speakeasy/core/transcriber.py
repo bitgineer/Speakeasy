@@ -11,22 +11,23 @@ Performance optimizations:
 """
 
 import asyncio
+import gc
 import logging
 import threading
 import time
-import gc
-import torch
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 import sounddevice as sd
+import torch
 
 from .models import ProgressCallback, TranscriptionResult
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
     from .models import ModelWrapper
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ class TranscriberService:
         # Device
         self._device_name: Optional[str] = None
         self._device_id: Optional[int] = None
+        self._recording_samplerate: Optional[int] = None  # Native rate of device during recording
 
         # Asyncio loop for thread-safe callbacks
         try:
@@ -257,7 +259,15 @@ class TranscriberService:
         with self._lock:
             # Optimized: indata is already float32, just copy and flatten
             # copy() is required because sounddevice reuses the buffer
-            self._audio_buffer.append(indata.copy().flatten())
+            audio_chunk = indata.copy().flatten()
+            self._audio_buffer.append(audio_chunk)
+
+            # Log first few callbacks for debugging
+            if len(self._audio_buffer) <= 3:
+                max_amp = np.abs(audio_chunk).max() if len(audio_chunk) > 0 else 0.0
+                logger.info(
+                    f"Audio callback #{len(self._audio_buffer)}: received {len(audio_chunk)} samples, max amplitude: {max_amp:.4f}"
+                )
 
     def _cleanup_recording_state(self) -> None:
         """Clean up recording state (stream, buffer, timing). Called on error or cancel."""
@@ -274,6 +284,7 @@ class TranscriberService:
             self._audio_buffer = []
 
         self._recording_start_time = None
+        self._recording_samplerate = None
 
     def start_recording(self) -> None:
         """Start recording audio from the microphone."""
@@ -287,22 +298,67 @@ class TranscriberService:
         with self._lock:
             self._audio_buffer = []
 
-        # Create and start stream with try-finally for cleanup on error
+        # Get device's native sample rate (critical for WASAPI shared mode)
+        native_samplerate = self.SAMPLE_RATE  # Default fallback
+        device_info = None
+
         try:
+            # Try selected device first
+            if self._device_id is not None:
+                device_info = sd.query_devices(self._device_id)
+                if device_info["max_input_channels"] > 0:
+                    native_samplerate = int(device_info["default_samplerate"])
+                    logger.info(
+                        f"Using selected device: {device_info['name']} (ID: {self._device_id}, native rate: {native_samplerate}Hz)"
+                    )
+                else:
+                    logger.warning(
+                        f"Device {self._device_id} has no input channels, falling back to default"
+                    )
+                    device_info = None
+
+            # Fall back to default device if needed
+            if device_info is None:
+                device_info = sd.query_devices(kind="input")
+                self._device_id = sd.default.device[0]
+                native_samplerate = int(device_info["default_samplerate"])
+                logger.info(
+                    f"Using default input device: {device_info['name']} (ID: {self._device_id}, native rate: {native_samplerate}Hz)"
+                )
+
+            # Log host API for debugging
+            hostapis = sd.query_hostapis()
+            device_hostapi = hostapis[device_info["hostapi"]]
+            logger.info(f"Device host API: {device_hostapi['name']}")
+
+        except Exception as e:
+            logger.warning(f"Could not query audio devices: {e}, using fallback settings")
+            native_samplerate = self.SAMPLE_RATE
+            device_info = None
+
+        self._recording_samplerate = native_samplerate
+
+        # Create and start stream with native sample rate
+        try:
+            logger.info(
+                f"Creating audio stream: samplerate={native_samplerate}Hz (native), channels={self.CHANNELS}, device={self._device_id}"
+            )
             self._stream = sd.InputStream(
-                samplerate=self.SAMPLE_RATE,
+                samplerate=native_samplerate,
                 channels=self.CHANNELS,
                 dtype=np.float32,
                 device=self._device_id,
                 callback=self._audio_callback,
             )
+            logger.info("Starting audio stream...")
             self._stream.start()
             self._recording_start_time = time.time()
 
             self._set_state(TranscriberState.RECORDING)
-            logger.info("Recording started")
-        except Exception:
+            logger.info(f"Recording started successfully. Waiting for audio callbacks...")
+        except Exception as e:
             # Ensure buffer is cleared on stream creation/start failure
+            logger.error(f"Failed to start recording: {e}", exc_info=True)
             with self._lock:
                 self._audio_buffer = []
             if self._stream:
@@ -314,6 +370,7 @@ class TranscriberService:
                 finally:
                     self._stream = None
             self._recording_start_time = None
+            self._recording_samplerate = None
             raise
 
     def stop_recording(self) -> RecordingResult:
@@ -338,13 +395,64 @@ class TranscriberService:
 
             # Concatenate audio buffer
             with self._lock:
+                buffer_count = len(self._audio_buffer)
+                logger.info(
+                    f"Stopping recording: {buffer_count} audio chunks in buffer after {duration:.2f}s"
+                )
+
                 if not self._audio_buffer:
-                    raise RuntimeError("No audio recorded")
+                    logger.error(
+                        f"Audio buffer is empty! Recording duration: {duration:.2f}s. Audio callback was never triggered!"
+                    )
+                    logger.error(
+                        "Possible causes: microphone muted, wrong device selected, permissions issue, or sounddevice error"
+                    )
+                    raise RuntimeError(
+                        "No audio recorded - microphone may not be working or is muted"
+                    )
 
                 audio_data = np.concatenate(self._audio_buffer)
+                recording_samplerate = self._recording_samplerate or self.SAMPLE_RATE
+                total_samples = len(audio_data)
+                max_amplitude = np.abs(audio_data).max()
+                logger.info(
+                    f"Audio data: {total_samples} samples at {recording_samplerate}Hz ({total_samples / recording_samplerate:.2f}s), max amplitude: {max_amplitude:.4f}"
+                )
+
+                if max_amplitude < 0.001:
+                    logger.warning(
+                        f"Audio amplitude is very low ({max_amplitude:.6f}) - microphone may be muted or input volume too low"
+                    )
+
+                # Resample to target sample rate if needed
+                if recording_samplerate != self.SAMPLE_RATE:
+                    logger.info(f"Resampling from {recording_samplerate}Hz to {self.SAMPLE_RATE}Hz")
+                    try:
+                        import scipy.signal
+                    except ImportError as e:
+                        raise RuntimeError(
+                            f"scipy is required for audio resampling from {recording_samplerate}Hz to {self.SAMPLE_RATE}Hz, but it's not installed. "
+                            "Please install it with: pip install scipy"
+                        ) from e
+
+                    number_of_samples = round(
+                        len(audio_data) * float(self.SAMPLE_RATE) / recording_samplerate
+                    )
+                    audio_data = scipy.signal.resample(audio_data, number_of_samples)
+                    audio_data = audio_data.astype(np.float32)
+                    logger.info(
+                        f"Resampled to {len(audio_data)} samples ({len(audio_data) / self.SAMPLE_RATE:.2f}s)"
+                    )
+                    audio_data = scipy.signal.resample(audio_data, number_of_samples)
+                    audio_data = audio_data.astype(np.float32)
+                    logger.info(
+                        f"Resampled to {len(audio_data)} samples ({len(audio_data) / self.SAMPLE_RATE:.2f}s)"
+                    )
+
                 self._audio_buffer = []
 
             self._recording_start_time = None
+            self._recording_samplerate = None
             self._set_state(TranscriberState.READY)
             logger.info(f"Recording stopped, duration: {duration:.2f}s")
 
@@ -362,6 +470,7 @@ class TranscriberService:
             with self._lock:
                 self._audio_buffer = []
             self._recording_start_time = None
+            self._recording_samplerate = None
 
     # Threshold for chunked transcription: 5 minutes at 16kHz
     CHUNK_THRESHOLD_SAMPLES = 5 * 60 * SAMPLE_RATE  # 4,800,000 samples
@@ -534,8 +643,8 @@ class TranscriberService:
         except ImportError:
             # Fallback if faster_whisper is not importable (should be rare in prod)
             logger.warning("faster_whisper not found, falling back to soundfile")
-            import soundfile as sf
             import scipy.signal
+            import soundfile as sf
 
             audio, sr = sf.read(file_path, dtype="float32")
             if len(audio.shape) > 1:
@@ -616,6 +725,7 @@ class TranscriberService:
             with self._lock:
                 self._audio_buffer = []
             self._recording_start_time = None
+            self._recording_samplerate = None
             self._set_state(
                 TranscriberState.READY if self.is_model_loaded else TranscriberState.IDLE
             )
@@ -630,6 +740,7 @@ class TranscriberService:
             with self._lock:
                 self._audio_buffer = []
             self._recording_start_time = None
+            self._recording_samplerate = None
             self.unload_model()
 
 

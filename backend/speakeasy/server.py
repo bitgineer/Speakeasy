@@ -28,6 +28,7 @@ from .core.config import (
 from .core.models import TranscriptionResult, get_gpu_info, recommend_model
 from .core.text_cleanup import TextCleanupProcessor
 from .core.transcriber import TranscriberService, TranscriberState, list_audio_devices
+from .services.batch import BatchJob, BatchJobStatus, BatchService
 from .services.download_state import (
     DownloadStatus,
     ModelDownloadProgress,
@@ -36,7 +37,6 @@ from .services.download_state import (
     get_cache_info,
     get_cached_models,
 )
-from .services.batch import BatchJob, BatchJobStatus, BatchService
 from .services.export import ExportFormat, export_service
 from .services.history import HistoryService, TranscriptionRecord
 from .services.settings import (
@@ -197,12 +197,15 @@ async def lifespan(app: FastAPI):
             logger.info(f"Auto-loading model: {settings.model_type}/{settings.model_name}")
             # Run in a separate thread to not block startup
             import threading
-            threading.Thread(target=lambda: transcriber.load_model(
-                model_type=settings.model_type,
-                model_name=settings.model_name,
-                device=settings.device,
-                compute_type=settings.compute_type,
-            )).start()
+
+            threading.Thread(
+                target=lambda: transcriber.load_model(
+                    model_type=settings.model_type,
+                    model_name=settings.model_name,
+                    device=settings.device,
+                    compute_type=settings.compute_type,
+                )
+            ).start()
         except Exception as e:
             logger.warning(f"Failed to auto-load model: {e}")
 
@@ -318,8 +321,10 @@ async def health_check():
     """Check backend health and status."""
     model_loaded = False
     model_name = None
+    current_state = "not_initialized"
 
     if transcriber:
+        current_state = transcriber.state.value
         model_loaded = transcriber.is_model_loaded
         if transcriber._model:
             model_name = transcriber._model.model_name
@@ -328,7 +333,7 @@ async def health_check():
 
     return HealthResponse(
         status="ok",
-        state=transcriber.state.value if transcriber else "not_initialized",
+        state=current_state,
         model_loaded=model_loaded,
         model_name=model_name,
         gpu_available=gpu_info["available"],
@@ -342,6 +347,18 @@ async def transcribe_start():
     """Start recording audio."""
     if not transcriber:
         raise HTTPException(status_code=503, detail="Transcriber not initialized")
+
+    # Check if model is still loading
+    if transcriber.state == TranscriberState.LOADING:
+        raise HTTPException(
+            status_code=503, detail="Model is still loading. Please wait a moment and try again."
+        )
+
+    # Check if model is loaded
+    if not transcriber.is_model_loaded:
+        raise HTTPException(
+            status_code=400, detail="No model loaded. Please load a model in Settings > Model."
+        )
 
     try:
         transcriber.start_recording()
@@ -936,8 +953,6 @@ async def models_recommend(needs_translation: bool = False):
     }
 
 
-
-
 @app.post("/api/models/load")
 @limiter.limit("5/minute")
 async def models_load(request: Request, body: ModelLoadRequest):
@@ -1089,7 +1104,6 @@ async def models_cache_info():
     """Get model cache information including disk usage."""
     logger.info("Accessing model cache endpoint")
     return get_cache_info()
-
 
 
 @app.delete("/api/models/cache")

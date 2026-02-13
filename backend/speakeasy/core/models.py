@@ -5,27 +5,21 @@ Provides a unified interface for loading and running different model types.
 """
 
 import atexit
+import hashlib
 import json
 import logging
 import os
+import pickle
 import tempfile
 import time
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional, Set
 
-# Suppress noisy NeMo/ML library logs BEFORE importing them
-# These must be set before the libraries are imported
-os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
-os.environ.setdefault("NUMEXPR_MAX_THREADS", "8")  # Also prevents the thread warning
-
-# Suppress warnings at module level
-import warnings
-
-warnings.filterwarnings("ignore", category=UserWarning, module="nemo")
-warnings.filterwarnings("ignore", category=FutureWarning, module="nemo")
-
+import torch  # Ensure torch is imported for serialization
 import numpy as np
+import torch
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -150,7 +144,7 @@ class ModelWrapper:
         progress_callback: Optional[ProgressCallback] = None,
     ) -> None:
         """
-        Load the model into memory. Call this before transcribing.
+        Load the model into memory with optimizations for faster startup.
 
         Args:
             progress_callback: Optional callback function that receives
@@ -161,7 +155,12 @@ class ModelWrapper:
             logger.info(f"Model {self.model_name} already loaded")
             return
 
+        import time
+
+        self._load_start_time = time.time()
+
         logger.info(f"Loading {self.model_type.value} model: {self.model_name}")
+        logger.info(f"Target: <15s for cached models, <60s for first download")
 
         if self.model_type == ModelType.WHISPER:
             self._load_whisper(progress_callback)
@@ -175,7 +174,16 @@ class ModelWrapper:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
         self._loaded = True
-        logger.info(f"Model {self.model_name} loaded successfully")
+        self._load_duration = time.time() - self._load_start_time
+        logger.info(f"Model {self.model_name} loaded successfully in {self._load_duration:.2f}s")
+
+        if self._load_duration > 20:
+            logger.warning(
+                f"Model loading took {self._load_duration:.2f}s (target: <15s for cached)"
+            )
+            logger.info(
+                "Consider optimizations: 1) Ensure model is cached 2) Check disk I/O 3) Use faster storage"
+            )
 
     def unload(self) -> None:
         """Unload the model from memory to free resources."""
@@ -218,7 +226,8 @@ class ModelWrapper:
             Exception: If download fails
         """
         from huggingface_hub import snapshot_download
-        from huggingface_hub.utils import tqdm as hf_tqdm, LocalEntryNotFoundError
+        from huggingface_hub.utils import LocalEntryNotFoundError
+        from huggingface_hub.utils import tqdm as hf_tqdm
         from tqdm import tqdm
 
         # Track cumulative progress across all files
@@ -340,33 +349,249 @@ class ModelWrapper:
         self,
         progress_callback: Optional[ProgressCallback] = None,
     ) -> None:
-        """Load NVIDIA Parakeet model via NeMo with optional progress tracking."""
+        """Load NVIDIA Parakeet model via NeMo with optimizations."""
+        import time
+        import hashlib
+        import os
+        from pathlib import Path
+        import torch
+
+        # Try to import dill for robust serialization
+        try:
+            import dill
+
+            HAS_DILL = True
+        except ImportError:
+            HAS_DILL = False
+            logger.warning("dill not found. Install 'dill' for faster model loading.")
+
+        logger.info("Starting Parakeet model load with optimizations...")
+        load_start = time.time()
+
+        # Lazy import to speed up initial startup
+        # We need this even if loading from cache because pickle/dill needs class definitions
         from nemo.collections.asr.models import ASRModel
 
         # Pre-download the model with progress tracking if callback provided
         if progress_callback:
             self._download_hf_model(self.model_name, progress_callback)
 
-        self._model = ASRModel.from_pretrained(
-            model_name=self.model_name,
-            map_location=self.device,
-        ).eval()
+        # ---------------------------------------------------------------------
+        # Optimization: Serialization Cache (Pickle/Dill)
+        # ---------------------------------------------------------------------
+        cache_dir = Path.home() / ".speakeasy" / "model_cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a hash of the model name to use as filename
+        model_hash = hashlib.md5(self.model_name.encode()).hexdigest()
+        cache_path = cache_dir / f"parakeet_{model_hash}.pkl"
+
+        model_loaded = False
+
+        if cache_path.exists():
+            # Check for empty file first
+            if cache_path.stat().st_size == 0:
+                logger.warning(f"Found empty cache file: {cache_path}. Deleting.")
+                try:
+                    os.unlink(cache_path)
+                except Exception:
+                    pass
+            else:
+                logger.info(f"Found model in serialization cache: {cache_path}")
+                try:
+                    pickle_start = time.time()
+                    if HAS_DILL:
+                        # Use torch.load with dill for robust serialization of bound methods
+                        self._model = torch.load(
+                            cache_path, map_location=self.device, pickle_module=dill
+                        )
+                    else:
+                        self._model = torch.load(cache_path, map_location=self.device)
+
+                    logger.info(f"Loaded from cache in {time.time() - pickle_start:.2f}s")
+                    model_loaded = True
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load from cache: {e}. Falling back to standard load."
+                    )
+                    # Delete corrupted cache
+                    try:
+                        os.unlink(cache_path)
+                    except:
+                        pass
+
+        # ---------------------------------------------------------------------
+        # Standard Load (Fallback)
+        # ---------------------------------------------------------------------
+        if not model_loaded:
+            # Check if model is cached
+            cache_info_start = time.time()
+            from huggingface_hub import snapshot_download
+
+            # Try to determine cache status
+            try:
+                model_path = snapshot_download(
+                    repo_id=self.model_name,
+                    repo_type="model",
+                    local_files_only=True,  # Don't download, just check cache
+                )
+                logger.info(
+                    f"Model found in cache: {model_path} (check took {time.time() - cache_info_start:.2f}s)"
+                )
+            except Exception:
+                logger.info("Model not fully cached, will download")
+
+            # Load model with NeMo
+            logger.info("Initializing NeMo model architecture...")
+            nemo_start = time.time()
+
+            # The bottleneck is here: NeMo's from_pretrained re-initializes the entire model
+            # even when weights are cached. This is unavoidable with current NeMo API.
+            self._model = ASRModel.from_pretrained(
+                model_name=self.model_name,
+                map_location=self.device,
+            ).eval()
+
+            nemo_duration = time.time() - nemo_start
+            logger.info(f"NeMo model initialization took {nemo_duration:.2f}s")
+
+            # Save to cache NOW (Before optimizations that might break serialization)
+            # Caching disabled due to NeMo/PyTorch internal object pickling issues
+            try:
+                # Ensure directory exists
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+                if False and HAS_DILL:
+                    logger.info("Saving model to serialization cache (using dill)...")
+
+                    # Strip potentially unpickleable attributes (PyTorch Lightning leftovers)
+                    try:
+                        if hasattr(self._model, "_trainer"):
+                            self._model._trainer = None
+                        if hasattr(self._model, "trainer"):
+                            self._model.trainer = None
+                    except Exception as strip_e:
+                        logger.debug(f"Failed to strip trainer attributes: {strip_e}")
+
+                    temp_cache_path = cache_path.with_suffix(".tmp")
+
+                    # Use torch.save with dill and recursion
+                    import dill
+
+                    dill.settings["recurse"] = True
+                    # Also try to handle byref for some cases
+                    # dill.settings['byref'] = True
+
+                    torch.save(self._model, temp_cache_path, pickle_module=dill)
+
+                    # Atomic move
+                    if temp_cache_path.exists():
+                        if cache_path.exists():
+                            try:
+                                os.unlink(cache_path)
+                            except:
+                                pass
+                        os.rename(temp_cache_path, cache_path)
+
+                        logger.info("Model cached successfully")
+                else:
+                    logger.info("Saving model to serialization cache (standard pickle)...")
+                    # Fallback to standard torch.save (might fail for NeMo)
+                    temp_cache_path = cache_path.with_suffix(".tmp")
+                    torch.save(self._model, temp_cache_path)
+
+                    if temp_cache_path.exists():
+                        if cache_path.exists():
+                            try:
+                                os.unlink(cache_path)
+                            except:
+                                pass
+                        os.rename(temp_cache_path, cache_path)
+                    logger.info("Model cached successfully")
+
+            except Exception as e:
+                logger.warning(f"Failed to cache model: {e}")
+                # Ensure we don't leave a corrupted/partial file
+                try:
+                    if "temp_cache_path" in locals() and temp_cache_path.exists():
+                        os.unlink(temp_cache_path)
+                    if cache_path.exists():
+                        os.unlink(cache_path)
+                except:
+                    pass
+
+        # ---------------------------------------------------------------------
+        # Apply Optimizations (Common Path)
+        # ---------------------------------------------------------------------
+        # We apply optimizations AFTER loading (whether from pickle or NeMo)
+        # This ensures we get performance benefits without breaking the cache
+        if self.device == "cuda" and torch.cuda.is_available():
+            logger.info("Applying CUDA optimizations...")
+            try:
+                # Set to inference mode for better performance
+                self._model = self._model.to(self.device)
+                self._model.eval()
+
+                # Enable cudnn benchmarking for faster convolutions
+                torch.backends.cudnn.benchmark = True
+
+                # Try to use torch.compile for PyTorch 2.0+ (if available)
+                # Disabled due to potential hangs on Windows/WSL/CUDA-Python
+                if False and hasattr(torch, "compile") and hasattr(self._model, "encoder"):
+                    logger.info("Attempting torch.compile optimization...")
+                    try:
+                        # Compile encoder for faster inference
+                        # Note: This adds initial overhead but speeds up repeated calls
+                        # We only compile if we haven't already (pickle might save compiled state? No, usually not)
+                        # But re-compiling is safe.
+                        self._model.encoder = torch.compile(self._model.encoder)
+                        logger.info("Encoder compiled with torch.compile")
+                    except Exception as e:
+                        logger.debug(f"torch.compile skipped: {e}")
+
+                logger.info("CUDA optimizations applied")
+            except Exception as e:
+                logger.warning(f"Failed to apply some CUDA optimizations: {e}")
+
+        total_duration = time.time() - load_start
+        logger.info(f"Total Parakeet load time: {total_duration:.2f}s")
 
     def _load_canary(
         self,
         progress_callback: Optional[ProgressCallback] = None,
     ) -> None:
-        """Load NVIDIA Canary model via NeMo with optional progress tracking."""
+        """Load NVIDIA Canary model via NeMo with optimizations."""
+        import time
+
+        logger.info("Starting Canary model load with optimizations...")
+        load_start = time.time()
+
+        # Lazy import
         from nemo.collections.asr.models import EncDecMultiTaskModel
 
         # Pre-download the model with progress tracking if callback provided
         if progress_callback:
             self._download_hf_model(self.model_name, progress_callback)
 
+        logger.info("Initializing NeMo Canary model architecture...")
+        nemo_start = time.time()
+
         self._model = EncDecMultiTaskModel.from_pretrained(
             self.model_name,
             map_location=self.device,
         ).eval()
+
+        nemo_duration = time.time() - nemo_start
+        logger.info(f"NeMo Canary initialization took {nemo_duration:.2f}s")
+
+        # Apply CUDA optimizations if available
+        if self.device == "cuda" and torch.cuda.is_available():
+            logger.info("Applying CUDA optimizations...")
+            torch.backends.cudnn.benchmark = True
+            self._model = self._model.to(self.device)
+
+        total_duration = time.time() - load_start
+        logger.info(f"Total Canary load time: {total_duration:.2f}s")
 
     def _load_voxtral(
         self,
@@ -571,7 +796,11 @@ class ModelWrapper:
             safe_delete(temp_manifest_path)
 
     def _transcribe_voxtral(
-        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str], instruction: Optional[str] = None
+        self,
+        audio_data: "NDArray[np.float32]",
+        sample_rate: int,
+        language: Optional[str],
+        instruction: Optional[str] = None,
     ) -> str:
         """Transcribe using Mistral Voxtral with chunking for long audio."""
         MAX_DURATION_SECONDS = 30
@@ -593,7 +822,9 @@ class ModelWrapper:
                 try:
                     # Pass instruction to each chunk? Or maybe only the first?
                     # For consistency, passing to all chunks ensures style/grammar correction applies to all.
-                    result = self._transcribe_voxtral_chunk(chunk, sample_rate, language, instruction)
+                    result = self._transcribe_voxtral_chunk(
+                        chunk, sample_rate, language, instruction
+                    )
                     if result.strip():
                         full_text += result + " "
                 except Exception as e:
@@ -603,7 +834,11 @@ class ModelWrapper:
             return self._transcribe_voxtral_chunk(audio_data, sample_rate, language, instruction)
 
     def _transcribe_voxtral_chunk(
-        self, audio_data: "NDArray[np.float32]", sample_rate: int, language: Optional[str], instruction: Optional[str] = None
+        self,
+        audio_data: "NDArray[np.float32]",
+        sample_rate: int,
+        language: Optional[str],
+        instruction: Optional[str] = None,
     ) -> str:
         """Transcribe a single chunk using Voxtral."""
         import soundfile as sf
@@ -630,7 +865,7 @@ class ModelWrapper:
                 }
                 if language and language != "auto":
                     openai_req["language"] = language
-                
+
                 if instruction:
                     openai_req["prompt"] = instruction
 
