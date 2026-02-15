@@ -13,12 +13,25 @@ export default function RecordingIndicator(): JSX.Element | null {
   
   const { settings, fetchSettings } = useSettingsStore()
 
+  // Fetch settings periodically to ensure visibility logic stays current
+  useEffect(() => {
+    // Initial fetch
+    fetchSettings()
+
+    // Poll for settings changes every 2 seconds
+    const interval = setInterval(() => {
+      fetchSettings()
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [fetchSettings])
+
   // Listen for backend loading status
   useEffect(() => {
     // Poll for status or listen for events if available
     // For now we can use the window.api if exposed, or rely on AppStore status if we can access it.
     // Since this is a separate window, we might need to rely on IPC events for status updates.
-    
+
     const checkStatus = async () => {
         try {
             const health = await window.api?.checkHealth?.()
@@ -31,7 +44,7 @@ export default function RecordingIndicator(): JSX.Element | null {
             // ignore
         }
     }
-    
+
     const interval = setInterval(checkStatus, 1000)
     return () => clearInterval(interval)
   }, [status])
