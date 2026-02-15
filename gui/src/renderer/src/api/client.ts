@@ -151,7 +151,7 @@ class ApiClient {
 
   // Settings
   async getSettings(): Promise<Settings> {
-    return this.cachedRequest<Settings>('/api/settings', 1 * 60 * 1000)
+    return this.cachedRequest<Settings>('/api/settings', 2 * 1000)
   }
 
   async updateSettings(
