@@ -249,6 +249,33 @@ call uv pip install "cuda-python>=12.3"
     echo.
     echo [OK] Dependencies installed successfully.
     echo [OK] Dependencies installed successfully. >> "%INSTALL_LOG%"
+
+    REM Explicitly ensure critical backend dependencies are installed
+    echo [INFO] Ensuring critical backend dependencies are installed...
+    echo [INFO] Ensuring critical backend dependencies are installed... >> "%INSTALL_LOG%"
+    call uv pip install "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
+    if !errorlevel! neq 0 (
+        echo [ERROR] Failed to install critical backend dependencies.
+        echo [ERROR] Failed to install critical backend dependencies. >> "%INSTALL_LOG%"
+        cd ..
+        pause
+        exit /b 1
+    )
+
+    echo [INFO] Verifying FastAPI installation...
+    echo [INFO] Verifying FastAPI installation... >> "%INSTALL_LOG%"
+    .venv\Scripts\python.exe -c "import fastapi; print('FastAPI version:', fastapi.__version__)"
+    if !errorlevel! neq 0 (
+        echo [ERROR] FastAPI was not installed correctly.
+        echo [ERROR] FastAPI was not installed correctly. >> "%INSTALL_LOG%"
+        echo [ERROR] This is a critical dependency for the web server.
+        cd ..
+        pause
+        exit /b 1
+    )
+    echo [OK] FastAPI verified successfully.
+    echo [OK] FastAPI verified successfully. >> "%INSTALL_LOG%"
+
     if "!HAS_CUDA!"=="true" (
         echo [INFO] CUDA optimizations enabled for 20-30%% faster transcription.
         echo [INFO] CUDA optimizations enabled. >> "%INSTALL_LOG%"
@@ -351,6 +378,33 @@ call uv pip install "cuda-python>=12.3"
     echo.
     echo [OK] Dependencies installed successfully.
     echo [OK] Dependencies installed successfully. >> "%INSTALL_LOG%"
+
+    REM Explicitly ensure critical backend dependencies are installed
+    echo [INFO] Ensuring critical backend dependencies are installed...
+    echo [INFO] Ensuring critical backend dependencies are installed... >> "%INSTALL_LOG%"
+    pip install "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
+    if !errorlevel! neq 0 (
+        echo [ERROR] Failed to install critical backend dependencies.
+        echo [ERROR] Failed to install critical backend dependencies. >> "%INSTALL_LOG%"
+        cd ..
+        pause
+        exit /b 1
+    )
+
+    echo [INFO] Verifying FastAPI installation...
+    echo [INFO] Verifying FastAPI installation... >> "%INSTALL_LOG%"
+    .venv\Scripts\python.exe -c "import fastapi; print('FastAPI version:', fastapi.__version__)"
+    if !errorlevel! neq 0 (
+        echo [ERROR] FastAPI was not installed correctly.
+        echo [ERROR] FastAPI was not installed correctly. >> "%INSTALL_LOG%"
+        echo [ERROR] This is a critical dependency for the web server.
+        cd ..
+        pause
+        exit /b 1
+    )
+    echo [OK] FastAPI verified successfully.
+    echo [OK] FastAPI verified successfully. >> "%INSTALL_LOG%"
+
     if "!HAS_CUDA!"=="true" (
         echo [INFO] CUDA optimizations enabled for 20-30%% faster transcription.
         echo [INFO] CUDA optimizations enabled. >> "%INSTALL_LOG%"
