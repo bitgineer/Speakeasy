@@ -224,16 +224,16 @@ goto :SetupPython
     :InstallCudaUV
         echo [INFO] Installing with CUDA optimization for faster transcription...
         echo [INFO] GPU detected - enabling CUDA support...
-        call uv pip install -e ".[cuda]"
-        
+        call uv pip install --python ".venv\Scripts\python.exe" -e ".[cuda]"
+
         echo [INFO] Ensuring cuda-python is installed...
-        call uv pip install "dill"
-call uv pip install "cuda-python>=12.3"
+        call uv pip install --python ".venv\Scripts\python.exe" "dill"
+        call uv pip install --python ".venv\Scripts\python.exe" "cuda-python>=12.3"
         goto :InstallDoneUV
 
     :InstallCpuUV
         echo [INFO] Installing in CPU mode (no GPU detected)...
-        call uv pip install -e .
+        call uv pip install --python ".venv\Scripts\python.exe" -e .
         goto :InstallDoneUV
 
     :InstallDoneUV
@@ -253,7 +253,7 @@ call uv pip install "cuda-python>=12.3"
     REM Explicitly ensure critical backend dependencies are installed
     echo [INFO] Ensuring critical backend dependencies are installed...
     echo [INFO] Ensuring critical backend dependencies are installed... >> "%INSTALL_LOG%"
-    call uv pip install "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
+    call uv pip install --python ".venv\Scripts\python.exe" "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
     if !errorlevel! neq 0 (
         echo [ERROR] Failed to install critical backend dependencies.
         echo [ERROR] Failed to install critical backend dependencies. >> "%INSTALL_LOG%"
@@ -355,7 +355,7 @@ call uv pip install "cuda-python>=12.3"
         echo [INFO] Installing with CUDA optimization for faster transcription...
         echo [INFO] GPU detected - enabling CUDA support...
         pip install -e ".[cuda]"
-        
+
         echo [INFO] Ensuring cuda-python is installed...
         pip install "cuda-python>=12.3"
         goto :InstallDonePip

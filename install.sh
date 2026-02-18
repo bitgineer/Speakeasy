@@ -125,7 +125,7 @@ if [ "$USE_UV" = true ]; then
     # Install core dependencies
     echo "[INFO] Installing core dependencies..."
     echo "[INFO] This may take 5-10 minutes on first install..."
-    uv pip install -e .
+    uv pip install --python .venv/bin/python -e .
 
     if [ $? -ne 0 ]; then
         echo "[ERROR] Core dependency installation failed."
@@ -136,7 +136,7 @@ if [ "$USE_UV" = true ]; then
     # Explicitly ensure critical backend dependencies are installed
     echo ""
     echo "[INFO] Ensuring critical backend dependencies are installed..."
-    uv pip install "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
+    uv pip install --python .venv/bin/python "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
     if [ $? -ne 0 ]; then
         echo "[ERROR] Failed to install critical backend dependencies."
         cd ..
