@@ -133,6 +133,28 @@ if [ "$USE_UV" = true ]; then
         exit 1
     fi
 
+    # Explicitly ensure critical backend dependencies are installed
+    echo ""
+    echo "[INFO] Ensuring critical backend dependencies are installed..."
+    uv pip install "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] Failed to install critical backend dependencies."
+        cd ..
+        exit 1
+    fi
+
+    # Verify FastAPI installation
+    echo ""
+    echo "[INFO] Verifying FastAPI installation..."
+    .venv/bin/python -c "import fastapi; print('FastAPI version:', fastapi.__version__)"
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] FastAPI was not installed correctly."
+        echo "[ERROR] This is a critical dependency for the web server."
+        cd ..
+        exit 1
+    fi
+    echo "[OK] FastAPI verified successfully."
+
     # Install CUDA-specific optimizations if GPU detected
     if [ "$HAS_CUDA" = true ]; then
         echo ""
@@ -184,6 +206,28 @@ else
         cd ..
         exit 1
     fi
+
+    # Explicitly ensure critical backend dependencies are installed
+    echo ""
+    echo "[INFO] Ensuring critical backend dependencies are installed..."
+    pip install "fastapi>=0.109.0" "uvicorn[standard]>=0.27.0" "websockets>=12.0" "slowapi>=0.1.9"
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] Failed to install critical backend dependencies."
+        cd ..
+        exit 1
+    fi
+
+    # Verify FastAPI installation
+    echo ""
+    echo "[INFO] Verifying FastAPI installation..."
+    .venv/bin/python -c "import fastapi; print('FastAPI version:', fastapi.__version__)"
+    if [ $? -ne 0 ]; then
+        echo "[ERROR] FastAPI was not installed correctly."
+        echo "[ERROR] This is a critical dependency for the web server."
+        cd ..
+        exit 1
+    fi
+    echo "[OK] FastAPI verified successfully."
 
     # Install CUDA-specific optimizations if GPU detected
     if [ "$HAS_CUDA" = true ]; then
