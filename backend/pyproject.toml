@@ -21,7 +21,6 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Office/Business :: Scheduling",
-    "Topic :: Accessibility",
 ]
 
 dependencies = [
