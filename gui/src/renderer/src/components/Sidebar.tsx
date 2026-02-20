@@ -127,11 +127,10 @@ function NavItem({ item, isActive }: NavItemProps): JSX.Element {
     <Link
       to={item.path}
       className={`
-        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-        transition-all duration-150 ease-out
+        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
         ${isActive 
-          ? 'bg-[var(--color-sidebar-active)] text-[var(--color-text-primary)]' 
-          : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-sidebar-hover)] hover:text-[var(--color-text-primary)]'
+          ? 'bg-[var(--color-sidebar-active)] text-[var(--color-text-primary)] shadow-sm' 
+          : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-sidebar-hover)] hover:text-[var(--color-text-primary)] hover:scale-[1.01]'
         }
       `}
     >

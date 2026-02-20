@@ -169,7 +169,7 @@ export default function Dashboard(): JSX.Element {
           </div>
           <button
             onClick={() => setShowExportDialog(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors border border-[var(--color-border)]"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] hover:shadow-md hover:-translate-y-px rounded-lg transition-all duration-200 border border-[var(--color-border)] cursor-pointer"
             title="Export history (Ctrl+E)"
           >
             <svg
@@ -198,7 +198,7 @@ export default function Dashboard(): JSX.Element {
       )}
 
       {/* Search bar */}
-      <div className="px-4 py-3 border-b border-[var(--color-border)]">
+      <div className="px-4 py-4 border-b border-[var(--color-border)]">
         <form onSubmit={handleSearchSubmit} className="relative">
           <input
             ref={searchInputRef}
@@ -206,7 +206,7 @@ export default function Dashboard(): JSX.Element {
             value={searchQuery}
             onChange={handleSearchChange}
             placeholder="Search transcriptions..."
-            className="input pl-10 pr-4"
+            className="input pl-10 pr-10"
           />
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]"
@@ -222,19 +222,19 @@ export default function Dashboard(): JSX.Element {
             />
           </svg>
           {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                // Cancel pending debounce and clear immediately
-                if (debounceTimeoutRef.current) {
-                  clearTimeout(debounceTimeoutRef.current);
-                }
-                useHistoryStore.setState({ searchQuery: "" });
-                search("");
-                setIsSearching(false);
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
-            >
+          <button
+            type="button"
+            onClick={() => {
+              // Cancel pending debounce and clear immediately
+              if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+              }
+              useHistoryStore.setState({ searchQuery: "" });
+              search("");
+              setIsSearching(false);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] p-1 rounded-md transition-all duration-150 hover:scale-110"
+          >
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -295,9 +295,9 @@ export default function Dashboard(): JSX.Element {
           </div>
         ) : items.length === 0 ? (
           // Empty state
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 mb-4 text-[var(--color-text-disabled)]">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center justify-center h-full text-center py-16">
+            <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-[var(--color-primary-dim)] to-[var(--color-bg-primary)] flex items-center justify-center text-[var(--color-primary)] animate-pulse subtle-glow">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -306,13 +306,13 @@ export default function Dashboard(): JSX.Element {
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-[var(--color-text-secondary)] mb-1">
+            <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">
               {searchQuery ? "No results found" : "No transcriptions yet"}
             </h3>
-            <p className="text-[var(--color-text-muted)] text-sm max-w-xs">
+            <p className="text-[var(--color-text-muted)] text-base max-w-md leading-relaxed">
               {searchQuery
-                ? "Try a different search term"
-                : "Press your hotkey to start recording. Your transcriptions will appear here."}
+                ? "Try adjusting your search or filters to find what you're looking for."
+                : "Press your hotkey to start recording. Your transcriptions will appear here and be ready to organize, edit, and export."}
             </p>
           </div>
         ) : (

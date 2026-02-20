@@ -10,52 +10,65 @@ const buttonVariants = cva(
     "items-center",
     "justify-center",
     "whitespace-nowrap",
-    "rounded-token-md",
+    "rounded-lg",
     "text-sm",
     "font-medium",
-    "transition-all-spring",
+    "transition-all",
+    "duration-200",
+    "ease-out",
     "focus-visible:outline-none",
     "focus-visible:shadow-focus",
     "disabled:pointer-events-none",
-    "disabled:opacity-50"
+    "disabled:opacity-50",
+    "cursor-pointer",
+    "select-none"
   ],
   {
     variants: {
       // Intent variants
       variant: {
         primary: [
-          "bg-primary-500",
-          "text-[var(--color-text-on-primary)]",
-          "hover:bg-primary-600",
-          "active:bg-primary-700",
-          "hover-lift"
+          "bg-[var(--color-accent)]",
+          "text-[var(--color-text-on-accent)]",
+          "hover:bg-[var(--color-accent-hover)]",
+          "hover:shadow-lg",
+          "hover:scale-[1.02]",
+          "active:scale-[0.98]",
+          "shadow-md"
         ],
         secondary: [
-          "bg-bg-tertiary",
+          "bg-[var(--color-bg-tertiary)]",
           "text-[var(--color-text-primary)]",
           "border",
-          "border-border-default",
-          "hover:bg-bg-elevated",
-          "hover-elevated"
+          "border-[var(--color-border)]",
+          "hover:bg-[var(--color-bg-elevated)]",
+          "hover:border-[var(--color-border-strong)]",
+          "hover:shadow-md",
+          "hover:scale-[1.01]",
+          "active:scale-[0.99]"
         ],
         ghost: [
-          "hover:bg-bg-tertiary",
+          "bg-transparent",
+          "text-[var(--color-text-secondary)]",
+          "hover:bg-[var(--color-bg-tertiary)]",
           "hover:text-[var(--color-text-primary)]",
-          "hover-lift"
+          "hover:scale-[1.01]",
+          "active:scale-[0.99]"
         ],
         danger: [
-          "bg-error-500",
+          "bg-[var(--color-error)]",
           "text-white",
-          "hover:bg-error-600",
-          "active:bg-error-700",
-          "hover-lift"
+          "hover:bg-[var(--color-error-hover)]",
+          "hover:shadow-lg",
+          "hover:scale-[1.02]",
+          "active:scale-[0.98]"
         ]
       },
       // Size variants
       size: {
-        sm: ["h-9", "px-3", "text-xs"],
-        md: ["h-10", "px-4"],
-        lg: ["h-11", "px-8", "text-base"]
+        sm: ["h-8", "px-3", "text-xs", "gap-1.5"],
+        md: ["h-10", "px-4", "gap-2"],
+        lg: ["h-12", "px-6", "text-base", "gap-2"]
       }
     },
     defaultVariants: {

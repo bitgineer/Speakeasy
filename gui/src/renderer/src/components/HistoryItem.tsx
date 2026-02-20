@@ -100,9 +100,10 @@ useEffect(() => {
   return (
     <div className={`
       group relative p-4 rounded-lg border border-[var(--color-border)]
-      bg-[var(--color-surface-hover)] transition-all duration-500
+      bg-[var(--color-bg-secondary)] transition-all duration-200 ease-out
       hover:border-[var(--color-border-strong)]
-      ${isFlashing ? 'ring-2 ring-yellow-500/50 bg-yellow-500/10 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : ''}
+      hover:shadow-md hover:-translate-y-px cursor-pointer
+      ${isFlashing ? 'ring-2 ring-yellow-500/50 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : ''}
     `}>
       {/* Header with metadata */}
       <div className="flex items-center justify-between mb-2">
@@ -149,10 +150,10 @@ useEffect(() => {
         </div>
         
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <button
             onClick={() => setShowExportDialog(true)}
-            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] hover:scale-110 rounded-md transition-all duration-150"
             title="Export"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,7 +164,7 @@ useEffect(() => {
           {/* Copy button */}
           <button
             onClick={handleCopy}
-            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] hover:scale-110 rounded-md transition-all duration-150"
             title={copied ? 'Copied!' : 'Copy to clipboard'}
           >
             {copied ? (
@@ -186,11 +187,11 @@ useEffect(() => {
               </svg>
               <span className="text-xs font-medium">Deleting...</span>
             </div>
-          ) : showDeleteConfirm ? (
+            ) : showDeleteConfirm ? (
             <div className="flex items-center gap-1">
               <button
                 onClick={handleDelete}
-                className="p-1.5 text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-muted)] rounded transition-colors"
+                className="p-1.5 text-[var(--color-error)] hover:text-white hover:bg-[var(--color-error)] hover:scale-110 rounded-md transition-all duration-150"
                 title="Confirm delete"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +200,7 @@ useEffect(() => {
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+                className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] hover:scale-110 rounded-md transition-all duration-150"
                 title="Cancel"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +211,7 @@ useEffect(() => {
           ) : (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-bg-tertiary)] rounded transition-colors"
+              className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-muted)] hover:scale-110 rounded-md transition-all duration-150"
               title="Delete"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

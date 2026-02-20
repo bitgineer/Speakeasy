@@ -73,8 +73,12 @@
 
 ### ⚡ Power Features
 
+- **Batch Transcription**: Process multiple audio files in a queue with real-time progress tracking
 - **Transcription History**: Searchable SQLite database of all your transcriptions
-- **Export Options**: JSON, TXT, SRT, VTT, CSV, DOCX formats
+- **History Import/Export**: Backup and restore your history with merge or replace options
+- **Export Formats**: JSON, TXT, SRT, VTT, CSV, DOCX for different use cases
+- **Model Download Progress**: Real-time download tracking with speed and ETA
+- **Model Caching**: Download and cache models for faster startup times
 - **Custom Hotkeys**: Configure global shortcuts to your preference
 - **System Tray**: Quick access without cluttering your dock
 - **CLI Support**: Command-line transcription for automation
@@ -288,8 +292,13 @@ python -m speakeasy live --output live_transcript.txt
 - [x] Electron GUI
 - [x] Global hotkeys
 - [x] CLI interface
-- [x] Multi-model support
+- [x] Multi-model support (Whisper, NeMo, Voxtral)
 - [x] Audio file processing
+- [x] Batch transcription
+- [x] History import/export
+- [x] Model download progress tracking
+- [x] Real-time WebSocket updates
+- [x] Advanced export formats (SRT, VTT, CSV, DOCX)
 
 ### Near-term (v0.2.0)
 - [ ] VS Code extension

@@ -8,6 +8,81 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-[var(--color-bg-secondary)]/80 backdrop-blur-md border border-[var(--color-border)];
+  }
+
+  .glass-hover {
+    @apply transition-all duration-300 hover:bg-[var(--color-bg-primary)] hover:scale-[1.02] hover:shadow-xl;
+  }
+
+  .subtle-glow {
+    @apply shadow-[0_0_20px_-8px_rgba(var(--color-primary-rgb),0.3)];
+  }
+
+  .card-elevated {
+    @apply shadow-[0_4px_16px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.15)];
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  .recording-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: recording-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes recording-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.8;
+      box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-bg-primary));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+
 /* Geist Font */
 @font-face {
   font-family: 'Geist';
@@ -137,7 +212,7 @@
   
   /* Input styles */
   .input {
-    @apply w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition-colors-spring;
+    @apply w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] transition-all duration-200;
   }
 
   .input-error {
@@ -146,7 +221,7 @@
 
   /* Select styles */
   .select {
-    @apply w-full px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent appearance-none cursor-pointer transition-colors-spring;
+    @apply w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] appearance-none cursor-pointer transition-all duration-200;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
@@ -161,7 +236,30 @@
   
   /* Label styles */
   .label {
-    @apply block text-sm font-medium text-[var(--color-text-secondary)] mb-1;
+    @apply text-sm font-medium text-[var(--color-text-primary)] mb-1.5 block;
+  }
+
+  /* Modern utility classes */
+  .glass-effect {
+    @apply bg-opacity-80 backdrop-blur-md;
+    background: rgba(var(--color-bg-secondary-rgb), 0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .hover-lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  .interactive-card {
+    @apply transition-all duration-200 cursor-pointer hover:border-[var(--color-border-strong)] hover:shadow-md hover:-translate-y-px;
+  }
+
+  .smooth-scale {
+    @apply transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .subtle-glow {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   }
   
   /* Badge styles */
