@@ -112,7 +112,8 @@ addopts = [
     "--cov=speakeasy",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
-    "--cov-fail-under=0",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=40",  # Changed from 0 to 40 (baseline for gradual increase to 85%)
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
