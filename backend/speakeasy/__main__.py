@@ -32,6 +32,7 @@ def setup_logging(verbose: bool = False) -> None:
 
     # Reduce noise from libraries
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     # Suppress noisy NeMo/ML library logs (only show errors)

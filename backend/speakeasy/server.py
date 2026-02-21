@@ -1217,7 +1217,7 @@ def run(host: str = "127.0.0.1", port: int = 8765):
     """Run the server."""
     import uvicorn
 
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, log_level="warning")
 
 
 if __name__ == "__main__":
