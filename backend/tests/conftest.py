@@ -4,6 +4,7 @@ Shared pytest fixtures for SpeakEasy backend tests.
 
 import asyncio
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import AsyncGenerator, Generator
@@ -13,6 +14,10 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
+
+
+# Mock sounddevice at import time to avoid PortAudio library requirement
+sys.modules["sounddevice"] = MagicMock()
 
 
 @pytest.fixture(scope="session")
