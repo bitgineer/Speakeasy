@@ -23,8 +23,17 @@ src/faster_whisper_hotkey.egg-info/
 
 # Testing
 .pytest_cache/
+.ruff_cache/
 .coverage
+.coverage.*
+.mypy_cache/
 htmlcov/
+
+# =============================================================================
+# TypeScript
+# =============================================================================
+*.tsbuildinfo
+tsconfig*.tsbuildinfo
 
 # Environments
 .env
@@ -37,6 +46,9 @@ venv/
 .vscode/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
+.project
 
 # =============================================================================
 # Node.js / JavaScript (Frontend)
@@ -57,6 +69,10 @@ yarn-error.log*
 
 # Testing
 coverage/
+
+# Lock files (optional - remove if you want to track them)
+package-lock.json
+backend/uv.lock
 
 # =============================================================================
 # Electron
