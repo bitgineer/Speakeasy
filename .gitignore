@@ -139,3 +139,6 @@ user_data/
 logs/
 transcription.log
 .ckb
+.gitnexus
+AGENTS.md
+CLAUDE.md
