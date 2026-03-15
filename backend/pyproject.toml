@@ -37,7 +37,7 @@ dependencies = [
 
     # ASR Models
     "faster-whisper>=1.0.0",
-    "torch>=2.0.0",
+    "torch>=2.0.0,<2.6.0",
     "nemo_toolkit[asr]>=2.0.0",
 
     # Grammar Correction
