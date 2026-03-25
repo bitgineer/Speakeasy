@@ -8,6 +8,7 @@ REM   integration - Run integration tests
 REM   all         - Run all tests (default)
 REM   coverage    - Run with coverage report
 REM   clean       - Clean test artifacts
+REM   reset       - Reset venv and reinstall dependencies
 REM   help        - Show this help message
 
 setlocal enabledelayedexpansion
@@ -20,6 +21,7 @@ set PYTHON_CMD=uv run
 REM Parse arguments
 set TEST_PATTERN=
 set WITH_COVERAGE=
+set RESET_VENV=0
 
 if "%1"=="" goto run_all
 if "%1"=="help" goto show_help
@@ -27,6 +29,7 @@ if "%1"=="hotspot" set TEST_PATTERN=tests/test_hotspot_*.py
 if "%1"=="integration" set TEST_PATTERN=tests/ -m integration
 if "%1"=="all" set TEST_PATTERN=tests/
 if "%1"=="clean" goto clean
+if "%1"=="reset" set RESET_VENV=1
 if "%1"=="coverage" set WITH_COVERAGE=--cov=speakeasy --cov-report=html --cov-report=term
 
 :run_all
@@ -43,18 +46,38 @@ echo.
 
 cd /d %BACKEND_DIR%
 
-REM Check if .venv exists, if not sync dependencies
-if not exist "%VENV_DIR%" (
-    echo Setting up virtual environment...
+REM Check if we need to reset/recreate venv
+if %RESET_VENV%==1 (
+    echo Resetting virtual environment...
+    if exist "%VENV_DIR%" rmdir /s /q "%VENV_DIR%"
     uv sync --all-extras --dev
     if errorlevel 1 (
         echo.
         echo ERROR: Failed to setup virtual environment
-        echo Run: uv sync --all-extras --dev
         exit /b 1
     )
+    goto run_tests
 )
 
+REM Check if .venv exists AND has pyvenv.cfg (valid venv)
+if not exist "%VENV_DIR%\pyvenv.cfg" (
+    echo Setting up virtual environment...
+    if exist "%VENV_DIR%" (
+        echo Found incomplete venv, removing...
+        rmdir /s /q "%VENV_DIR%"
+    )
+    uv sync --all-extras --dev
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to setup virtual environment
+        echo Try running: run_tests.bat reset
+        exit /b 1
+    )
+) else (
+    echo Using existing virtual environment
+)
+
+:run_tests
 REM Run tests
 echo.
 echo Running tests...
@@ -71,15 +94,15 @@ set TEST_RESULT=%errorlevel%
 echo.
 echo ============================================
 if %TEST_RESULT%==0 (
-    echo    ✓ All tests passed!
+    echo    [OK] All tests passed!
 ) else (
-    echo    ✗ Some tests failed (exit code: %TEST_RESULT%)
+    echo    [FAIL] Some tests failed (exit code: %TEST_RESULT%)
 )
 echo ============================================
 echo.
 
 if exist "%BACKEND_DIR%\htmlcov\index.html" (
-    echo Coverage report generated: %BACKEND_DIR%\htmlcov\index.html
+    echo Coverage report: %BACKEND_DIR%\htmlcov\index.html
     echo Open with: start htmlcov\index.html
     echo.
 )
@@ -99,7 +122,7 @@ if exist "htmlcov" rmdir /s /q htmlcov
 if exist ".coverage" del /q .coverage
 if exist "coverage.xml" del /q coverage.xml
 
-for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d" 2>nul
 
 echo Clean complete!
 echo.
@@ -119,6 +142,7 @@ echo   integration Run integration tests (multi-step flows)
 echo   all         Run all tests (default)
 echo   coverage    Run with HTML coverage report
 echo   clean       Clean test artifacts (.pytest_cache, __pycache__, htmlcov)
+echo   reset       Delete venv and reinstall dependencies
 echo   help        Show this help message
 echo.
 echo Examples:
@@ -126,11 +150,14 @@ echo   run_tests.bat              - Run all tests
 echo   run_tests.bat hotspot      - Run critical hotspot tests only
 echo   run_tests.bat coverage     - Run all tests with coverage
 echo   run_tests.bat clean        - Clean test artifacts
+echo   run_tests.bat reset        - Reset venv and dependencies
+echo.
+echo Troubleshooting:
+echo   If you get "No pyvenv.cfg file" error, run: run_tests.bat reset
 echo.
 echo Prerequisites:
-echo   - UV package manager installed
+echo   - UV package manager installed (https://docs.astral.sh/uv/)
 echo   - Python 3.11+ available
-echo   - Dependencies installed via: uv sync --all-extras --dev
 echo.
 echo Test Categories:
 echo   - Hotspot Tests: Critical functions with many callers (cleanup, add, request, etc.)
