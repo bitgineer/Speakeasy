@@ -52,20 +52,47 @@ REM -------------------------------------------------------------------------
 if exist "backend" (
     cd backend
     
-    REM Check virtual environment
-    if not exist ".venv" (
-        echo [INFO] Creating Python virtual environment...
-        uv venv --python 3.12 2>nul || uv venv --python 3.11 2>nul || uv venv --python 3.10
+    REM Check virtual environment - must exist AND be valid
+    set "VENV_VALID=false"
+    if exist ".venv" (
+        if exist ".venv\pyvenv.cfg" (
+            if exist ".venv\Scripts\python.exe" (
+                set "VENV_VALID=true"
+            )
+        )
     )
     
-    REM Activate and install
-    call .venv\Scripts\activate.bat
+    if "!VENV_VALID!"=="false" (
+        echo [INFO] Creating Python virtual environment...
+        if exist ".venv" (
+            echo [INFO] Removing broken virtual environment...
+            rmdir /s /q .venv
+        )
+        uv venv --python 3.12 2>nul || uv venv --python 3.11 2>nul || uv venv --python 3.10
+        if !errorlevel! neq 0 (
+            echo [ERROR] Failed to create virtual environment.
+            pause
+            exit /b 1
+        )
+    )
     
-    REM Check if dependencies are installed
-    python -c "import speakeasy" >nul 2>&1
+    REM Use venv Python directly (no need to activate)
+    set "VENV_PYTHON=.venv\Scripts\python.exe"
+    
+    REM Check if dependencies are installed using comprehensive check
+    "!VENV_PYTHON!" check_deps.py >nul 2>&1
     if !errorlevel! neq 0 (
         echo [INFO] Installing backend dependencies...
-        uv pip install -e ".[cuda]" 2>nul || uv pip install -e .
+        "!VENV_PYTHON!" -m pip install -e ".[cuda]" 2>nul || "!VENV_PYTHON!" -m pip install -e .
+        
+        REM Re-check after install
+        "!VENV_PYTHON!" check_deps.py >nul 2>&1
+        if !errorlevel! neq 0 (
+            echo [ERROR] Failed to install all dependencies.
+            echo [INFO] Please run reinstall_backend.bat to repair the installation.
+            pause
+            exit /b 1
+        )
     )
     
     cd ..

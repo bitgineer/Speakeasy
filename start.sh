@@ -46,18 +46,39 @@ fi
 if [ -d "backend" ]; then
     cd backend
     
-    # Create venv if needed
-    if [ ! -d ".venv" ]; then
-        echo "[INFO] Creating Python virtual environment..."
-        uv venv --python 3.12 2>/dev/null || uv venv --python 3.11 2>/dev/null || uv venv --python 3.10
+    # Check virtual environment - must exist AND be valid
+    VENV_VALID=false
+    if [ -d ".venv" ] && [ -f ".venv/pyvenv.cfg" ] && [ -f ".venv/bin/python" ]; then
+        VENV_VALID=true
     fi
     
-    # Activate and check dependencies
-    source .venv/bin/activate
+    if [ "$VENV_VALID" = false ]; then
+        echo "[INFO] Creating Python virtual environment..."
+        if [ -d ".venv" ]; then
+            echo "[INFO] Removing broken virtual environment..."
+            rm -rf .venv
+        fi
+        uv venv --python 3.12 2>/dev/null || uv venv --python 3.11 2>/dev/null || uv venv --python 3.10
+        if [ $? -ne 0 ]; then
+            echo "[ERROR] Failed to create virtual environment."
+            exit 1
+        fi
+    fi
     
-    if ! python -c "import speakeasy" 2>/dev/null; then
+    # Use venv Python directly (no need to activate)
+    VENV_PYTHON=".venv/bin/python"
+    
+    # Check if dependencies are installed using comprehensive check
+    if ! "$VENV_PYTHON" check_deps.py 2>/dev/null; then
         echo "[INFO] Installing backend dependencies..."
-        uv pip install -e ".[cuda]" 2>/dev/null || uv pip install -e .
+        "$VENV_PYTHON" -m pip install -e ".[cuda]" 2>/dev/null || "$VENV_PYTHON" -m pip install -e .
+        
+        # Re-check after install
+        if ! "$VENV_PYTHON" check_deps.py 2>/dev/null; then
+            echo "[ERROR] Failed to install all dependencies."
+            echo "[INFO] Please run reinstall_backend.sh to repair the installation."
+            exit 1
+        fi
     fi
     
     cd ..

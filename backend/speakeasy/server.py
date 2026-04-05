@@ -26,7 +26,12 @@ from .core.config import (
     get_languages_for_model,
 )
 from .core.models import TranscriptionResult, get_gpu_info, recommend_model
-from .core.text_cleanup import TextCleanupProcessor
+from .core.text_cleanup import (
+    TextCleanupProcessor,
+    safe_cleanup,
+    get_cached_processor,
+    clear_cached_processor,
+)
 from .core.transcriber import TranscriberService, TranscriberState, list_audio_devices
 from .services.batch import BatchJob, BatchJobStatus, BatchService
 from .services.download_state import (
@@ -419,8 +424,10 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
         # Apply text cleanup if enabled
         cleaned_text = result.text
         if settings and settings.enable_text_cleanup:
-            processor = TextCleanupProcessor(custom_fillers=settings.custom_filler_words)
-            cleaned_text = processor.cleanup(result.text)
+            # Use safe_cleanup for better error handling and caching
+            cleaned_text = safe_cleanup(
+                result.text, custom_fillers=settings.custom_filler_words, use_cache=True
+            )
 
         # Save to history
         record = await history.add(
@@ -899,6 +906,10 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
         or updates.get("compute_type") != old_settings.compute_type
     ) and any(k in updates for k in ["model_type", "model_name", "device", "compute_type"])
 
+    # Clear text cleanup cache if custom fillers changed
+    if "custom_filler_words" in updates:
+        clear_cached_processor()
+
     return {
         "status": "ok",
         "settings": new_settings.model_dump(),
@@ -1020,10 +1031,10 @@ async def models_load(request: Request, body: ModelLoadRequest):
         # Update settings
         if settings_service:
             settings_service.update(
-                model_type=request.model_type,
-                model_name=request.model_name,
-                device=request.device,
-                compute_type=request.compute_type,
+                model_type=body.model_type,
+                model_name=body.model_name,
+                device=body.device,
+                compute_type=body.compute_type,
             )
 
         return {"status": "loaded", "model": body.model_name}
