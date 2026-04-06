@@ -142,3 +142,43 @@ transcription.log
 .gitnexus
 AGENTS.md
 CLAUDE.md
+
+# =============================================================================
+# Sensitive & Development Files (DO NOT COMMIT)
+# =============================================================================
+# Development tools
+debug_env.py
+test_runner.py
+cleanup_*.sh
+cleanup_*.py
+
+# Session logs and documentation
+session-*.md
+PRE_PUSH_CHECKLIST.md
+TESTING_*.md
+TEST_IMPLEMENTATION_*.md
+TEST_STRATEGY.md
+TESTING_QUICK_START.md
+
+# OpenCode/AI configuration
+opencode.json
+.claude/
+.codegraph/
+.megamemory/
+
+# Backup environments
+.venv.bak/
+venv.bak/
+
+# Sensitive configuration
+*.key
+*.pem
+*.token
+*.secret
+config.local.*
+.env.local
+.env.development.local
+.env.production.local
+
+# Jupyter notebooks (often contain sensitive data)
+*.ipynb
