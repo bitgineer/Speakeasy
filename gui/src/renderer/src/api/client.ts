@@ -1,7 +1,7 @@
 /**
  * Backend API Client
  * 
- * HTTP client for the FastAPI backend.
+ * HTTP client for the FastAPI backend with retry logic, timeouts, and cancellation.
  */
 
 import type {
@@ -37,6 +37,24 @@ import { perfMonitor } from '../utils/performance'
 
 const DEFAULT_PORT = 8765
 const BASE_URL = `http://127.0.0.1:${DEFAULT_PORT}`
+const DEFAULT_TIMEOUT = 30000 // 30 seconds
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
+
+// Custom error class for API errors
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public response?: unknown
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+// Abort controller registry for request cancellation
+const abortControllers = new Map<string, AbortController>()
 
 class ApiClient {
   private baseUrl: string
@@ -50,26 +68,130 @@ class ApiClient {
     this.baseUrl = `http://127.0.0.1:${port}`
   }
 
+  /**
+   * Cancel an in-flight request by endpoint pattern
+   */
+  cancelRequest(pattern: string): void {
+    for (const [endpoint, controller] of abortControllers) {
+      if (endpoint.includes(pattern)) {
+        controller.abort()
+        abortControllers.delete(endpoint)
+      }
+    }
+  }
+
+  /**
+   * Check if backend is reachable
+   */
+  async isBackendReachable(): Promise<boolean> {
+    try {
+      await this.getHealth()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    requestOptions: { 
+      timeout?: number
+      retries?: number
+      retryDelay?: number
+      signal?: AbortSignal
+    } = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
-    })
+    const {
+      timeout = DEFAULT_TIMEOUT,
+      retries = MAX_RETRIES,
+      retryDelay = RETRY_DELAY,
+      signal
+    } = requestOptions
 
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`API Error (${response.status}): ${error}`)
+    const url = `${this.baseUrl}${endpoint}`
+    let lastError: Error | null = null
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+      // Register controller for cancellation support
+      abortControllers.set(endpoint, controller)
+
+      // Combine with external signal if provided
+      if (signal) {
+        signal.addEventListener('abort', () => controller.abort())
+      }
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        })
+
+        clearTimeout(timeoutId)
+        abortControllers.delete(endpoint)
+
+        if (!response.ok) {
+          let errorData: unknown
+          const contentType = response.headers.get('content-type')
+          
+          try {
+            if (contentType?.includes('application/json')) {
+              errorData = await response.json()
+            } else {
+              errorData = await response.text()
+            }
+          } catch {
+            errorData = 'Unknown error'
+          }
+
+          const errorMessage = typeof errorData === 'object' && errorData !== null
+            ? (errorData as { detail?: string }).detail || JSON.stringify(errorData)
+            : String(errorData)
+
+          throw new ApiError(
+            `API Error (${response.status}): ${errorMessage}`,
+            response.status,
+            errorData
+          )
+        }
+
+        return response.json()
+      } catch (error) {
+        clearTimeout(timeoutId)
+        abortControllers.delete(endpoint)
+
+        // Don't retry on user abort
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new ApiError('Request cancelled', undefined, { cancelled: true })
+        }
+
+        lastError = error instanceof Error ? error : new Error(String(error))
+
+        // Don't retry client errors (4xx) except 429 (rate limit)
+        if (error instanceof ApiError && error.status) {
+          if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+            throw error
+          }
+        }
+
+        // Retry with exponential backoff
+        if (attempt < retries) {
+          const delay = retryDelay * Math.pow(2, attempt)
+          console.warn(`Request failed (${endpoint}), retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1}): ${lastError.message}`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
     }
 
-    return response.json()
+    throw lastError || new ApiError('Request failed after all retries')
   }
 
   private async cachedRequest<T>(
@@ -328,5 +450,8 @@ class ApiClient {
 
 // Singleton instance
 export const apiClient = new ApiClient()
+
+// Export types
+export type { ApiClient }
 
 export default apiClient

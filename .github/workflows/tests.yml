@@ -1,0 +1,104 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test-backend:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y portaudio19-dev python3-pyaudio
+
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        uv sync --all-extras
+        uv pip install pytest pytest-asyncio pytest-cov
+
+    - name: Run tests
+      working-directory: ./backend
+      run: |
+        uv run pytest tests/ -v --tb=short --cov=speakeasy --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./backend/coverage.xml
+        fail_ci_if_error: false
+        verbose: true
+
+  test-gui:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [20, 21]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: gui/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./gui
+      run: npm ci
+
+    - name: Run linter
+      working-directory: ./gui
+      run: npm run lint
+
+    - name: Run type check
+      working-directory: ./gui
+      run: npm run typecheck
+
+  test-summary:
+    needs: [test-backend, test-gui]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Test Summary
+      run: |
+        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Backend Tests" >> $GITHUB_STEP_SUMMARY
+        echo "- Python versions: 3.11, 3.12" >> $GITHUB_STEP_SUMMARY
+        echo "- OS: Ubuntu, Windows" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### GUI Tests" >> $GITHUB_STEP_SUMMARY
+        echo "- Node versions: 20, 21" >> $GITHUB_STEP_SUMMARY
+        echo "- OS: Ubuntu, Windows" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status**: ${{ needs.test-backend.result == 'success' && needs.test-gui.result == 'success' && '✅ All Passed' || '❌ Some Failed' }}" >> $GITHUB_STEP_SUMMARY

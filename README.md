@@ -24,6 +24,7 @@
     <img src="https://img.shields.io/badge/ai-whisper%20%7C%20nemo%20%7C%20voxtral-purple?style=flat-square" alt="AI Models" />
     <img src="https://img.shields.io/github/stars/bitgineer/speakeasy?style=flat-square&color=yellow" alt="GitHub Stars" />
     <img src="https://img.shields.io/badge/vibe%20coding-ready-orange?style=flat-square" alt="Vibe Coding" />
+    <img src="https://github.com/bitgineer/speakeasy/workflows/Tests/badge.svg" alt="Tests" />
   </p>
 </div>
 
@@ -122,6 +123,9 @@ cd backend
 uv venv --python 3.12
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv pip install -e ".[cuda]"  # Without CUDA: uv pip install -e .
+
+# Run tests
+uv run pytest tests/ -v
 
 # Setup frontend
 cd ../gui

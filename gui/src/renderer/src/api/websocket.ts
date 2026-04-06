@@ -24,8 +24,11 @@ class WebSocketClient {
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
+  private maxReconnectDelay = 30000 // Cap at 30 seconds
   private listeners: Map<string, Set<EventCallback>> = new Map()
   private isIntentionallyClosed = false
+  private reconnectTimer: number | null = null
+  private connectionState: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' = 'disconnected'
   
   // Message queue and throttling
   private messageQueue: QueuedMessage[] = []
@@ -48,12 +51,23 @@ class WebSocketClient {
     }
   }
 
+  getConnectionState(): 'connecting' | 'connected' | 'disconnected' | 'reconnecting' {
+    return this.connectionState
+  }
+
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return
     }
 
+    // Clear any pending reconnect timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+
     this.isIntentionallyClosed = false
+    this.connectionState = 'connecting'
     this.startFlushInterval()
     
     try {
@@ -62,6 +76,7 @@ class WebSocketClient {
       this.ws.onopen = () => {
         console.log('WebSocket connected')
         this.reconnectAttempts = 0
+        this.connectionState = 'connected'
         this.emitMessage('open', { type: 'open' }, 'critical')
       }
 
@@ -76,16 +91,15 @@ class WebSocketClient {
         }
       }
 
-      this.ws.onclose = () => {
-        console.log('WebSocket closed')
+      this.ws.onclose = (event) => {
+        console.log(`WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`)
         this.stopFlushInterval()
-        this.emitMessage('close', { type: 'close' }, 'critical')
+        this.emitMessage('close', { type: 'close', code: event.code }, 'critical')
         
-        if (!this.isIntentionallyClosed && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++
-          const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-          console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`)
-          setTimeout(() => this.connect(), delay)
+        if (!this.isIntentionallyClosed) {
+          this.scheduleReconnect()
+        } else {
+          this.connectionState = 'disconnected'
         }
       }
 
@@ -95,29 +109,78 @@ class WebSocketClient {
       }
     } catch (error) {
       console.error('Failed to create WebSocket:', error)
+      this.connectionState = 'disconnected'
+      this.scheduleReconnect()
     }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`)
+      this.connectionState = 'disconnected'
+      this.emitMessage('error', { 
+        type: 'error', 
+        message: `Failed to reconnect after ${this.maxReconnectAttempts} attempts` 
+      }, 'critical')
+      return
+    }
+
+    this.reconnectAttempts++
+    this.connectionState = 'reconnecting'
+    
+    // Exponential backoff with cap
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.maxReconnectDelay
+    )
+    
+    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    
+    this.reconnectTimer = window.setTimeout(() => {
+      this.reconnectTimer = null
+      this.connect()
+    }, delay)
   }
 
   disconnect(): void {
     this.isIntentionallyClosed = true
+    
+    // Cancel any pending reconnect
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    
     this.stopFlushInterval()
     this.flushQueue()
+    
     if (this.ws) {
-      this.ws.close()
+      // Only close if not already closed
+      if (this.ws.readyState !== WebSocket.CLOSED) {
+        this.ws.close(1000, 'Client disconnect') // Normal closure
+      }
       this.ws = null
     }
+    
+    this.connectionState = 'disconnected'
+    this.reconnectAttempts = 0
   }
 
-  send(data: unknown): void {
+  send(data: unknown): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
+      return true
     }
+    console.warn('WebSocket not connected, cannot send message')
+    return false
   }
 
-  ping(): void {
+  ping(): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send('ping')
+      return true
     }
+    return false
   }
 
   // Event subscription

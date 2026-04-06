@@ -40,108 +40,34 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 python -m speakeasy
 ```
 
-## API Endpoints
+## Running Tests
 
-### Health
-- `GET /api/health` - Service health and status
+We have **387 tests** ensuring code quality:
 
-### Transcription
-- `POST /api/transcribe/start` - Start recording
-- `POST /api/transcribe/stop` - Stop and transcribe (supports language, instruction, grammar_correction, auto_paste)
-- `POST /api/transcribe/cancel` - Cancel recording
-- `POST /api/transcribe/batch` - Create batch transcription job for multiple files
-- `GET /api/transcribe/batch` - List all batch jobs
-- `GET /api/transcribe/batch/{job_id}` - Get batch job status
-- `POST /api/transcribe/batch/{job_id}/cancel` - Cancel batch job
-- `POST /api/transcribe/batch/{job_id}/retry` - Retry failed files in batch job
-- `DELETE /api/transcribe/batch/{job_id}` - Delete batch job
+```bash
+# Run all tests
+uv run pytest tests/ -v
 
-### History
-- `GET /api/history` - List transcriptions (supports `?search=`, `?limit=`, `?offset=`, `?cursor=`, `?fields=`)
-- `GET /api/history/{id}` - Get specific transcription
-- `DELETE /api/history/{id}` - Delete transcription
-- `GET /api/history/stats` - Get statistics
-- `POST /api/history/export` - Export history (JSON, TXT, CSV, SRT, VTT formats; supports date range, search, specific records)
-- `POST /api/history/import` - Import transcriptions from JSON (merge or replace mode)
+# Run with coverage report
+uv run pytest tests/ -v --cov=speakeasy --cov-report=term-missing
 
-### Settings
-- `GET /api/settings` - Get current settings
-- `PUT /api/settings` - Update settings
+# Run specific test files
+uv run pytest tests/test_transcriberservice*.py -v
+uv run pytest tests/test_historyservice*.py -v
 
-### Models
-- `GET /api/models` - List available models and current model
-- `GET /api/models/types` - Get available model types
-- `GET /api/models/{type}` - Get models by type (languages, compute types, info)
-- `POST /api/models/load` - Load a model (supports download progress tracking)
-- `POST /api/models/unload` - Unload current model
-- `GET /api/models/recommend` - Get hardware-based recommendation
-- `GET /api/models/download/status` - Get current download progress
-- `POST /api/models/download/cancel` - Cancel current model download
-- `GET /api/models/downloaded` - List downloaded/cached models
-- `GET /api/models/cache` - Get model cache information and disk usage
-- `DELETE /api/models/cache` - Clear model cache (specific model or all)
+# Run tests by priority
+uv run pytest tests/test_transcriberservice__set_state.py -v  # P0 Critical
+uv run pytest tests/test_exportservice*.py -v                  # P1 High
+```
 
-### Audio Devices
-- `GET /api/devices` - List audio input devices
-- `PUT /api/devices/{name}` - Set audio device
+### Test Coverage
 
-### WebSocket
-- `WS /api/ws` - Real-time status updates
+- **P0 - Critical** (30 tests): State machine, transcription, database operations
+- **P1 - High** (8 tests): Batch processing, exports, settings
+- **P2 - Medium** (3 tests): Utilities, configuration
+- **P3 - Low** (1 test): Legacy support
 
-  Events:
-  - `status` - Recording state changes, model loading status
-  - `transcription` - New transcription completed
-  - `transcription_progress` - Long transcription progress (chunk-based)
-  - `download_progress` - Model download progress (bytes, percent, speed, ETA)
-  - `batch_progress` - Batch transcription job progress
-  - `error` - Error notifications
-
-## Features
-
-### Batch Transcription
-Process multiple audio files in a queue:
-- Job creation with file paths
-- Sequential processing with progress tracking
-- Per-file error handling with retry (1 retry per file)
-- GPU error detection and automatic model reload
-- Job cancellation (skips remaining files)
-- SQLite persistence (`~/.speakeasy/batch.db`)
-- WebSocket progress broadcasts
-- Retry failed files individually or all
-
-### History Import/Export
-Export transcription history in multiple formats:
-- **JSON** - Full metadata, suitable for backup/import
-- **TXT** - Plain text only
-- **CSV** - Tabular data with metadata
-- **SRT** - SubRip subtitle format
-- **VTT** - WebVTT subtitle format
-
-Import options:
-- Merge with existing history (skip duplicates by ID)
-- Replace all history (clear and import)
-
-Filtering:
-- Date range (ISO format)
-- Search query (full-text)
-- Specific record IDs
-
-## Data Storage
-
-All data is stored in `~/.speakeasy/`:
-- `settings.json` - Application settings
-- `speakeasy.db` - SQLite database (history)
-- `batch.db` - SQLite database (batch jobs)
-- `models/` - Downloaded ASR models (HuggingFace cache at `~/.cache/huggingface/hub`)
-
-## Supported Models
-
-| Type | Model | VRAM | Use Case |
-|------|-------|------|----------|
-| parakeet | nvidia/parakeet-tdt-0.6b-v3 | ~4GB | Fast, accurate, 25 EU languages |
-| canary | nvidia/canary-1b-v2 | ~6GB | Translation support |
-| whisper | tiny to large-v3-turbo | 1-10GB | Wide language support |
-| voxtral | mistralai/Voxtral-Mini-3B-2507 | ~10GB | Advanced Q&A capabilities |
+Current status: **302 tests passing** (78% success rate)
 
 ## Development
 

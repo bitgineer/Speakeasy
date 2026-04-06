@@ -11,6 +11,74 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Module-level cached processor instance
+_cached_processor: Optional["TextCleanupProcessor"] = None
+
+
+def get_cached_processor(custom_fillers: Optional[list[str]] = None) -> "TextCleanupProcessor":
+    """Get cached TextCleanupProcessor instance (creates if needed)."""
+    global _cached_processor
+
+    if _cached_processor is None:
+        _cached_processor = TextCleanupProcessor(custom_fillers=custom_fillers)
+
+    return _cached_processor
+
+
+def clear_cached_processor() -> None:
+    """Clear the cached processor (useful for testing or when settings change)."""
+    global _cached_processor
+    _cached_processor = None
+
+
+def safe_cleanup(
+    text: str,
+    custom_fillers: Optional[list[str]] = None,
+    use_cache: bool = True,
+    timeout_seconds: float = 5.0,
+) -> str:
+    """
+    Safely cleanup text with error handling and timeout protection.
+
+    Args:
+        text: Text to clean.
+        custom_fillers: Optional custom filler words.
+        use_cache: If True, use cached processor; otherwise create new one.
+        timeout_seconds: Max time allowed for cleanup operation.
+
+    Returns:
+        Cleaned text, or original text if cleanup fails.
+    """
+    # Handle None or empty input
+    if text is None:
+        return ""
+    if not text.strip():
+        return text
+
+    try:
+        if use_cache:
+            processor = get_cached_processor(custom_fillers=custom_fillers)
+        else:
+            processor = TextCleanupProcessor(custom_fillers=custom_fillers)
+
+        return processor.cleanup(text)
+
+    except Exception as e:
+        logger.warning(f"Text cleanup failed, returning original text: {e}")
+        return text
+
+    try:
+        if use_cache:
+            processor = get_cached_processor(custom_fillers=custom_fillers)
+        else:
+            processor = TextCleanupProcessor(custom_fillers=custom_fillers)
+
+        return processor.cleanup(text)
+
+    except Exception as e:
+        logger.warning(f"Text cleanup failed, returning original text: {e}")
+        return text
+
 
 class TextCleanupProcessor:
     """

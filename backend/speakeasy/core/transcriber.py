@@ -94,6 +94,7 @@ class TranscriberService:
         self._stream: Optional[sd.InputStream] = None
         self._recording_start_time: Optional[float] = None
         self._lock = threading.Lock()
+        self._state_lock = threading.Lock()  # Dedicated lock for state transitions
 
         # Device
         self._device_name: Optional[str] = None
@@ -271,29 +272,32 @@ class TranscriberService:
 
     def _cleanup_recording_state(self) -> None:
         """Clean up recording state (stream, buffer, timing). Called on error or cancel."""
-        if self._stream:
-            try:
-                self._stream.stop()
-                self._stream.close()
-            except Exception as e:
-                logger.warning(f"Error closing stream: {e}")
-            finally:
-                self._stream = None
+        # Hold both locks to ensure atomic state cleanup
+        with self._state_lock:
+            with self._lock:
+                if self._stream:
+                    try:
+                        self._stream.stop()
+                        self._stream.close()
+                    except Exception as e:
+                        logger.warning(f"Error closing stream: {e}")
+                    finally:
+                        self._stream = None
 
-        with self._lock:
-            self._audio_buffer = []
-
-        self._recording_start_time = None
-        self._recording_samplerate = None
+                self._audio_buffer = []
+                self._recording_start_time = None
+                self._recording_samplerate = None
 
     def start_recording(self) -> None:
         """Start recording audio from the microphone."""
-        if self._state == TranscriberState.RECORDING:
-            logger.warning("Already recording")
-            return
+        # Check state with lock to prevent race conditions
+        with self._state_lock:
+            if self._state == TranscriberState.RECORDING:
+                logger.warning("Already recording")
+                return
 
-        if not self.is_model_loaded:
-            raise RuntimeError("No model loaded")
+            if not self.is_model_loaded:
+                raise RuntimeError("No model loaded")
 
         with self._lock:
             self._audio_buffer = []
@@ -354,23 +358,32 @@ class TranscriberService:
             self._stream.start()
             self._recording_start_time = time.time()
 
-            self._set_state(TranscriberState.RECORDING)
+            # Set state AFTER successful stream start
+            with self._state_lock:
+                self._set_state(TranscriberState.RECORDING)
+
             logger.info(f"Recording started successfully. Waiting for audio callbacks...")
         except Exception as e:
-            # Ensure buffer is cleared on stream creation/start failure
+            # Ensure state is reset and buffer is cleared on stream creation/start failure
             logger.error(f"Failed to start recording: {e}", exc_info=True)
-            with self._lock:
-                self._audio_buffer = []
-            if self._stream:
-                try:
-                    self._stream.stop()
-                    self._stream.close()
-                except Exception as e:
-                    logger.warning(f"Error closing stream: {e}")
-                finally:
-                    self._stream = None
-            self._recording_start_time = None
-            self._recording_samplerate = None
+            with self._state_lock:
+                with self._lock:
+                    self._audio_buffer = []
+                if self._stream:
+                    try:
+                        self._stream.stop()
+                        self._stream.close()
+                    except Exception as e:
+                        logger.warning(f"Error closing stream: {e}")
+                    finally:
+                        self._stream = None
+                self._recording_start_time = None
+                self._recording_samplerate = None
+                # Reset state to READY since we failed
+                if self.is_model_loaded:
+                    self._set_state(TranscriberState.READY)
+                else:
+                    self._set_state(TranscriberState.IDLE)
             raise
 
     def stop_recording(self) -> RecordingResult:
@@ -380,8 +393,10 @@ class TranscriberService:
         Returns:
             RecordingResult with audio data
         """
-        if self._state != TranscriberState.RECORDING:
-            raise RuntimeError("Not recording")
+        # Atomic state check
+        with self._state_lock:
+            if self._state != TranscriberState.RECORDING:
+                raise RuntimeError("Not recording")
 
         try:
             # Stop stream
@@ -393,7 +408,7 @@ class TranscriberService:
             # Calculate duration
             duration = time.time() - self._recording_start_time if self._recording_start_time else 0
 
-            # Concatenate audio buffer
+            # Concatenate audio buffer - hold lock for entire operation
             with self._lock:
                 buffer_count = len(self._audio_buffer)
                 logger.info(
@@ -443,17 +458,14 @@ class TranscriberService:
                     logger.info(
                         f"Resampled to {len(audio_data)} samples ({len(audio_data) / self.SAMPLE_RATE:.2f}s)"
                     )
-                    audio_data = scipy.signal.resample(audio_data, number_of_samples)
-                    audio_data = audio_data.astype(np.float32)
-                    logger.info(
-                        f"Resampled to {len(audio_data)} samples ({len(audio_data) / self.SAMPLE_RATE:.2f}s)"
-                    )
 
+                # Clear buffer while still holding lock
                 self._audio_buffer = []
 
+            # Update timing vars
             self._recording_start_time = None
             self._recording_samplerate = None
-            self._set_state(TranscriberState.READY)
+
             logger.info(f"Recording stopped, duration: {duration:.2f}s")
 
             return RecordingResult(
@@ -464,13 +476,13 @@ class TranscriberService:
         except Exception:
             # Ensure complete cleanup on any error
             self._cleanup_recording_state()
+            # Reset state to READY since we're no longer recording
+            with self._state_lock:
+                if self.is_model_loaded:
+                    self._set_state(TranscriberState.READY)
+                else:
+                    self._set_state(TranscriberState.IDLE)
             raise
-        finally:
-            # Always ensure buffer is cleared and timing reset
-            with self._lock:
-                self._audio_buffer = []
-            self._recording_start_time = None
-            self._recording_samplerate = None
 
     # Threshold for chunked transcription: 5 minutes at 16kHz
     CHUNK_THRESHOLD_SAMPLES = 5 * 60 * SAMPLE_RATE  # 4,800,000 samples
@@ -715,33 +727,31 @@ class TranscriberService:
 
     def cancel_recording(self) -> None:
         """Cancel the current recording without transcribing."""
-        if self._state != TranscriberState.RECORDING:
-            return
+        # Atomic state check
+        with self._state_lock:
+            if self._state != TranscriberState.RECORDING:
+                return
+            # Mark as cancelling to prevent race conditions
+            self._set_state(TranscriberState.TRANSCRIBING)
 
         try:
             self._cleanup_recording_state()
         finally:
-            # Always ensure buffer is cleared and timing reset
-            with self._lock:
-                self._audio_buffer = []
-            self._recording_start_time = None
-            self._recording_samplerate = None
-            self._set_state(
-                TranscriberState.READY if self.is_model_loaded else TranscriberState.IDLE
-            )
+            # Always ensure state is reset
+            with self._state_lock:
+                self._set_state(
+                    TranscriberState.READY if self.is_model_loaded else TranscriberState.IDLE
+                )
             logger.info("Recording cancelled")
 
     def cleanup(self) -> None:
         """Clean up all resources including model and recording state."""
-        try:
-            self._cleanup_recording_state()
-        finally:
-            # Always ensure buffer is cleared and timing reset
-            with self._lock:
-                self._audio_buffer = []
-            self._recording_start_time = None
-            self._recording_samplerate = None
-            self.unload_model()
+        # Hold state lock during entire cleanup
+        with self._state_lock:
+            try:
+                self._cleanup_recording_state()
+            finally:
+                self.unload_model()
 
 
 def list_audio_devices() -> list[dict]:

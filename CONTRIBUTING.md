@@ -75,8 +75,75 @@ npm install
 **Backend**:
 ```bash
 cd backend
-pytest
+# Install dev dependencies
+uv sync --extra dev
+
+# Run all tests
+uv run pytest tests/ -v
+
+# Run with coverage
+uv run pytest tests/ -v --cov=speakeasy --cov-report=html
+
+# Run specific test file
+uv run pytest tests/test_transcriberservice__set_state.py -v
 ```
+
+**Frontend**:
+```bash
+cd gui
+npm run lint
+npm run typecheck
+```
+
+## Testing Guidelines
+
+We have **387 tests** covering critical functionality:
+
+### Test Organization
+
+- **P0 - Critical**: Core functionality (state machine, transcription, history)
+- **P1 - High**: Important features (batch processing, exports)
+- **P2 - Medium**: Utilities and edge cases
+- **P3 - Low**: Legacy code and helpers
+
+### Writing Tests
+
+1. **Each function should have tests** covering:
+   - Happy path / basic functionality
+   - Error handling and edge cases
+   - Invalid inputs
+
+2. **Use pytest fixtures** for setup/teardown:
+   ```python
+   @pytest.fixture
+   async def initialized_service():
+       service = HistoryService(db_path=tmp_path / "test.db")
+       await service.initialize()
+       yield service
+       await service.close()
+   ```
+
+3. **Mock external dependencies** appropriately
+4. **Test both sync and async** methods correctly
+
+See [TESTING_PLAN.md](TESTING_PLAN.md) for the complete testing roadmap.
+
+## Pull Request Process
+
+1. **Update your branch** with the latest upstream changes:
+   ```bash
+   git fetch upstream
+   git rebase upstream/main
+   ```
+
+2. **Ensure tests pass**:
+   ```bash
+   # Backend
+   cd backend && uv run pytest tests/ -v
+   
+   # Frontend
+   cd gui && npm run lint && npm run typecheck
+   ```
 
 **Frontend**:
 ```bash

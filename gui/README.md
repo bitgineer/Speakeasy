@@ -35,10 +35,23 @@ This directory contains the source code for the desktop application interface. I
 
 ## Testing
 
-We have comprehensive testing strategies in place:
+We maintain code quality through linting and type checking:
 
-- **Unit/Component Tests**: Run with `npm test` (Vitest). See [Tests README](tests/README.md).
-- **End-to-End Tests**: Run with `npm run test:e2e` (Playwright). See [E2E README](e2e/README.md).
+```bash
+# Run linter
+npm run lint
+
+# Run TypeScript type checker
+npm run typecheck
+
+# Both (recommended before committing)
+npm run lint && npm run typecheck
+```
+
+The GUI codebase is tested through:
+- **Type Safety**: TypeScript strict mode
+- **Linting**: ESLint with custom rules
+- **Integration Tests**: Via backend test suite (see [backend tests](../backend/tests/))
 
 ## Project Structure
 
