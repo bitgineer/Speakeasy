@@ -60,7 +60,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): {
           duration_ms: transcriptionEvent.duration_ms,
           model_used: null,
           language: null,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          original_text: null,
+          is_ai_enhanced: false
         })
         setAppState('idle')
         break

@@ -275,7 +275,7 @@ export default function Stats(): JSX.Element {
                   {extendedStats.longestTranscription.text.split(/\s+/).filter(Boolean).length} words
                 </p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-2">
-                  "{extendedStats.longestTranscription.text.slice(0, 100)}..."
+                  &quot;{extendedStats.longestTranscription.text.slice(0, 100)}...&quot;
                 </p>
               </div>
             )}
@@ -292,7 +292,7 @@ export default function Stats(): JSX.Element {
                   {extendedStats.shortestTranscription.text.split(/\s+/).filter(Boolean).length} words
                 </p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-2">
-                  "{extendedStats.shortestTranscription.text}"
+                  &quot;{extendedStats.shortestTranscription.text}&quot;
                 </p>
               </div>
             )}

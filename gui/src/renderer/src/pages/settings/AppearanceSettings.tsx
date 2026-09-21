@@ -73,10 +73,8 @@ export default function AppearanceSettings(): JSX.Element {
     settings,
     isLoading,
     isSaving,
-    error,
     fetchSettings,
-    updateSettings,
-    clearError
+    updateSettings
   } = useSettingsStore()
 
   // Initialize from settings if available, otherwise null (not 'default')

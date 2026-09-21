@@ -18,7 +18,7 @@ let isLocked = false;
 let lastPttState = false;
 
 // Track modifier + key states for push-to-talk
-let pttActiveKeys = new Set<number>();
+const pttActiveKeys = new Set<number>();
 let pttRequiredKeys: number[] = [];
 let uiohookStarted = false;
 
@@ -68,16 +68,16 @@ const keyCodeMap: Record<string, number> = {
   x: UiohookKey.X,
   y: UiohookKey.Y,
   z: UiohookKey.Z,
-  "0": UiohookKey.Num0,
-  "1": UiohookKey.Num1,
-  "2": UiohookKey.Num2,
-  "3": UiohookKey.Num3,
-  "4": UiohookKey.Num4,
-  "5": UiohookKey.Num5,
-  "6": UiohookKey.Num6,
-  "7": UiohookKey.Num7,
-  "8": UiohookKey.Num8,
-  "9": UiohookKey.Num9,
+  "0": UiohookKey[0],
+  "1": UiohookKey[1],
+  "2": UiohookKey[2],
+  "3": UiohookKey[3],
+  "4": UiohookKey[4],
+  "5": UiohookKey[5],
+  "6": UiohookKey[6],
+  "7": UiohookKey[7],
+  "8": UiohookKey[8],
+  "9": UiohookKey[9],
   f1: UiohookKey.F1,
   f2: UiohookKey.F2,
   f3: UiohookKey.F3,

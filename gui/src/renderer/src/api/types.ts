@@ -45,6 +45,11 @@ export interface TranscriptionRecord {
   is_ai_enhanced: boolean
 }
 
+export interface WordData {
+  word: string
+  probability: number
+}
+
 export interface HistoryListResponse {
   items: TranscriptionRecord[]
   total: number

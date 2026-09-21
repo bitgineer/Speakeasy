@@ -3,15 +3,15 @@ Test for SettingsService.save
 Comprehensive test suite for saving settings.
 """
 
-import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import SettingsService, AppSettings
+from speakeasy.services.settings import SettingsService
 
 
 class TestSettingsServiceSave:
@@ -31,7 +31,7 @@ class TestSettingsServiceSave:
         service.load()
         service.save()
 
-        with open(temp_settings_path, "r") as f:
+        with open(temp_settings_path) as f:
             data = json.load(f)
 
         assert isinstance(data, dict)
@@ -83,7 +83,7 @@ class TestSettingsServiceSave:
         service._settings.model_type = "new"
         service.save()
 
-        with open(temp_settings_path, "r") as f:
+        with open(temp_settings_path) as f:
             data = json.load(f)
 
         assert data["model_type"] == "new"
@@ -107,7 +107,7 @@ class TestSettingsServiceSave:
         service.load()
         service.save()
 
-        with open(temp_settings_path, "r") as f:
+        with open(temp_settings_path) as f:
             data = json.load(f)
 
         # Check all expected fields are present

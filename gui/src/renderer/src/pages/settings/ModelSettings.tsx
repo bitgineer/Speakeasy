@@ -181,7 +181,7 @@ export default function ModelSettings(): JSX.Element {
       {needsModelReload && (
         <div className="mb-6 p-3 bg-[var(--color-warning-muted)] border border-[var(--color-warning)] rounded-lg flex items-center justify-between">
           <span className="text-[var(--color-warning)] text-sm">
-            Model settings changed. Click "Load Model" to apply.
+            Model settings changed. Click &quot;Load Model&quot; to apply.
           </span>
           <button
             onClick={handleLoadModel}
@@ -198,7 +198,7 @@ export default function ModelSettings(): JSX.Element {
         <section className="card p-4">
           <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Model Selection</h2>
           
-          {availableModels.length === 0 ? (
+          {Object.keys(availableModels).length === 0 ? (
             <div className="text-center py-8 text-[var(--color-text-muted)]">
               <div className="w-6 h-6 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm">Loading available models...</p>

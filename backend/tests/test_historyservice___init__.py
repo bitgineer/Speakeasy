@@ -3,18 +3,17 @@ Test for HistoryService.__init__
 Comprehensive test suite covering initialization and configuration.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone
-from pathlib import Path
+import os
 import sys
 import tempfile
-import os
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.history import HistoryService, TranscriptionRecord
+from speakeasy.services.history import HistoryService
 
 
 class TestHistoryServiceInit:
@@ -42,7 +41,7 @@ class TestHistoryServiceInit:
     def test_initialization_with_directory_creation(self, temp_db_path):
         """Test that parent directory is created during initialization."""
         deep_path = temp_db_path.parent / "subfolder" / "another" / "history.db"
-        service = HistoryService(db_path=deep_path)
+        HistoryService(db_path=deep_path)
 
         # The directory should not exist yet
         assert not deep_path.parent.exists()

@@ -3,18 +3,17 @@ Test for HistoryService.add
 Comprehensive test suite covering adding transcriptions to history.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
+import os
 import sys
 import tempfile
-import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.history import HistoryService, TranscriptionRecord
+from speakeasy.services.history import HistoryService
 
 
 @pytest.fixture

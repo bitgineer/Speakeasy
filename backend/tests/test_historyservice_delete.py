@@ -3,18 +3,16 @@ Test for HistoryService.delete
 Comprehensive test suite covering deletion of transcription records.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
+import os
 import sys
 import tempfile
-import os
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.history import HistoryService, TranscriptionRecord
+from speakeasy.services.history import HistoryService
 
 
 @pytest.fixture

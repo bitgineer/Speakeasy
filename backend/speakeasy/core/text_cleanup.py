@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 _cached_processor: Optional["TextCleanupProcessor"] = None
 
 
-def get_cached_processor(custom_fillers: Optional[list[str]] = None) -> "TextCleanupProcessor":
+def get_cached_processor(custom_fillers: list[str] | None = None) -> "TextCleanupProcessor":
     """Get cached TextCleanupProcessor instance (creates if needed)."""
     global _cached_processor
 
@@ -33,7 +33,7 @@ def clear_cached_processor() -> None:
 
 def safe_cleanup(
     text: str,
-    custom_fillers: Optional[list[str]] = None,
+    custom_fillers: list[str] | None = None,
     use_cache: bool = True,
     timeout_seconds: float = 5.0,
 ) -> str:
@@ -118,7 +118,7 @@ class TextCleanupProcessor:
         "anyway",
     ]
 
-    def __init__(self, custom_fillers: Optional[list[str]] = None):
+    def __init__(self, custom_fillers: list[str] | None = None):
         """
         Initialize the text cleanup processor.
 
@@ -214,8 +214,16 @@ class TextCleanupProcessor:
 
     # Number words mapped to digits (common in dictation)
     _NUMBER_WORDS = {
-        "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
-        "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
+        "zero": "0",
+        "one": "1",
+        "two": "2",
+        "three": "3",
+        "four": "4",
+        "five": "5",
+        "six": "6",
+        "seven": "7",
+        "eight": "8",
+        "nine": "9",
         "ten": "10",
     }
 
@@ -234,6 +242,7 @@ class TextCleanupProcessor:
                   "one and two" → "1 and 2"
         Preserves: "one more thing", "number one", "the one"
         """
+
         # A run of number words joined by commas or "and" is an enumeration.
         # A lone number word is prose, even before "and"/"or" or a sentence end.
         def convert(match: re.Match) -> str:

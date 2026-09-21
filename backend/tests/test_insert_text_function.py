@@ -3,14 +3,13 @@ Test for function.insert_text
 Comprehensive test suite for text insertion utility.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from speakeasy.utils.paste import insert_text
 
 
 class TestInsertTextFunction:
@@ -24,7 +23,7 @@ class TestInsertTextFunction:
             # Mock the actual paste functionality
             with patch("speakeasy.utils.paste.insert_text"):
                 pass
-        except:
+        except Exception:
             pass
 
     def test_insert_text_empty_string(self):

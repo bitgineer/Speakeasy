@@ -8,10 +8,11 @@ import logging
 import os
 import threading
 import time
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
-import uuid
+from typing import Optional
 
 from huggingface_hub import scan_cache_dir
 
@@ -38,7 +39,7 @@ class ModelDownloadProgress:
     downloaded_bytes: int = 0
     total_bytes: int = 0
     status: DownloadStatus = DownloadStatus.PENDING
-    error_message: Optional[str] = None
+    error_message: str | None = None
     started_at: float = field(default_factory=time.time)
     last_update_at: float = field(default_factory=time.time)
 
@@ -68,7 +69,7 @@ class ModelDownloadProgress:
         return self.downloaded_bytes / elapsed
 
     @property
-    def estimated_remaining_seconds(self) -> Optional[float]:
+    def estimated_remaining_seconds(self) -> float | None:
         """Estimate remaining download time in seconds."""
         if self.total_bytes <= 0 or self.downloaded_bytes <= 0:
             return None
@@ -119,7 +120,7 @@ class DownloadStateManager:
             return
         self._initialized = True
 
-        self._current_download: Optional[ModelDownloadProgress] = None
+        self._current_download: ModelDownloadProgress | None = None
         self._cancel_event = threading.Event()
         self._progress_callbacks: list[Callable[[ModelDownloadProgress], None]] = []
         self._state_lock = threading.Lock()
@@ -130,7 +131,7 @@ class DownloadStateManager:
         self._last_progress_time = 0.0
 
     @property
-    def current_download(self) -> Optional[ModelDownloadProgress]:
+    def current_download(self) -> ModelDownloadProgress | None:
         """Get the current download progress."""
         with self._state_lock:
             return self._current_download
@@ -358,7 +359,7 @@ def get_cache_info() -> dict:
     }
 
 
-def clear_model_cache(model_name: Optional[str] = None) -> dict:
+def clear_model_cache(model_name: str | None = None) -> dict:
     """
     Clear model cache.
 

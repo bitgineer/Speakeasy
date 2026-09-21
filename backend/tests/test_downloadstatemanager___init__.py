@@ -3,16 +3,15 @@ Test for DownloadStateManager.__init__
 Comprehensive test suite for DownloadStateManager initialization.
 """
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from speakeasy.services.download_state import (
     DownloadStateManager,
-    DownloadStatus,
-    ModelDownloadProgress,
 )
 
 

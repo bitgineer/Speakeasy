@@ -13,6 +13,7 @@ import LoadingSpinner from './components/LoadingSpinner'
 import Sidebar from './components/Sidebar'
 import { ToastProvider } from './context/ToastProvider'
 import type { TranscriptionRecord } from './api/types'
+import type { MessageBoxOptions, MessageBoxReturnValue } from 'electron'
 
 // Lazy load components
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -69,7 +70,7 @@ function ThemeInitializer(): null {
 
 // Main app layout for regular windows
 function MainLayout(): JSX.Element {
-  const { backendConnected, fetchHealth, startRecording, setAppState, isReconnecting } = useAppStore()
+  const { fetchHealth, startRecording, setAppState } = useAppStore()
   const { addItem, fetchHistory } = useHistoryStore()
   const { fetchSettings, settings } = useSettingsStore()
   
@@ -196,13 +197,14 @@ declare global {
       getRecordingStatus: () => Promise<boolean>
       getBackendStatus: () => Promise<{ running: boolean; port: number }>
       getBackendPort: () => Promise<number>
+      checkHealth?: () => Promise<{ state: string }>
       registerHotkey: (hotkey: string, mode?: string) => Promise<boolean>
       unregisterHotkey: () => Promise<void>
       getCurrentHotkey: () => Promise<string | null>
       getVersion: () => Promise<string>
       quit: () => Promise<void>
       showError: (title: string, content: string) => Promise<void>
-      showMessage: (options: Electron.MessageBoxOptions) => Promise<Electron.MessageBoxReturnValue>
+      showMessage: (options: MessageBoxOptions) => Promise<MessageBoxReturnValue>
       onNavigate: (callback: (path: string) => void) => () => void
       onRecordingStart: (callback: () => void) => () => void
       onRecordingLocked?: (callback: () => void) => () => void

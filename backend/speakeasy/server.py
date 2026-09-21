@@ -8,12 +8,11 @@ import asyncio
 import logging
 import os
 import re
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Callable, Optional
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -27,25 +26,20 @@ from .core.config import (
 )
 from .core.models import TranscriptionResult, get_gpu_info, recommend_model
 from .core.text_cleanup import (
-    TextCleanupProcessor,
-    safe_cleanup,
-    get_cached_processor,
     clear_cached_processor,
+    safe_cleanup,
 )
 from .core.transcriber import TranscriberService, TranscriberState, list_audio_devices
-from .services.batch import BatchJob, BatchJobStatus, BatchService
+from .services.batch import BatchService
 from .services.download_state import (
-    DownloadStatus,
-    ModelDownloadProgress,
     clear_model_cache,
     download_state_manager,
     get_cache_info,
     get_cached_models,
 )
 from .services.export import ExportFormat, export_service
-from .services.history import HistoryService, TranscriptionRecord
+from .services.history import HistoryService
 from .services.settings import (
-    AppSettings,
     SettingsService,
     get_default_db_path,
     get_default_settings_path,
@@ -55,10 +49,10 @@ from .utils.paste import insert_text
 logger = logging.getLogger(__name__)
 
 # Global services
-transcriber: Optional[TranscriberService] = None
-history: Optional[HistoryService] = None
-settings_service: Optional[SettingsService] = None
-batch_service: Optional[BatchService] = None
+transcriber: TranscriberService | None = None
+history: HistoryService | None = None
+settings_service: SettingsService | None = None
+batch_service: BatchService | None = None
 
 # WebSocket connections for real-time updates
 websocket_connections: list[WebSocket] = []
@@ -73,8 +67,8 @@ class TranscribeStartResponse(BaseModel):
 
 class TranscribeStopRequest(BaseModel):
     auto_paste: bool = True
-    language: Optional[str] = Field(None, max_length=10)
-    instruction: Optional[str] = Field(None, max_length=1000)
+    language: str | None = Field(None, max_length=10)
+    instruction: str | None = Field(None, max_length=1000)
     grammar_correction: bool = False
 
 
@@ -82,42 +76,42 @@ class TranscribeStopResponse(BaseModel):
     id: str
     text: str
     duration_ms: int
-    model_used: Optional[str]
-    language: Optional[str]
+    model_used: str | None
+    language: str | None
 
 
 class HistoryListResponse(BaseModel):
     items: list[dict]
     total: int
-    next_cursor: Optional[str] = None
+    next_cursor: str | None = None
 
 
 class SettingsUpdateRequest(BaseModel):
-    model_type: Optional[str] = Field(None, max_length=50)
-    model_name: Optional[str] = Field(None, max_length=200)
-    compute_type: Optional[str] = Field(None, max_length=20)
-    device: Optional[str] = Field(None, pattern=r"^(cuda|cpu)$")
-    language: Optional[str] = Field(None, max_length=10)
-    device_name: Optional[str] = Field(None, max_length=200)
-    hotkey: Optional[str] = Field(None, max_length=50)
-    hotkey_mode: Optional[str] = Field(None, pattern=r"^(toggle|push-to-talk)$")
-    auto_paste: Optional[bool] = None
-    show_recording_indicator: Optional[bool] = None
-    always_show_indicator: Optional[bool] = None
-    theme: Optional[str] = Field(None, max_length=50)
-    enable_text_cleanup: Optional[bool] = None
-    custom_filler_words: Optional[list[str]] = Field(None, max_length=100)
-    enable_grammar_correction: Optional[bool] = None
-    grammar_model: Optional[str] = Field(None, max_length=200)
-    grammar_device: Optional[str] = Field(None, pattern=r"^(cuda|cpu|auto)$")
-    live_transcription: Optional[bool] = None
-    live_chunk_seconds: Optional[float] = Field(None, ge=1.0, le=10.0)
-    live_auto_paste: Optional[bool] = None
-    server_port: Optional[int] = Field(None, ge=1024, le=65535)
+    model_type: str | None = Field(None, max_length=50)
+    model_name: str | None = Field(None, max_length=200)
+    compute_type: str | None = Field(None, max_length=20)
+    device: str | None = Field(None, pattern=r"^(cuda|cpu)$")
+    language: str | None = Field(None, max_length=10)
+    device_name: str | None = Field(None, max_length=200)
+    hotkey: str | None = Field(None, max_length=50)
+    hotkey_mode: str | None = Field(None, pattern=r"^(toggle|push-to-talk)$")
+    auto_paste: bool | None = None
+    show_recording_indicator: bool | None = None
+    always_show_indicator: bool | None = None
+    theme: str | None = Field(None, max_length=50)
+    enable_text_cleanup: bool | None = None
+    custom_filler_words: list[str] | None = Field(None, max_length=100)
+    enable_grammar_correction: bool | None = None
+    grammar_model: str | None = Field(None, max_length=200)
+    grammar_device: str | None = Field(None, pattern=r"^(cuda|cpu|auto)$")
+    live_transcription: bool | None = None
+    live_chunk_seconds: float | None = Field(None, ge=1.0, le=10.0)
+    live_auto_paste: bool | None = None
+    server_port: int | None = Field(None, ge=1024, le=65535)
 
     @field_validator("hotkey")
     @classmethod
-    def validate_hotkey_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_hotkey_format(cls, v: str | None) -> str | None:
         if v is None:
             return v
         if not re.match(r"^[a-zA-Z0-9+]+$", v):
@@ -129,17 +123,17 @@ class ModelLoadRequest(BaseModel):
     model_type: str = Field(..., max_length=50)
     model_name: str = Field(..., max_length=200)
     device: str = Field(default="cuda", pattern=r"^(cuda|cpu)$")
-    compute_type: Optional[str] = Field(None, max_length=20)
+    compute_type: str | None = Field(None, max_length=20)
 
 
 class HealthResponse(BaseModel):
     status: str
     state: str
     model_loaded: bool
-    model_name: Optional[str]
+    model_name: str | None
     gpu_available: bool
-    gpu_name: Optional[str]
-    gpu_vram_gb: Optional[float]
+    gpu_name: str | None
+    gpu_vram_gb: float | None
 
 
 # --- WebSocket broadcast ---
@@ -173,7 +167,7 @@ def on_state_change(state: TranscriberState) -> None:
     )
 
 
-def _setup_live_transcription(loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> None:
     """Configure live transcription callback — WebSocket + optional auto-paste.
 
     Pass ``loop`` when calling from a non-async thread; async callers fall back
@@ -188,9 +182,11 @@ def _setup_live_transcription(loop: Optional[asyncio.AbstractEventLoop] = None) 
 
         def on_live_text(text: str) -> None:
             # Apply text cleanup if enabled
-            cleaned = safe_cleanup(
-                text, custom_fillers=settings.custom_filler_words, use_cache=True
-            ) if settings.enable_text_cleanup else text
+            cleaned = (
+                safe_cleanup(text, custom_fillers=settings.custom_filler_words, use_cache=True)
+                if settings.enable_text_cleanup
+                else text
+            )
 
             # Schedule the WebSocket broadcast on the main event loop
             try:
@@ -201,23 +197,29 @@ def _setup_live_transcription(loop: Optional[asyncio.AbstractEventLoop] = None) 
                 logger.error(f"LIVE CALLBACK broadcast scheduling failed: {e}", exc_info=True)
 
             # Auto-paste into active window (runs regardless of broadcast result)
-            logger.info(f"LIVE CALLBACK: auto_paste={settings.live_auto_paste}, text='{cleaned[:40]}'")
+            logger.info(
+                f"LIVE CALLBACK: auto_paste={settings.live_auto_paste}, text='{cleaned[:40]}'"
+            )
             if settings.live_auto_paste:
                 try:
                     from .utils.paste import replace_active_text
+
                     replace_active_text(cleaned)
                     logger.info("LIVE CALLBACK: paste completed")
                 except Exception as e:
                     logger.error(f"LIVE CALLBACK paste failed: {e}", exc_info=True)
+
         transcriber.set_live_callback(on_live_text)
         transcriber.set_live_enabled(True, settings.live_chunk_seconds)
-        logger.info(f"Live transcription enabled (chunk={settings.live_chunk_seconds}s, auto_paste={settings.live_auto_paste})")
+        logger.info(
+            f"Live transcription enabled (chunk={settings.live_chunk_seconds}s, auto_paste={settings.live_auto_paste})"
+        )
     else:
         transcriber.set_live_callback(None)
         transcriber.set_live_enabled(False)
 
 
-def _preload_model_frameworks(model_type: Optional[str] = None) -> None:
+def _preload_model_frameworks(model_type: str | None = None) -> None:
     """
     Pre-import heavy ML frameworks in background threads during server startup.
 
@@ -240,6 +242,7 @@ def _preload_model_frameworks(model_type: Optional[str] = None) -> None:
             _start = __import__("time").time()
             # This triggers the full chain: nemo → pytorch_lightning → matplotlib → etc.
             from nemo.collections.asr.models import ASRModel, EncDecMultiTaskModel  # noqa: F401
+
             logger.info(f"NeMo pre-import complete in {__import__('time').time() - _start:.2f}s")
         except Exception as e:
             logger.debug(f"NeMo pre-import skipped (not installed?): {e}")
@@ -250,9 +253,9 @@ def _preload_model_frameworks(model_type: Optional[str] = None) -> None:
             logger.info("Pre-importing faster-whisper (background)...")
             _start = __import__("time").time()
             from faster_whisper import WhisperModel  # noqa: F401
+
             logger.info(
-                f"faster-whisper pre-import complete in "
-                f"{__import__('time').time() - _start:.2f}s"
+                f"faster-whisper pre-import complete in {__import__('time').time() - _start:.2f}s"
             )
         except Exception as e:
             logger.debug(f"faster-whisper pre-import skipped: {e}")
@@ -587,9 +590,9 @@ async def transcribe_cancel():
 async def history_list(
     limit: int = 50,
     offset: int = 0,
-    search: Optional[str] = None,
-    cursor: Optional[str] = None,
-    fields: Optional[str] = None,
+    search: str | None = None,
+    cursor: str | None = None,
+    fields: str | None = None,
 ):
     """
     List transcription history.
@@ -605,7 +608,7 @@ async def history_list(
         raise HTTPException(status_code=503, detail="History not initialized")
 
     # Parse fields parameter
-    fields_set: Optional[set[str]] = None
+    fields_set: set[str] | None = None
     if fields:
         fields_set = set(f.strip() for f in fields.split(","))
 
@@ -638,10 +641,10 @@ async def history_stats():
 class ExportRequest(BaseModel):
     format: str = Field(..., pattern=r"^(txt|json|csv|srt|vtt)$")
     include_metadata: bool = True
-    start_date: Optional[str] = None  # ISO format
-    end_date: Optional[str] = None  # ISO format
-    search: Optional[str] = None
-    record_ids: Optional[list[str]] = None  # Export specific records
+    start_date: str | None = None  # ISO format
+    end_date: str | None = None  # ISO format
+    search: str | None = None
+    record_ids: list[str] | None = None  # Export specific records
 
 
 @app.get("/api/history/export")
@@ -708,8 +711,6 @@ async def history_delete(record_id: str):
     return {"deleted": True}
 
 
-
-
 async def _get_export_records(body: ExportRequest) -> list:
     """Fetch and filter records for export based on request body."""
     if body.record_ids:
@@ -725,12 +726,18 @@ async def _get_export_records(body: ExportRequest) -> list:
     if body.start_date or body.end_date:
         from datetime import datetime
 
-        start = datetime.fromisoformat(body.start_date.replace("Z", "+00:00")) if body.start_date else None
-        end = datetime.fromisoformat(body.end_date.replace("Z", "+00:00")) if body.end_date else None
+        start = (
+            datetime.fromisoformat(body.start_date.replace("Z", "+00:00"))
+            if body.start_date
+            else None
+        )
+        end = (
+            datetime.fromisoformat(body.end_date.replace("Z", "+00:00")) if body.end_date else None
+        )
         records = [
-            r for r in records
-            if (start is None or r.created_at >= start)
-            and (end is None or r.created_at <= end)
+            r
+            for r in records
+            if (start is None or r.created_at >= start) and (end is None or r.created_at <= end)
         ]
 
     return records
@@ -931,7 +938,7 @@ async def batch_cancel(job_id: str):
 
 
 @app.post("/api/transcribe/batch/{job_id}/retry")
-async def batch_retry(job_id: str, file_ids: Optional[list[str]] = None):
+async def batch_retry(job_id: str, file_ids: list[str] | None = None):
     """
     Retry failed files in a batch job.
 
@@ -1014,7 +1021,16 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
         clear_cached_processor()
 
     # Reconfigure live transcription if relevant settings changed
-    if any(k in updates for k in ["live_transcription", "live_chunk_seconds", "live_auto_paste", "enable_text_cleanup", "custom_filler_words"]):
+    if any(
+        k in updates
+        for k in [
+            "live_transcription",
+            "live_chunk_seconds",
+            "live_auto_paste",
+            "enable_text_cleanup",
+            "custom_filler_words",
+        ]
+    ):
         _setup_live_transcription()
 
     return {
@@ -1071,7 +1087,6 @@ async def models_recommend(needs_translation: bool = False):
     }
 
 
-
 def _create_model_download_callback(last_broadcast_time: list) -> Callable[[int, int], bool]:
     """Create a progress callback that throttles WebSocket broadcasts to 1/s."""
     import time
@@ -1091,7 +1106,9 @@ def _create_model_download_callback(last_broadcast_time: list) -> Callable[[int,
     return progress_callback
 
 
-async def _broadcast_model_load_error(model_name: str, error_msg: str, cancelled: bool = False) -> None:
+async def _broadcast_model_load_error(
+    model_name: str, error_msg: str, cancelled: bool = False
+) -> None:
     """Broadcast download error/cancellation and update download state."""
     if cancelled:
         await broadcast("download_progress", {"status": "cancelled", "model_name": model_name})
@@ -1135,8 +1152,10 @@ async def models_load(request: Request, body: ModelLoadRequest):
 
         if settings_service:
             settings_service.update(
-                model_type=body.model_type, model_name=body.model_name,
-                device=body.device, compute_type=body.compute_type,
+                model_type=body.model_type,
+                model_name=body.model_name,
+                device=body.device,
+                compute_type=body.compute_type,
             )
         _setup_live_transcription()
         return {"status": "loaded", "model": body.model_name}
@@ -1203,7 +1222,7 @@ async def models_cache_info():
 
 @app.delete("/api/models/cache")
 @limiter.limit("5/minute")
-async def models_cache_clear(request: Request, model_name: Optional[str] = None):
+async def models_cache_clear(request: Request, model_name: str | None = None):
     """
     Clear model cache.
 

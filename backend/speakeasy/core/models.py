@@ -15,16 +15,16 @@ import hashlib
 import json
 import logging
 import os
-import pickle
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Optional, Set
+from typing import TYPE_CHECKING
 
-import torch  # Ensure torch is imported for serialization
 import numpy as np
+import torch  # Ensure torch is imported for serialization
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -53,9 +53,9 @@ def _ensure_faster_whisper():
     """Lazy-import faster_whisper (CTranslate2-based Whisper)."""
     global _FASTER_WHISPER_AVAILABLE, _WhisperModel
     if not _FASTER_WHISPER_AVAILABLE:
-        from faster_whisper import WhisperModel as _WM
+        from faster_whisper import WhisperModel
 
-        _WhisperModel = _WM
+        _WhisperModel = WhisperModel
         _FASTER_WHISPER_AVAILABLE = True
 
 
@@ -63,11 +63,10 @@ def _ensure_nemo_asr():
     """Lazy-import NeMo ASR classes (heavy import chain)."""
     global _NEMO_ASR_AVAILABLE, _ASRModel, _EncDecMultiTaskModel
     if not _NEMO_ASR_AVAILABLE:
-        from nemo.collections.asr.models import ASRModel as _ARM
-        from nemo.collections.asr.models import EncDecMultiTaskModel as _EDM
+        from nemo.collections.asr.models import ASRModel, EncDecMultiTaskModel
 
-        _ASRModel = _ARM
-        _EncDecMultiTaskModel = _EDM
+        _ASRModel = ASRModel
+        _EncDecMultiTaskModel = EncDecMultiTaskModel
         _NEMO_ASR_AVAILABLE = True
 
 
@@ -87,11 +86,10 @@ def _ensure_voxtral():
     """Lazy-import Voxtral dependencies (heavy transformers imports)."""
     global _VOXTRAL_AVAILABLE, _VoxtralForConditionalGeneration, _AutoProcessor, _BitsAndBytesConfig
     if not _VOXTRAL_AVAILABLE:
-        from transformers import AutoProcessor as _AP
-        from transformers import BitsAndBytesConfig as _BBC
+        from transformers import AutoProcessor, BitsAndBytesConfig
 
         try:
-            from transformers import VoxtralForConditionalGeneration as _VFG
+            from transformers import VoxtralForConditionalGeneration
         except ImportError:
             logger.warning(
                 "VoxtralForConditionalGeneration not found. Install with: "
@@ -102,9 +100,9 @@ def _ensure_voxtral():
                 "Please run: pip install git+https://github.com/huggingface/transformers.git"
             )
 
-        _AutoProcessor = _AP
-        _BitsAndBytesConfig = _BBC
-        _VoxtralForConditionalGeneration = _VFG
+        _AutoProcessor = AutoProcessor
+        _BitsAndBytesConfig = BitsAndBytesConfig
+        _VoxtralForConditionalGeneration = VoxtralForConditionalGeneration
         _VOXTRAL_AVAILABLE = True
 
 
@@ -127,9 +125,9 @@ def _is_hf_model_cached(repo_id: str) -> bool:
 
     # Probe files in priority order — first match wins
     probe_files = [
-        "config.json",       # Standard HF / Transformers / Whisper
-        "model.bin",         # CTranslate2 fallback
-        "pytorch_model.bin", # PyTorch fallback
+        "config.json",  # Standard HF / Transformers / Whisper
+        "model.bin",  # CTranslate2 fallback
+        "pytorch_model.bin",  # PyTorch fallback
     ]
     for filename in probe_files:
         try:
@@ -145,9 +143,7 @@ def _is_hf_model_cached(repo_id: str) -> bool:
     # NeMo (.nemo) models: check if HF cache dir exists locally
     # Format: ~/.cache/huggingface/hub/models--org--name/snapshots/
     try:
-        cache_root = os.path.expanduser(
-            os.path.join("~", ".cache", "huggingface", "hub")
-        )
+        cache_root = os.path.expanduser(os.path.join("~", ".cache", "huggingface", "hub"))
         dir_name = "models--" + repo_id.replace("/", "--")
         cache_dir = os.path.join(cache_root, dir_name, "snapshots")
         if os.path.isdir(cache_dir):
@@ -161,7 +157,7 @@ def _is_hf_model_cached(repo_id: str) -> bool:
     return False
 
 
-def _resolve_hf_cache_path(repo_id: str) -> Optional[str]:
+def _resolve_hf_cache_path(repo_id: str) -> str | None:
     """
     Resolve the local cache path for a HuggingFace repo without scanning.
 
@@ -182,9 +178,7 @@ def _resolve_hf_cache_path(repo_id: str) -> Optional[str]:
 
     # Fall back to snapshot directory check (for .nemo models)
     try:
-        cache_root = os.path.expanduser(
-            os.path.join("~", ".cache", "huggingface", "hub")
-        )
+        cache_root = os.path.expanduser(os.path.join("~", ".cache", "huggingface", "hub"))
         dir_name = "models--" + repo_id.replace("/", "--")
         cache_dir = os.path.join(cache_root, dir_name, "snapshots")
         if os.path.isdir(cache_dir):
@@ -220,8 +214,9 @@ def warmup_cuda():
         logger.warning(f"CUDA warmup skipped: {e}")
     return False
 
+
 # Track temp files for emergency cleanup at exit
-_temp_files_to_cleanup: Set[str] = set()
+_temp_files_to_cleanup: set[str] = set()
 
 
 def safe_delete(path: str, max_retries: int = 5, base_delay: float = 0.1) -> None:
@@ -283,9 +278,9 @@ class TranscriptionResult:
 
     text: str
     duration_ms: int  # Audio recording duration in milliseconds
-    language: Optional[str] = None
-    model_used: Optional[str] = None
-    processing_ms: Optional[int] = None  # Time taken to transcribe (for debugging)
+    language: str | None = None
+    model_used: str | None = None
+    processing_ms: int | None = None  # Time taken to transcribe (for debugging)
 
 
 class ModelWrapper:
@@ -304,7 +299,7 @@ class ModelWrapper:
         model_type: str,
         model_name: str,
         device: str = "cuda",
-        compute_type: Optional[str] = None,
+        compute_type: str | None = None,
     ):
         """
         Initialize the model wrapper.
@@ -332,7 +327,7 @@ class ModelWrapper:
 
     def load(
         self,
-        progress_callback: Optional[ProgressCallback] = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """
         Load the model into memory with optimizations for faster startup.
@@ -352,13 +347,13 @@ class ModelWrapper:
 
         logger.info(f"Loading {self.model_type.value} model: {self.model_name}")
         if self.model_type == ModelType.WHISPER:
-            logger.info(f"Target: <10s for cached models, <60s for first download")
+            logger.info("Target: <10s for cached models, <60s for first download")
         elif self.model_type == ModelType.PARAKEET:
-            logger.info(f"Target: ~30s (NeMo loads from .nemo format - this is normal)")
+            logger.info("Target: ~30s (NeMo loads from .nemo format - this is normal)")
         elif self.model_type == ModelType.CANARY:
-            logger.info(f"Target: ~30s (NeMo loads from .nemo format - this is normal)")
+            logger.info("Target: ~30s (NeMo loads from .nemo format - this is normal)")
         elif self.model_type == ModelType.VOXTRAL:
-            logger.info(f"Target: <15s for cached models, <60s for first download")
+            logger.info("Target: <15s for cached models, <60s for first download")
 
         if self.model_type == ModelType.WHISPER:
             self._load_whisper(progress_callback)
@@ -406,9 +401,22 @@ class ModelWrapper:
     def _resolve_hf_name(self, model_name: str) -> str:
         """Resolve short whisper model names to full HF repo IDs."""
         if "/" not in model_name and model_name in [
-            "tiny", "tiny.en", "base", "base.en", "small", "small.en",
-            "medium", "medium.en", "large", "large-v1", "large-v2", "large-v3",
-            "distil-large-v2", "distil-large-v3", "distil-medium.en", "distil-small.en",
+            "tiny",
+            "tiny.en",
+            "base",
+            "base.en",
+            "small",
+            "small.en",
+            "medium",
+            "medium.en",
+            "large",
+            "large-v1",
+            "large-v2",
+            "large-v3",
+            "distil-large-v2",
+            "distil-large-v3",
+            "distil-medium.en",
+            "distil-small.en",
         ]:
             if model_name.startswith("distil-"):
                 return f"Systran/faster-{model_name}"
@@ -439,7 +447,9 @@ class ModelWrapper:
                 progress_callback(1, 1)
                 return cached_path
             # Fall through to snapshot_download for edge cases
-            logger.debug("Fast cache check passed but path resolution failed, using snapshot_download")
+            logger.debug(
+                "Fast cache check passed but path resolution failed, using snapshot_download"
+            )
 
         # --- Slow path: download needed ---
         total_downloaded: int = 0
@@ -481,7 +491,7 @@ class ModelWrapper:
 
     def _load_whisper(
         self,
-        progress_callback: Optional[ProgressCallback] = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Load Faster-Whisper model with fast cache check and lazy imports."""
         _ensure_faster_whisper()
@@ -501,7 +511,9 @@ class ModelWrapper:
         else:
             model_arg = self.model_name
 
-        logger.info(f"Initializing CTranslate2 WhisperModel (compute_type={self.compute_type or 'float16'})...")
+        logger.info(
+            f"Initializing CTranslate2 WhisperModel (compute_type={self.compute_type or 'float16'})..."
+        )
         _start = time.time()
         self._model = _WhisperModel(
             model_size_or_path=model_arg,
@@ -539,6 +551,7 @@ class ModelWrapper:
             pickle_start = time.time()
             if _DILL_AVAILABLE:
                 import dill
+
                 self._model = _t.load(cache_path, map_location=self.device, pickle_module=dill)
             else:
                 self._model = _t.load(cache_path, map_location=self.device)
@@ -557,8 +570,7 @@ class ModelWrapper:
         cache_check_start = time.time()
         is_cached = _is_hf_model_cached(self.model_name)
         logger.info(
-            f"Model cache check took {time.time() - cache_check_start:.2f}s "
-            f"(cached={is_cached})"
+            f"Model cache check took {time.time() - cache_check_start:.2f}s (cached={is_cached})"
         )
 
         logger.info("Initializing NeMo model architecture...")
@@ -587,7 +599,7 @@ class ModelWrapper:
 
     def _load_parakeet(
         self,
-        progress_callback: Optional[ProgressCallback] = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Load NVIDIA Parakeet model via NeMo — orchestrated with cache + fallback."""
         _ensure_nemo_asr()
@@ -611,7 +623,7 @@ class ModelWrapper:
 
     def _load_canary(
         self,
-        progress_callback: Optional[ProgressCallback] = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Load NVIDIA Canary model via NeMo with fast cache + lazy imports."""
         _ensure_nemo_asr()
@@ -643,7 +655,7 @@ class ModelWrapper:
 
     def _load_voxtral(
         self,
-        progress_callback: Optional[ProgressCallback] = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Load Mistral Voxtral model via Transformers with fast cache + lazy imports."""
         _ensure_voxtral()
@@ -654,13 +666,13 @@ class ModelWrapper:
 
         # Import for TranscriptionRequest
         from mistral_common.protocol.transcription.request import (
-            TranscriptionRequest as _TR,
+            TranscriptionRequest as _BaseTranscriptionRequest,
         )
         from pydantic_extra_types.language_code import LanguageAlpha2
 
-        class TranscriptionRequest(_TR):
-            language: Optional[LanguageAlpha2] = None
-            prompt: Optional[str] = None
+        class TranscriptionRequest(_BaseTranscriptionRequest):
+            language: LanguageAlpha2 | None = None
+            prompt: str | None = None
 
         self._transcription_request_cls = TranscriptionRequest
         self._processor = _AutoProcessor.from_pretrained(self.model_name)
@@ -695,8 +707,8 @@ class ModelWrapper:
         self,
         audio_data: "NDArray[np.float32]",
         sample_rate: int = 16000,
-        language: Optional[str] = None,
-        instruction: Optional[str] = None,
+        language: str | None = None,
+        instruction: str | None = None,
     ) -> TranscriptionResult:
         """
         Transcribe audio data and return result.
@@ -742,9 +754,7 @@ class ModelWrapper:
             logger.error(f"Transcription error: {e}")
             raise
 
-    def _transcribe_whisper(
-        self, audio_data: "NDArray[np.float32]", language: Optional[str]
-    ) -> str:
+    def _transcribe_whisper(self, audio_data: "NDArray[np.float32]", language: str | None) -> str:
         """Transcribe using Faster-Whisper."""
         segments, _ = self._model.transcribe(
             audio_data,
@@ -789,7 +799,7 @@ class ModelWrapper:
         self,
         audio_data: "NDArray[np.float32]",
         sample_rate: int,
-        language: Optional[str],
+        language: str | None,
     ) -> str:
         """Transcribe using NVIDIA Canary."""
         import soundfile as sf
@@ -835,17 +845,17 @@ class ModelWrapper:
         self,
         audio_data: "NDArray[np.float32]",
         sample_rate: int,
-        language: Optional[str],
-        instruction: Optional[str] = None,
+        language: str | None,
+        instruction: str | None = None,
     ) -> str:
         """Transcribe using Mistral Voxtral with chunking for long audio."""
-        MAX_DURATION_SECONDS = 30
-        max_samples = MAX_DURATION_SECONDS * sample_rate
+        max_duration_seconds = 30
+        max_samples = max_duration_seconds * sample_rate
 
         if len(audio_data) > max_samples:
             logger.warning(
                 f"Audio length ({len(audio_data) / sample_rate:.2f}s) exceeds "
-                f"Voxtral limit ({MAX_DURATION_SECONDS}s). Processing in chunks."
+                f"Voxtral limit ({max_duration_seconds}s). Processing in chunks."
             )
             chunks = []
             for i in range(0, len(audio_data), max_samples):
@@ -873,8 +883,8 @@ class ModelWrapper:
         self,
         audio_data: "NDArray[np.float32]",
         sample_rate: int,
-        language: Optional[str],
-        instruction: Optional[str] = None,
+        language: str | None,
+        instruction: str | None = None,
     ) -> str:
         """Transcribe a single chunk using Voxtral."""
         import soundfile as sf

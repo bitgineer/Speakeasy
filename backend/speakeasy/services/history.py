@@ -8,10 +8,9 @@ Supports cursor-based pagination and field projection.
 import base64
 import logging
 import uuid
-from dataclasses import dataclass, fields as dataclass_fields
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import aiosqlite
 
@@ -25,10 +24,10 @@ class TranscriptionRecord:
     id: str
     text: str
     duration_ms: int
-    model_used: Optional[str]
-    language: Optional[str]
+    model_used: str | None
+    language: str | None
     created_at: datetime
-    original_text: Optional[str] = None  # Original text before AI enhancement
+    original_text: str | None = None  # Original text before AI enhancement
 
     # All valid field names for projection
     VALID_FIELDS = {
@@ -46,7 +45,7 @@ class TranscriptionRecord:
         """Check if this transcription was AI-enhanced (grammar corrected)."""
         return self.original_text is not None and self.original_text != self.text
 
-    def to_dict(self, fields: Optional[set[str]] = None) -> dict:
+    def to_dict(self, fields: set[str] | None = None) -> dict:
         """
         Convert to dictionary for JSON serialization.
 
@@ -108,7 +107,7 @@ class HistoryService:
             db_path: Path to the SQLite database file
         """
         self.db_path = db_path
-        self._db: Optional[aiosqlite.Connection] = None
+        self._db: aiosqlite.Connection | None = None
 
     async def initialize(self) -> None:
         """Initialize the database and create tables if needed."""
@@ -132,13 +131,13 @@ class HistoryService:
 
         # Create index on created_at for fast sorting
         await self._db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_transcriptions_created_at 
+            CREATE INDEX IF NOT EXISTS idx_transcriptions_created_at
             ON transcriptions(created_at DESC)
         """)
 
         # Create FTS5 virtual table for full-text search
         await self._db.execute("""
-            CREATE VIRTUAL TABLE IF NOT EXISTS transcriptions_fts 
+            CREATE VIRTUAL TABLE IF NOT EXISTS transcriptions_fts
             USING fts5(text, content=transcriptions, content_rowid=rowid)
         """)
 
@@ -151,14 +150,14 @@ class HistoryService:
 
         await self._db.execute("""
             CREATE TRIGGER IF NOT EXISTS transcriptions_ad AFTER DELETE ON transcriptions BEGIN
-                INSERT INTO transcriptions_fts(transcriptions_fts, rowid, text) 
+                INSERT INTO transcriptions_fts(transcriptions_fts, rowid, text)
                 VALUES('delete', old.rowid, old.text);
             END
         """)
 
         await self._db.execute("""
             CREATE TRIGGER IF NOT EXISTS transcriptions_au AFTER UPDATE ON transcriptions BEGIN
-                INSERT INTO transcriptions_fts(transcriptions_fts, rowid, text) 
+                INSERT INTO transcriptions_fts(transcriptions_fts, rowid, text)
                 VALUES('delete', old.rowid, old.text);
                 INSERT INTO transcriptions_fts(rowid, text) VALUES (new.rowid, new.text);
             END
@@ -214,7 +213,7 @@ class HistoryService:
 
         await self._db.execute(
             """
-            UPDATE transcriptions 
+            UPDATE transcriptions
             SET text = ?, original_text = ?
             WHERE id = ?
             """,
@@ -227,9 +226,9 @@ class HistoryService:
         self,
         text: str,
         duration_ms: int,
-        model_used: Optional[str] = None,
-        language: Optional[str] = None,
-        original_text: Optional[str] = None,
+        model_used: str | None = None,
+        language: str | None = None,
+        original_text: str | None = None,
     ) -> TranscriptionRecord:
         """
         Add a new transcription to history.
@@ -271,7 +270,7 @@ class HistoryService:
             original_text=original_text,
         )
 
-    async def get(self, record_id: str) -> Optional[TranscriptionRecord]:
+    async def get(self, record_id: str) -> TranscriptionRecord | None:
         """
         Get a transcription by ID.
 
@@ -307,10 +306,10 @@ class HistoryService:
         self,
         limit: int = 50,
         offset: int = 0,
-        search: Optional[str] = None,
-        cursor: Optional[str] = None,
-        fields: Optional[set[str]] = None,
-    ) -> tuple[list[TranscriptionRecord], int, Optional[str]]:
+        search: str | None = None,
+        cursor: str | None = None,
+        fields: set[str] | None = None,
+    ) -> tuple[list[TranscriptionRecord], int, str | None]:
         """
         List transcriptions with optional search, cursor pagination, and field projection.
 
@@ -334,8 +333,8 @@ class HistoryService:
                 raise ValueError(f"Invalid fields: {invalid_fields}")
 
         # Parse cursor if provided
-        cursor_created_at: Optional[datetime] = None
-        cursor_id: Optional[str] = None
+        cursor_created_at: datetime | None = None
+        cursor_id: str | None = None
         if cursor:
             cursor_created_at, cursor_id = decode_cursor(cursor)
 
@@ -390,7 +389,7 @@ class HistoryService:
                 # Cursor-based pagination
                 db_cursor = await self._db.execute(
                     """
-                    SELECT * FROM transcriptions 
+                    SELECT * FROM transcriptions
                     WHERE created_at < ? OR (created_at = ? AND id < ?)
                     ORDER BY created_at DESC, id DESC
                     LIMIT ?
@@ -401,7 +400,7 @@ class HistoryService:
                 # Offset-based pagination (backward compatible)
                 db_cursor = await self._db.execute(
                     """
-                    SELECT * FROM transcriptions 
+                    SELECT * FROM transcriptions
                     ORDER BY created_at DESC, id DESC
                     LIMIT ? OFFSET ?
                     """,
@@ -423,7 +422,7 @@ class HistoryService:
         ]
 
         # Generate next cursor if there are more records
-        next_cursor: Optional[str] = None
+        next_cursor: str | None = None
         if records and len(records) == limit:
             last_record = records[-1]
             next_cursor = encode_cursor(last_record.created_at, last_record.id)
@@ -478,7 +477,7 @@ class HistoryService:
 
         # Basic stats
         cursor = await self._db.execute("""
-            SELECT 
+            SELECT
                 COUNT(*) as total_count,
                 SUM(duration_ms) as total_duration_ms,
                 MIN(created_at) as first_transcription,

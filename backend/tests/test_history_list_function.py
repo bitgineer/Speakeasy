@@ -3,12 +3,10 @@ Test for function.history_list
 Comprehensive test suite for history list API endpoint.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

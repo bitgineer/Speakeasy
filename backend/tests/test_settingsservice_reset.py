@@ -3,15 +3,15 @@ Test for SettingsService.reset
 Comprehensive test suite for resetting settings to defaults.
 """
 
-import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import SettingsService, AppSettings
+from speakeasy.services.settings import AppSettings, SettingsService
 
 
 class TestSettingsServiceReset:
@@ -63,7 +63,7 @@ class TestSettingsServiceReset:
         service.reset()
 
         # Verify file was updated
-        with open(temp_settings_path, "r") as f:
+        with open(temp_settings_path) as f:
             data = json.load(f)
 
         assert data["model_type"] == "parakeet"
@@ -104,7 +104,7 @@ class TestSettingsServiceReset:
         assert temp_settings_path.exists()
 
         # Verify file is now valid JSON
-        with open(temp_settings_path, "r") as f:
+        with open(temp_settings_path) as f:
             data = json.load(f)
         assert "model_type" in data
 

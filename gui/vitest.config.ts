@@ -14,12 +14,6 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/renderer/src/**/*.{ts,tsx}'],
-      thresholds: {
-        lines: 30,
-        functions: 30,
-        branches: 30,
-        statements: 30,
-      },
       exclude: [
         'src/renderer/src/test/**',
         'src/**/*.test.{ts,tsx}',

@@ -3,12 +3,10 @@ Test for function.createMainWindow
 Tests the Electron main window creation with BrowserWindow configuration.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -43,7 +41,7 @@ class TestCreateMainWindowFunction:
         """Test that window is created hidden initially."""
         show = False  # Window starts hidden
 
-        assert show == False
+        assert not show
 
     def test_window_background_color(self):
         """Test window background color configuration."""
@@ -59,19 +57,18 @@ class TestCreateMainWindowFunction:
         title_bar_style = "hiddenInset"
         auto_hide_menu_bar = True
 
-        assert frame == True
+        assert frame
         assert title_bar_style == "hiddenInset"
-        assert auto_hide_menu_bar == True
+        assert auto_hide_menu_bar
 
     def test_window_security_preferences(self):
         """Test web preferences for security."""
-        sandbox = False
         context_isolation = True
         node_integration = False
 
         # Context isolation should be enabled for security
-        assert context_isolation == True
-        assert node_integration == False
+        assert context_isolation
+        assert not node_integration
 
     def test_preload_script_path(self):
         """Test preload script path construction."""
@@ -95,7 +92,7 @@ class TestCreateMainWindowFunction:
         is_dev = True
         renderer_url = "http://localhost:5173"
 
-        assert is_dev == True
+        assert is_dev
         assert "localhost" in renderer_url
 
     def test_production_file_loading(self):
@@ -104,7 +101,7 @@ class TestCreateMainWindowFunction:
         __dirname = "/app/main"
         expected_path = str(Path(__dirname) / "../renderer/index.html")
 
-        assert is_dev == False
+        assert not is_dev
         assert "renderer" in expected_path
         assert "index.html" in expected_path
 
@@ -113,7 +110,7 @@ class TestCreateMainWindowFunction:
         # On close, window should be hidden for tray functionality
         should_hide = True
 
-        assert should_hide == True
+        assert should_hide
 
     def test_window_aspect_ratio(self):
         """Test window aspect ratio calculation."""

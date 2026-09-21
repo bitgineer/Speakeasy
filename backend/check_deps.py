@@ -7,8 +7,9 @@ Checks all required dependencies from pyproject.toml and attempts repair if miss
 import importlib
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 
 def get_required_packages():
@@ -93,7 +94,7 @@ def repair_dependencies():
             shell=True if sys.platform == "win32" else False,
         )
         has_cuda = result.returncode == 0
-    except:
+    except Exception:
         pass
 
     # Build install command

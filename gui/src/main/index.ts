@@ -4,14 +4,13 @@
  * Handles app lifecycle, window management, and backend process coordination.
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { join } from 'path'
 import { createTray, destroyTray } from './tray'
-import { createMainWindow, createRecordingIndicator, getMainWindow, getRecordingIndicator, showRecordingIndicator } from './windows'
-import { startBackend, stopBackend, isBackendRunning } from './backend'
+import { createMainWindow, createRecordingIndicator, getMainWindow } from './windows'
+import { startBackend, stopBackend } from './backend'
 import { setupIpcHandlers } from './ipc-handlers'
-import { registerGlobalHotkey, unregisterGlobalHotkey, stopUiohook } from './hotkey'
+import { unregisterGlobalHotkey, stopUiohook } from './hotkey'
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock()

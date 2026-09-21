@@ -3,12 +3,10 @@ Test for function.startBackend
 Tests the Electron main process backend startup functionality.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -71,7 +69,6 @@ class TestStartBackendFunction:
     def test_standard_venv_command_construction(self):
         """Test standard venv command construction."""
         backend_port = 8765
-        python_path = "/project/backend/.venv/bin/python"
         args = ["-m", "speakeasy", "--port", str(backend_port)]
 
         assert "-m" in args
@@ -108,7 +105,7 @@ class TestStartBackendFunction:
         status_code = 200
         is_healthy = status_code == 200
 
-        assert is_healthy == True
+        assert is_healthy
 
     def test_health_check_failure_status(self):
         """Test failed health check status codes."""
@@ -116,7 +113,7 @@ class TestStartBackendFunction:
 
         for code in status_codes:
             is_healthy = code == 200
-            assert is_healthy == False
+            assert not is_healthy
 
     def test_poll_interval(self):
         """Test health check polling interval."""
@@ -149,7 +146,7 @@ class TestStartBackendFunction:
         else:
             should_start = True
 
-        assert should_start == False
+        assert not should_start
 
     def test_backend_start_failure_error(self):
         """Test error handling when backend fails to start."""

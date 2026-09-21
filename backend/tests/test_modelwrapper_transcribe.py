@@ -3,15 +3,16 @@ Test for ModelWrapper.transcribe
 Comprehensive test suite for transcribing audio.
 """
 
-import pytest
-import numpy as np
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.core.models import ModelWrapper, ModelType, TranscriptionResult
+from speakeasy.core.models import ModelWrapper, TranscriptionResult
 
 
 class TestModelWrapperTranscribe:

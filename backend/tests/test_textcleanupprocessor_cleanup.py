@@ -3,13 +3,14 @@ Test for TextCleanupProcessor.cleanup
 Comprehensive test suite for text cleanup functionality.
 """
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.core.text_cleanup import TextCleanupProcessor, safe_cleanup, get_cached_processor
+from speakeasy.core.text_cleanup import TextCleanupProcessor, safe_cleanup
 
 
 class TestTextCleanupProcessorCleanup:

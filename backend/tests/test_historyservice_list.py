@@ -3,18 +3,17 @@ Test for HistoryService.list
 Comprehensive test suite for listing and searching transcription records.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
+import os
 import sys
 import tempfile
-import os
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.history import HistoryService, TranscriptionRecord
+from speakeasy.services.history import HistoryService
 
 
 @pytest.fixture
@@ -203,7 +202,7 @@ class TestHistoryServiceList:
                 records, _, _ = await service.list(search=search)
                 # Result doesn't matter, just shouldn't crash
                 assert isinstance(records, list)
-            except Exception as e:
+            except Exception:
                 # FTS5 might fail on some queries, but shouldn't crash
                 pass
 

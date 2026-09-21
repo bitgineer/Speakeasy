@@ -5,11 +5,10 @@ Provides cross-platform clipboard operations with backup/restore functionality.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_clipboard_backup: Optional[str] = None
+_clipboard_backup: str | None = None
 
 
 def backup_clipboard() -> None:
@@ -44,7 +43,7 @@ def set_clipboard(text: str) -> bool:
         return False
 
 
-def get_clipboard() -> Optional[str]:
+def get_clipboard() -> str | None:
     """
     Get clipboard contents.
 

@@ -3,12 +3,11 @@ Test for function.transcribe_start
 Comprehensive test suite for transcribe start API endpoint.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -38,8 +37,6 @@ class TestTranscribeStartFunction:
     def test_error_transcriber_not_initialized(self):
         """Test error when transcriber is not initialized."""
         transcriber = None
-        expected_status = 503
-        error_detail = "Transcriber not initialized"
 
         if transcriber is None:
             status = 503
@@ -52,7 +49,6 @@ class TestTranscribeStartFunction:
         """Test error when model is still loading."""
         state = "loading"  # TranscriberState.LOADING
         expected_status = 503
-        error_detail = "Model is still loading"
 
         assert state == "loading"
         assert expected_status == 503
@@ -60,8 +56,6 @@ class TestTranscribeStartFunction:
     def test_error_model_not_loaded(self):
         """Test error when no model is loaded."""
         is_model_loaded = False
-        expected_status = 400
-        error_detail = "No model loaded"
 
         if not is_model_loaded:
             status = 400
@@ -78,13 +72,12 @@ class TestTranscribeStartFunction:
 
         can_start = transcriber_initialized and is_model_loaded and state != "loading"
 
-        assert can_start == True
+        assert can_start
 
     def test_runtime_error_handling(self):
         """Test handling of runtime errors during start."""
         error_message = "No model loaded"
         error_type = "RuntimeError"
-        expected_status = 400
 
         if error_type == "RuntimeError":
             status = 400
@@ -95,7 +88,6 @@ class TestTranscribeStartFunction:
     def test_internal_server_error_handling(self):
         """Test handling of unexpected errors during start."""
         error_message = "Unexpected error"
-        expected_status = 500
 
         status = 500
 
@@ -117,7 +109,7 @@ class TestTranscribeStartFunction:
         is_model_loaded = True
 
         assert isinstance(is_model_loaded, bool)
-        assert is_model_loaded == True
+        assert is_model_loaded
 
     def test_start_recording_call(self):
         """Test that start_recording is called on transcriber."""
@@ -134,15 +126,14 @@ class TestTranscribeStartFunction:
         # Should be rate limited to prevent abuse
         has_rate_limit = True
 
-        assert has_rate_limit == True
+        assert has_rate_limit
 
     def test_logging_on_error(self):
         """Test that errors are properly logged."""
-        error_message = "Failed to start recording"
         # Error should be logged at error level
         should_log = True
 
-        assert should_log == True
+        assert should_log
 
 
 if __name__ == "__main__":

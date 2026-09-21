@@ -144,8 +144,6 @@ export default function Sidebar(): JSX.Element {
   const location = useLocation()
   const { backendConnected, isReconnecting } = useAppStore()
   
-  const isSettingsPage = location.pathname.startsWith('/settings')
-  
   return (
     <aside className="w-56 bg-[var(--color-sidebar-bg)] border-r border-[var(--color-sidebar-border)] flex flex-col h-full">
       {/* Logo / App Title */}

@@ -3,14 +3,15 @@ Test for ModelWrapper.load
 Comprehensive test suite for loading models.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.core.models import ModelWrapper, ModelType, TranscriptionResult
+from speakeasy.core.models import ModelWrapper
 
 
 class TestModelWrapperLoad:

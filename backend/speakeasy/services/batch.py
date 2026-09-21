@@ -12,11 +12,12 @@ Supports:
 import asyncio
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 import aiosqlite
 
@@ -52,8 +53,8 @@ class BatchFile:
     filename: str
     file_path: str
     status: BatchFileStatus = BatchFileStatus.PENDING
-    error: Optional[str] = None
-    transcription_id: Optional[str] = None  # Links to history after completion
+    error: str | None = None
+    transcription_id: str | None = None  # Links to history after completion
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -76,7 +77,7 @@ class BatchJob:
     status: BatchJobStatus = BatchJobStatus.PENDING
     files: list[BatchFile] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     current_file_index: int = 0
 
     def to_dict(self) -> dict:
@@ -115,7 +116,7 @@ class BatchService:
             db_path: Path to the SQLite database file
         """
         self.db_path = db_path
-        self._db: Optional[aiosqlite.Connection] = None
+        self._db: aiosqlite.Connection | None = None
         self._jobs: dict[str, BatchJob] = {}
         self._cancel_flags: dict[str, bool] = {}
         self._processing_locks: dict[str, asyncio.Lock] = {}
@@ -269,7 +270,7 @@ class BatchService:
 
         return job
 
-    async def get_job(self, job_id: str) -> Optional[BatchJob]:
+    async def get_job(self, job_id: str) -> BatchJob | None:
         """
         Get a job by ID.
 
@@ -343,7 +344,7 @@ class BatchService:
 
         await self._db.execute(
             """
-            UPDATE batch_jobs 
+            UPDATE batch_jobs
             SET status = ?, completed_at = ?, current_file_index = ?
             WHERE id = ?
             """,
@@ -358,7 +359,7 @@ class BatchService:
 
         await self._db.execute(
             """
-            UPDATE batch_files 
+            UPDATE batch_files
             SET status = ?, error = ?, transcription_id = ?
             WHERE id = ?
             """,
@@ -442,7 +443,6 @@ class BatchService:
 
                 # Retry logic: 1 retry allowed
                 max_retries = 1
-                last_error = None
 
                 for attempt in range(max_retries + 1):
                     try:
@@ -491,7 +491,6 @@ class BatchService:
                             failed_count += 1
                             break
 
-                        last_error = e
                         if attempt < max_retries:
                             logger.warning(
                                 f"Transcription failed for {bf.filename} (attempt {attempt + 1}/{max_retries + 1}), retrying: {e}"
@@ -553,7 +552,7 @@ class BatchService:
                 f"Batch job {job_id} completed: {completed_count} succeeded, {failed_count} failed"
             )
 
-    async def retry_failed(self, job_id: str, file_ids: Optional[list[str]] = None) -> BatchJob:
+    async def retry_failed(self, job_id: str, file_ids: list[str] | None = None) -> BatchJob:
         """
         Retry failed files in a job.
 

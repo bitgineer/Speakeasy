@@ -8,10 +8,9 @@ and graceful fallback on errors.
 
 import logging
 import os
-from pathlib import Path
-from typing import Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +173,7 @@ def is_model_downloaded(model_id: str) -> bool:
     return False
 
 
-def get_model_download_size(model_id: str) -> Optional[int]:
+def get_model_download_size(model_id: str) -> int | None:
     """
     Get the download size of a model in bytes.
 
@@ -203,7 +202,7 @@ class GrammarProcessor:
 
     def __init__(
         self,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         device: str = "auto",
     ):
         """
@@ -225,7 +224,7 @@ class GrammarProcessor:
         self._model = None
         self._tokenizer = None
         self._status = ModelStatus.NOT_DOWNLOADED
-        self._error_message: Optional[str] = None
+        self._error_message: str | None = None
         self._download_progress: float = 0.0
 
         # Check if already downloaded
@@ -238,7 +237,7 @@ class GrammarProcessor:
         return self._status
 
     @property
-    def error_message(self) -> Optional[str]:
+    def error_message(self) -> str | None:
         """Get error message if status is ERROR."""
         return self._error_message
 
@@ -257,7 +256,7 @@ class GrammarProcessor:
         """Check if the model is downloaded."""
         return self._status in (ModelStatus.DOWNLOADED, ModelStatus.LOADING, ModelStatus.LOADED)
 
-    def _get_model_info(self) -> Optional[GrammarModelInfo]:
+    def _get_model_info(self) -> GrammarModelInfo | None:
         """Get model info for current model."""
         return GRAMMAR_MODELS.get(self.model_name)
 
@@ -285,8 +284,8 @@ class GrammarProcessor:
                 self._status = ModelStatus.LOADING
 
             # Lazy import to avoid loading torch unless needed
-            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
             import torch
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
             # Determine device
             device = self._get_device()

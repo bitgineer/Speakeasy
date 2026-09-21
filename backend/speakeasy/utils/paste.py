@@ -9,7 +9,6 @@ import logging
 import platform
 import subprocess
 import time
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ def _is_windows() -> bool:
 
 def _is_terminal_x11() -> bool:
     """Check if the active window is a terminal (X11)."""
-    TERMINAL_IDENTIFIERS = [
+    terminal_identifiers = [
         "gnome-terminal",
         "konsole",
         "xfce4-terminal",
@@ -86,7 +85,7 @@ def _is_terminal_x11() -> bool:
 
         wm_class = result.stdout.lower()
 
-        for term in TERMINAL_IDENTIFIERS:
+        for term in terminal_identifiers:
             if term in wm_class:
                 return True
 
@@ -99,7 +98,7 @@ def _is_terminal_x11() -> bool:
 
 def _is_terminal_wayland() -> bool:
     """Check if the active window is a terminal (Wayland/Sway)."""
-    TERMINAL_IDENTIFIERS = [
+    terminal_identifiers = [
         "gnome-terminal",
         "konsole",
         "alacritty",
@@ -123,7 +122,7 @@ def _is_terminal_wayland() -> bool:
 
         tree = json.loads(result.stdout)
 
-        def find_focused(node: dict) -> Optional[dict]:
+        def find_focused(node: dict) -> dict | None:
             if node.get("focused"):
                 return node
             for child in node.get("nodes", []) + node.get("floating_nodes", []):
@@ -139,7 +138,7 @@ def _is_terminal_wayland() -> bool:
         app_id = focused.get("app_id", "").lower()
         window_class = focused.get("window_properties", {}).get("class", "").lower()
 
-        for term in TERMINAL_IDENTIFIERS:
+        for term in terminal_identifiers:
             if term in app_id or term in window_class:
                 return True
 
@@ -286,6 +285,7 @@ def select_all_and_paste() -> None:
     """Send the Select All keystroke (Cmd+A on macOS, Ctrl+A elsewhere)."""
     try:
         from pynput.keyboard import Controller, Key
+
         keyboard = Controller()
         modifier = Key.ctrl if (_is_windows() or _is_linux()) else Key.cmd
         with keyboard.pressed(modifier):
@@ -303,6 +303,7 @@ def replace_active_text(text: str, keep_in_clipboard: bool = False) -> None:
     """
     try:
         from .clipboard import backup_clipboard, restore_clipboard, set_clipboard
+
         if not keep_in_clipboard:
             backup_clipboard()
         if set_clipboard(text):

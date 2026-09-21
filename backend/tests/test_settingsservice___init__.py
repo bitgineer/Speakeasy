@@ -3,15 +3,14 @@ Test for SettingsService.__init__
 Comprehensive test suite for SettingsService initialization.
 """
 
-import pytest
-import json
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import SettingsService, AppSettings
+from speakeasy.services.settings import SettingsService
 
 
 class TestSettingsServiceInit:
@@ -54,7 +53,7 @@ class TestSettingsServiceInit:
 
     def test_initialization_does_not_create_file(self, temp_settings_path):
         """Test that initialization doesn't create the file yet."""
-        service = SettingsService(settings_path=temp_settings_path)
+        SettingsService(settings_path=temp_settings_path)
 
         assert not temp_settings_path.exists()
 

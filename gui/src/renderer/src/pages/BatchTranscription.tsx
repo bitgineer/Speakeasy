@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../api/client'
 import wsClient from '../api/websocket'
 import type { BatchJob, BatchProgressEvent, WebSocketEvent } from '../api/types'
@@ -94,7 +94,7 @@ export default function BatchTranscription(): JSX.Element {
     
     try {
       // Extract paths from File objects (Electron specific)
-      const filePaths = selectedFiles.map(f => (f as any).path)
+      const filePaths = selectedFiles.map(f => (f as File & { path: string }).path)
       
       const response = await apiClient.createBatchJob({
         file_paths: filePaths

@@ -32,7 +32,7 @@ interface MemoryInfo {
  */
 class PerformanceMonitor {
   private measures: Map<string, MeasureResult> = new Map()
-  private isDevMode = (import.meta as any).env?.DEV ?? false
+  private isDevMode = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV ?? false
 
   /**
    * Mark the start of an operation
@@ -115,7 +115,7 @@ class PerformanceMonitor {
   getMemoryInfo(): MemoryInfo | null {
     if (!this.isDevMode) return null
 
-    const perf = performance as any
+    const perf = performance as Performance & { memory?: MemoryInfo }
     if (!perf.memory) {
       console.warn('performance.memory not available (Chrome/Chromium only)')
       return null

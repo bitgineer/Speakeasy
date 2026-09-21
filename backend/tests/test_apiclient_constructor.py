@@ -3,12 +3,10 @@ Test for ApiClient.constructor
 Tests the ApiClient class constructor with various port configurations.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -66,7 +64,7 @@ class TestApiClientConstructor:
         # ApiClient should initialize with a cache
         # In the actual implementation, createCache() is called
         cache_initialized = True  # Cache should be initialized
-        assert cache_initialized == True
+        assert cache_initialized
 
     def test_constructor_invalid_port_string(self):
         """Test constructor handling of string port (should be handled by setPort)."""

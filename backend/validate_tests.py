@@ -10,7 +10,7 @@ from pathlib import Path
 
 def validate_test_file(file_path: Path) -> dict:
     """Validate a test file structure."""
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         content = f.read()
 
     try:
@@ -55,7 +55,7 @@ def main():
     for test_file in test_files:
         if not test_file.exists():
             print(f"\n❌ {test_file.name}")
-            print(f"   File not found!")
+            print("   File not found!")
             all_valid = False
             continue
 
@@ -80,18 +80,18 @@ def main():
             all_valid = False
 
     print("\n" + "=" * 60)
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   Total test classes: {total_classes}")
     print(f"   Total test functions: {total_tests}")
 
     if all_valid:
-        print(f"\n✅ All test files are valid and ready to run!")
-        print(f"\n🚀 Run tests with:")
-        print(f"   cd backend")
-        print(f"   uv run pytest tests/test_hotspot_*.py -v")
+        print("\n✅ All test files are valid and ready to run!")
+        print("\n🚀 Run tests with:")
+        print("   cd backend")
+        print("   uv run pytest tests/test_hotspot_*.py -v")
         return 0
     else:
-        print(f"\n❌ Some test files have errors")
+        print("\n❌ Some test files have errors")
         return 1
 
 

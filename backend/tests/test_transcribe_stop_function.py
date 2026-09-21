@@ -3,12 +3,10 @@ Test for function.transcribe_stop
 Comprehensive test suite for transcribe stop API endpoint.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -52,13 +50,13 @@ class TestTranscribeStopFunction:
         """Test auto_paste default value."""
         auto_paste_default = True
 
-        assert auto_paste_default == True
+        assert auto_paste_default
 
     def test_grammar_correction_default(self):
         """Test grammar_correction default value."""
         grammar_correction_default = False
 
-        assert grammar_correction_default == False
+        assert not grammar_correction_default
 
     def test_language_parameter(self):
         """Test language parameter handling."""
@@ -74,8 +72,6 @@ class TestTranscribeStopFunction:
     def test_error_not_recording(self):
         """Test error when not currently recording."""
         is_recording = False
-        expected_status = 400
-        error_detail = "Not recording"
 
         if not is_recording:
             status = 400
@@ -86,7 +82,6 @@ class TestTranscribeStopFunction:
 
     def test_error_transcriber_not_initialized(self):
         """Test error when transcriber is not initialized."""
-        transcriber = None
         expected_status = 503
         error_detail = "Transcriber not initialized"
 
@@ -125,7 +120,6 @@ class TestTranscribeStopFunction:
         """Test progress callback broadcasts via WebSocket."""
         current_chunk = 5
         total_chunks = 10
-        chunk_text = "Partial transcription"
 
         progress_percent = int((current_chunk / total_chunks) * 100)
 
@@ -134,8 +128,6 @@ class TestTranscribeStopFunction:
     def test_text_cleanup_application(self):
         """Test text cleanup when enabled in settings."""
         text_cleanup_enabled = True
-        custom_fillers = ["um", "uh", "like"]
-        original_text = "um hello uh world"
 
         if text_cleanup_enabled:
             # Text would be cleaned
@@ -143,26 +135,25 @@ class TestTranscribeStopFunction:
         else:
             cleaned = False
 
-        assert cleaned == True
+        assert cleaned
 
     def test_history_save_on_success(self):
         """Test that transcription is saved to history."""
         # After successful transcription, should save to history
         should_save = True
 
-        assert should_save == True
+        assert should_save
 
     def test_websocket_broadcast_on_success(self):
         """Test WebSocket broadcast on successful transcription."""
         # Should broadcast transcription event
         should_broadcast = True
 
-        assert should_broadcast == True
+        assert should_broadcast
 
     def test_auto_paste_execution(self):
         """Test auto-paste when enabled."""
         auto_paste = True
-        text = "Transcribed text"
 
         if auto_paste:
             # insert_text should be called
@@ -170,12 +161,11 @@ class TestTranscribeStopFunction:
         else:
             pasted = False
 
-        assert pasted == True
+        assert pasted
 
     def test_internal_server_error_handling(self):
         """Test handling of transcription errors."""
         error_occurred = True
-        expected_status = 500
 
         if error_occurred:
             status = 500
@@ -185,7 +175,6 @@ class TestTranscribeStopFunction:
     def test_empty_instruction_handling(self):
         """Test handling of empty/None instruction."""
         instruction = None
-        grammar_correction = False
 
         effective_instruction = instruction
 
@@ -194,14 +183,13 @@ class TestTranscribeStopFunction:
     def test_language_auto_detection(self):
         """Test language auto-detection when language is None."""
         language = None
-        auto_detect = True
 
         if language is None:
             detected = True
         else:
             detected = False
 
-        assert detected == True
+        assert detected
 
 
 if __name__ == "__main__":

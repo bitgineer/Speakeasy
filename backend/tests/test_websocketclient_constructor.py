@@ -3,12 +3,10 @@ Test for WebSocketClient.constructor
 Tests the WebSocketClient class initialization.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -72,7 +70,7 @@ class TestWebSocketClientConstructor:
         """Test that isIntentionallyClosed is set to false."""
         is_intentionally_closed = False
 
-        assert is_intentionally_closed == False
+        assert not is_intentionally_closed
 
     def test_constructor_initializes_reconnect_timer_null(self):
         """Test that reconnectTimer is initially null."""

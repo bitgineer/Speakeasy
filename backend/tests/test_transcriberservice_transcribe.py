@@ -3,11 +3,12 @@ Test for TranscriberService.transcribe
 Comprehensive test suite for transcribing audio data.
 """
 
-import pytest
-import numpy as np
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -79,7 +80,7 @@ class TestTranscriberServiceTranscribe:
         service = service_with_model
         audio_data = np.array([0.1, 0.2, 0.3], dtype=np.float32)
 
-        result = service.transcribe(audio_data, language="es")
+        service.transcribe(audio_data, language="es")
 
         # Verify model.transcribe was called with language
         service._model.transcribe.assert_called_once()

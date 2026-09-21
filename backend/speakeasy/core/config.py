@@ -7,7 +7,6 @@ Loads model definitions from the bundled JSON file.
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ def _load_config() -> dict:
         logger.warning(f"Config file not found: {_CONFIG_FILE}")
         return {}
 
-    with open(_CONFIG_FILE, "r") as f:
+    with open(_CONFIG_FILE) as f:
         return json.load(f)
 
 
@@ -297,7 +296,7 @@ MODEL_INFO = {
 }
 
 
-def get_languages_for_model(model_type: str, model_name: Optional[str] = None) -> list[str]:
+def get_languages_for_model(model_type: str, model_name: str | None = None) -> list[str]:
     """Get supported languages for a model type."""
     if model_type == "whisper":
         if model_name and model_name in WHISPER_ENGLISH_ONLY:

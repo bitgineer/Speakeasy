@@ -3,9 +3,10 @@ Test for function.get_available_models
 Comprehensive test suite for getting available models.
 """
 
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

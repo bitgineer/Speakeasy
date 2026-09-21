@@ -3,12 +3,10 @@ Test for WebSocketClient.connect
 Tests the WebSocket connection functionality with reconnection logic.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -35,14 +33,14 @@ class TestWebSocketClientConnect:
         ready_state = 1  # WebSocket.OPEN
         is_open = ready_state == 1
 
-        assert is_open == True
+        assert is_open
 
     def test_connect_not_connected(self):
         """Test that connect proceeds when not connected."""
         ready_state = 3  # WebSocket.CLOSED
         is_open = ready_state == 1
 
-        assert is_open == False
+        assert not is_open
 
     def test_connection_state_connecting(self):
         """Test that connection state is set to connecting."""
@@ -60,7 +58,7 @@ class TestWebSocketClientConnect:
         """Test that intentionally closed flag is set to false."""
         is_intentionally_closed = False
 
-        assert is_intentionally_closed == False
+        assert not is_intentionally_closed
 
     def test_reconnect_timer_cleared(self):
         """Test that any pending reconnect timer is cleared."""
@@ -121,10 +119,9 @@ class TestWebSocketClientConnect:
 
     def test_connection_error_handling(self):
         """Test handling of connection errors."""
-        error = Exception("Connection failed")
         should_schedule_reconnect = True
 
-        assert should_schedule_reconnect == True
+        assert should_schedule_reconnect
 
     def test_connection_states_valid(self):
         """Test valid connection states."""

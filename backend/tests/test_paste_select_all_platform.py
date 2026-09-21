@@ -23,10 +23,10 @@ class RecordingKeyboard:
         recorder = self
 
         class _Context:
-            def __enter__(self_):
+            def __enter__(self):
                 recorder.events.append(("press", key))
 
-            def __exit__(self_, *exc):
+            def __exit__(self, *exc):
                 recorder.events.append(("release", key))
                 return False
 

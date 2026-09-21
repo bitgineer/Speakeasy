@@ -15,7 +15,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from speakeasy.core.text_cleanup import TextCleanupProcessor
 
-
 PROSE_PRESERVED = [
     ("No one.", "No one."),
     ("one and only", "One and only"),

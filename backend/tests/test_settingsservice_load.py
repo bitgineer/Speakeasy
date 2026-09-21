@@ -3,16 +3,16 @@ Test for SettingsService.load
 Comprehensive test suite for loading settings.
 """
 
-import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from pathlib import Path
-import sys
 import os
+import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import SettingsService, AppSettings
+from speakeasy.services.settings import AppSettings, SettingsService
 
 
 class TestSettingsServiceLoad:

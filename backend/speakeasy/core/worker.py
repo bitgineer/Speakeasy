@@ -1,7 +1,6 @@
+import gc
 import logging
 import os
-import gc
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ def init_worker():
     # Optional: set low priority so UI stays responsive?
 
 
-def load_model(model_type: str, model_name: str, device: str, compute_type: Optional[str] = None):
+def load_model(model_type: str, model_name: str, device: str, compute_type: str | None = None):
     """Load model into global worker state."""
     global _wrapper, _last_model_config
 
@@ -97,7 +96,7 @@ def reload_model():
 
 
 def transcribe(
-    audio_data, sample_rate: int, language: Optional[str] = None, instruction: Optional[str] = None
+    audio_data, sample_rate: int, language: str | None = None, instruction: str | None = None
 ):
     """Transcribe using global worker state."""
     global _wrapper
@@ -152,7 +151,7 @@ def unload_model():
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except:
+        except Exception:
             pass
     _last_model_config = {}
     return True

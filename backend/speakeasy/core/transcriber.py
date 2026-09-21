@@ -15,9 +15,10 @@ import gc
 import logging
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy.signal
@@ -57,8 +58,6 @@ class RecordingResult:
     duration_seconds: float
 
 
-
-
 class AudioRecorder:
     """
     Manages audio device selection, stream capture, and buffer management.
@@ -71,8 +70,8 @@ class AudioRecorder:
         self,
         target_sample_rate: int = 16000,
         channels: int = 1,
-        on_state_change: Optional[Callable[[TranscriberState], None]] = None,
-        is_model_loaded_check: Optional[Callable[[], bool]] = None,
+        on_state_change: Callable[[TranscriberState], None] | None = None,
+        is_model_loaded_check: Callable[[], bool] | None = None,
     ):
         self._target_sample_rate = target_sample_rate
         self._channels = channels
@@ -81,18 +80,18 @@ class AudioRecorder:
 
         # Audio buffer and stream
         self._buffer: list[np.ndarray] = []
-        self._stream: Optional[sd.InputStream] = None
-        self._recording_start_time: Optional[float] = None
+        self._stream: sd.InputStream | None = None
+        self._recording_start_time: float | None = None
         self._lock = threading.Lock()
 
         # Device selection
-        self._device_name: Optional[str] = None
-        self._device_id: Optional[int] = None
-        self._native_samplerate: Optional[int] = None
+        self._device_name: str | None = None
+        self._device_id: int | None = None
+        self._native_samplerate: int | None = None
 
     # -- Device management --
 
-    def set_device(self, device_name: Optional[str] = None) -> None:
+    def set_device(self, device_name: str | None = None) -> None:
         """Set the audio input device by name, or reset to default."""
         if device_name is None:
             self._device_name = None
@@ -136,7 +135,7 @@ class AudioRecorder:
 
     # -- Recording lifecycle --
 
-    def _resolve_device(self) -> tuple[Optional[int], int]:
+    def _resolve_device(self) -> tuple[int | None, int]:
         """Resolve input device ID and its native sample rate."""
         native_sr = self._target_sample_rate
         device_info = None
@@ -270,11 +269,11 @@ class TranscriberService:
 
     def __init__(
         self,
-        on_state_change: Optional[Callable[[TranscriberState], None]] = None,
+        on_state_change: Callable[[TranscriberState], None] | None = None,
     ):
         self._state = TranscriberState.IDLE
         self._on_state_change = on_state_change
-        self._model: Optional[ModelWrapper] = None
+        self._model: ModelWrapper | None = None
         self._state_lock = threading.Lock()
         self._model_lock = threading.Lock()  # Serialize model access across live + final threads
         # Delegate audio I/O to AudioRecorder
@@ -287,10 +286,10 @@ class TranscriberService:
         # Live transcription state
         self._live_enabled: bool = False
         self._live_chunk_seconds: float = 3.0
-        self._live_callback: Optional[Callable[[str], None]] = None
-        self._live_thread: Optional[threading.Thread] = None
+        self._live_callback: Callable[[str], None] | None = None
+        self._live_thread: threading.Thread | None = None
         self._live_generation: int = 0
-        self._live_cancel: Optional[threading.Event] = None
+        self._live_cancel: threading.Event | None = None
 
         # Asyncio loop for thread-safe callbacks
         try:
@@ -325,7 +324,7 @@ class TranscriberService:
         """Check if currently recording."""
         return self._state == TranscriberState.RECORDING
 
-    def set_live_callback(self, callback: Optional[Callable[[str], None]]) -> None:
+    def set_live_callback(self, callback: Callable[[str], None] | None) -> None:
         """Set callback for live partial transcription results."""
         self._live_callback = callback
 
@@ -371,6 +370,7 @@ class TranscriberService:
 
                 # Transcribe with tqdm suppressed
                 import os as _os
+
                 _old = _os.environ.get("TQDM_DISABLE")
                 _os.environ["TQDM_DISABLE"] = "1"
                 try:
@@ -398,9 +398,12 @@ class TranscriberService:
                     # Debug file write (best-effort, don't crash)
                     try:
                         import os as _os2
+
                         _os2.makedirs(_os2.path.expanduser("~/.speakeasy"), exist_ok=True)
                         with open(_os2.path.expanduser("~/.speakeasy/live_debug.log"), "a") as _f:
-                            _f.write(f"{__import__('time').time()}: '{text}' ({len(full_audio)} samples)\n")
+                            _f.write(
+                                f"{__import__('time').time()}: '{text}' ({len(full_audio)} samples)\n"
+                            )
                     except Exception:
                         pass
                     if self._live_callback:
@@ -413,8 +416,8 @@ class TranscriberService:
         model_type: str,
         model_name: str,
         device: str = "cuda",
-        compute_type: Optional[str] = None,
-        progress_callback: Optional[ProgressCallback] = None,
+        compute_type: str | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """
         Load an ASR model.
@@ -498,7 +501,7 @@ class TranscriberService:
             self._model = None
         self._set_state(TranscriberState.IDLE)
 
-    def set_device(self, device_name: Optional[str] = None) -> None:
+    def set_device(self, device_name: str | None = None) -> None:
         """Set the audio input device."""
         self._recorder.set_device(device_name)
 
@@ -561,7 +564,6 @@ class TranscriberService:
                     self._set_state(TranscriberState.IDLE)
             raise
 
-
     # Threshold for chunked transcription: 5 minutes at 16kHz
     CHUNK_THRESHOLD_SAMPLES = 5 * 60 * SAMPLE_RATE  # 4,800,000 samples
     # Chunk size for long recordings: 2 minutes (balance between progress updates and efficiency)
@@ -571,9 +573,9 @@ class TranscriberService:
         self,
         audio_data: "NDArray[np.float32]",
         sample_rate: int = 16000,
-        language: Optional[str] = None,
-        progress_callback: Optional[TranscriptionProgressCallback] = None,
-        instruction: Optional[str] = None,
+        language: str | None = None,
+        progress_callback: TranscriptionProgressCallback | None = None,
+        instruction: str | None = None,
     ) -> TranscriptionResult:
         """
         Transcribe audio data with optional chunked processing for long recordings.
@@ -625,7 +627,7 @@ class TranscriberService:
             self._set_state(TranscriberState.READY)
             return result
 
-        except Exception as e:
+        except Exception:
             self._set_state(TranscriberState.ERROR)
             raise
 
@@ -633,9 +635,9 @@ class TranscriberService:
         self,
         audio_data: "NDArray[np.float32]",
         sample_rate: int,
-        language: Optional[str],
-        progress_callback: Optional[TranscriptionProgressCallback],
-        instruction: Optional[str] = None,
+        language: str | None,
+        progress_callback: TranscriptionProgressCallback | None,
+        instruction: str | None = None,
     ) -> TranscriptionResult:
         """
         Transcribe long audio in chunks with progress reporting.
@@ -708,9 +710,9 @@ class TranscriberService:
     def transcribe_file(
         self,
         file_path: str,
-        language: Optional[str] = None,
-        progress_callback: Optional[TranscriptionProgressCallback] = None,
-        instruction: Optional[str] = None,
+        language: str | None = None,
+        progress_callback: TranscriptionProgressCallback | None = None,
+        instruction: str | None = None,
     ) -> TranscriptionResult:
         """
         Transcribe an audio file.
@@ -762,9 +764,9 @@ class TranscriberService:
 
     def stop_and_transcribe(
         self,
-        language: Optional[str] = None,
-        progress_callback: Optional[TranscriptionProgressCallback] = None,
-        instruction: Optional[str] = None,
+        language: str | None = None,
+        progress_callback: TranscriptionProgressCallback | None = None,
+        instruction: str | None = None,
     ) -> TranscriptionResult:
         """
         Stop recording and transcribe immediately.

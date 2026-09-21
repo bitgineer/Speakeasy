@@ -7,7 +7,6 @@ Uses Pydantic for validation and JSON file for persistence.
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +27,7 @@ class AppSettings(BaseModel):
     language: str = Field(default="auto", description="Language code or 'auto'")
 
     # Audio settings
-    device_name: Optional[str] = Field(default=None, description="Audio input device name")
+    device_name: str | None = Field(default=None, description="Audio input device name")
 
     # Hotkey settings
     hotkey: str = Field(default="ctrl+shift+space", description="Global hotkey combination")
@@ -48,7 +47,7 @@ class AppSettings(BaseModel):
     enable_text_cleanup: bool = Field(
         default=True, description="Remove filler words from transcription"
     )
-    custom_filler_words: Optional[list[str]] = Field(
+    custom_filler_words: list[str] | None = Field(
         default=None, description="Additional filler words to remove"
     )
 
@@ -70,8 +69,10 @@ class AppSettings(BaseModel):
         default=False, description="Enable real-time partial transcription while recording"
     )
     live_chunk_seconds: float = Field(
-        default=3.0, ge=1.0, le=10.0,
-        description="Interval in seconds between live transcription updates"
+        default=3.0,
+        ge=1.0,
+        le=10.0,
+        description="Interval in seconds between live transcription updates",
     )
     live_auto_paste: bool = Field(
         default=False, description="Auto-paste live transcripts into active window"
@@ -96,7 +97,7 @@ class SettingsService:
             settings_path: Path to the settings JSON file
         """
         self.settings_path = settings_path
-        self._settings: Optional[AppSettings] = None
+        self._settings: AppSettings | None = None
 
     def load(self) -> AppSettings:
         """
@@ -107,7 +108,7 @@ class SettingsService:
         """
         if self.settings_path.exists():
             try:
-                with open(self.settings_path, "r") as f:
+                with open(self.settings_path) as f:
                     data = json.load(f)
                 self._settings = AppSettings(**data)
                 logger.info(f"Loaded settings from {self.settings_path}")

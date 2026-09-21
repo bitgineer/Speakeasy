@@ -3,21 +3,17 @@ Test for BatchService.__init__
 Comprehensive test suite for BatchService initialization.
 """
 
-import pytest
-import asyncio
-from pathlib import Path
+import os
 import sys
 import tempfile
-import os
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from speakeasy.services.batch import (
     BatchService,
-    BatchJob,
-    BatchFile,
-    BatchJobStatus,
-    BatchFileStatus,
 )
 
 

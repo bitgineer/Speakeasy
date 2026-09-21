@@ -139,14 +139,13 @@ export default function HotkeyInput({
   }, [isCapturing, capturedKeys, onChange])
   
   useEffect(() => {
-    if (isCapturing) {
-      window.addEventListener('keydown', handleKeyDown, true)
-      window.addEventListener('keyup', handleKeyUp, true)
-      
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown, true)
-        window.removeEventListener('keyup', handleKeyUp, true)
-      }
+    if (!isCapturing) return
+    window.addEventListener('keydown', handleKeyDown, true)
+    window.addEventListener('keyup', handleKeyUp, true)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+      window.removeEventListener('keyup', handleKeyUp, true)
     }
   }, [isCapturing, handleKeyDown, handleKeyUp])
   

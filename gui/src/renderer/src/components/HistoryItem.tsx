@@ -66,12 +66,11 @@ const prevTextRef = useRef(item.text)
 // Flash effect only for the newest transcription (first item) when text updates
 useEffect(() => {
   // Only flash if this is the newest item (index 0) and text actually changed
-  if (index === 0 && prevTextRef.current !== item.text) {
-    setIsFlashing(true)
-    const timer = setTimeout(() => setIsFlashing(false), 2000)
-    prevTextRef.current = item.text
-    return () => clearTimeout(timer)
-  }
+  if (index !== 0 || prevTextRef.current === item.text) return
+  setIsFlashing(true)
+  const timer = setTimeout(() => setIsFlashing(false), 2000)
+  prevTextRef.current = item.text
+  return () => clearTimeout(timer)
 }, [item.text, index])
   
   // Get the text to display based on toggle state

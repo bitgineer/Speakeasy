@@ -6,7 +6,6 @@ Provides functions for listing and selecting audio input devices.
 
 import logging
 import platform
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def list_audio_devices() -> list[dict]:
     return input_devices
 
 
-def get_default_device() -> Optional[dict]:
+def get_default_device() -> dict | None:
     """
     Get the default audio input device.
 
@@ -57,7 +56,7 @@ def get_default_device() -> Optional[dict]:
     return devices[0] if devices else None
 
 
-def get_device_by_name(name: str) -> Optional[dict]:
+def get_device_by_name(name: str) -> dict | None:
     """
     Find an audio device by name (partial match).
 

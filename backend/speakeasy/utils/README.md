@@ -15,14 +15,14 @@ API:
 - `list_audio_devices()` - Return all input devices
   ```python
   [
-    {
-      "id": 0,
-      "name": "Built-in Microphone",
-      "channels": 1,
-      "sample_rate": 44100,
-      "is_default": True
-    },
-    ...
+      {
+          "id": 0,
+          "name": "Built-in Microphone",
+          "channels": 1,
+          "sample_rate": 44100,
+          "is_default": True,
+      },
+      ...,
   ]
   ```
 

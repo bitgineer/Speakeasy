@@ -22,8 +22,6 @@ class FakeWebSocket {
     FakeWebSocket.instances.push(this)
   }
 
-  send(): void {}
-
   close(): void {
     this.readyState = FakeWebSocket.CLOSED
   }

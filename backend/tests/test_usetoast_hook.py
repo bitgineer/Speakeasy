@@ -3,12 +3,10 @@ Test for hook.useToast
 Tests the React useToast hook functionality.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -16,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 class TestUseToastHook:
     """Tests for useToast React hook"""
 
-    def test_useToast_returns_context(self):
+    def test_use_toast_returns_context(self):
         """Test that useToast returns toast context."""
         # Should return an object with toast and dismissToast
         context = {
@@ -31,7 +29,7 @@ class TestUseToastHook:
         assert "toast" in context
         assert "dismissToast" in context
 
-    def test_useToast_throws_outside_provider(self):
+    def test_use_toast_throws_outside_provider(self):
         """Test that useToast throws when used outside ToastProvider."""
         context = None  # Would be undefined outside provider
 
@@ -39,7 +37,7 @@ class TestUseToastHook:
             should_throw = True
             error_message = "useToast must be used within a ToastProvider"
 
-        assert should_throw == True
+        assert should_throw
         assert "ToastProvider" in error_message
 
     def test_toast_success_method(self):
@@ -72,7 +70,7 @@ class TestUseToastHook:
         assert isinstance(duration, int)
         assert duration > 0
 
-    def test_dismissToast_function(self):
+    def test_dismiss_toast_function(self):
         """Test dismissToast function accepts toast ID."""
         toast_id = "toast-123"
 
@@ -92,20 +90,24 @@ class TestUseToastHook:
 
         assert effective_duration == 5000
 
-    def test_context_addToast_method(self):
+    def test_context_add_toast_method(self):
         """Test that context includes addToast from ToastProvider."""
+
         # addToast is internal, exposed through toast object
-        addToast = lambda type, message, duration=5000: None
+        def add_toast(type, message, duration=5000):
+            return None
 
         # Should accept type, message, and duration
-        assert callable(addToast)
+        assert callable(add_toast)
 
-    def test_context_removeToast_method(self):
+    def test_context_remove_toast_method(self):
         """Test that context includes removeToast from ToastProvider."""
-        removeToast = lambda id: None
+
+        def remove_toast(id):
+            return None
 
         # Should accept toast ID
-        assert callable(removeToast)
+        assert callable(remove_toast)
 
     def test_toast_type_values(self):
         """Test valid toast type values."""
@@ -130,8 +132,8 @@ class TestUseToastHook:
         call_with_duration = True
         call_without_duration = True
 
-        assert call_with_duration == True
-        assert call_without_duration == True
+        assert call_with_duration
+        assert call_without_duration
 
 
 if __name__ == "__main__":

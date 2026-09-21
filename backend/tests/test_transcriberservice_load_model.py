@@ -3,10 +3,11 @@ Test for TranscriberService.load_model
 Comprehensive test suite for loading models.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -48,9 +49,9 @@ class TestTranscriberServiceLoadModel:
         existing.is_loaded = True
         service._model = existing
 
-        with patch("speakeasy.core.models.ModelWrapper") as MockWrapper:
+        with patch("speakeasy.core.models.ModelWrapper") as mock_wrapper:
             mock_instance = Mock()
-            MockWrapper.return_value = mock_instance
+            mock_wrapper.return_value = mock_instance
 
             service.load_model("whisper", "small")
 

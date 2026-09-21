@@ -3,12 +3,11 @@ Test for ApiClient.request
 Tests the core request method with retry logic, timeouts, and error handling.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -62,7 +61,6 @@ class TestApiClientRequest:
         """Test URL construction with query parameters."""
         base_url = "http://127.0.0.1:8765"
         endpoint = "/api/history"
-        search_params = {"limit": "10", "offset": "0"}
         query_string = "limit=10&offset=0"
         expected_url = f"{base_url}{endpoint}?{query_string}"
 
@@ -97,28 +95,28 @@ class TestApiClientRequest:
         status_code = 400
         should_retry = not (400 <= status_code < 500 and status_code != 429)
 
-        assert should_retry == False
+        assert not should_retry
 
     def test_error_status_code_handling_429(self):
         """Test handling of 429 rate limit (should retry)."""
         status_code = 429
         should_retry = status_code == 429
 
-        assert should_retry == True
+        assert should_retry
 
     def test_error_status_code_handling_5xx(self):
         """Test handling of 5xx server errors (should retry)."""
         status_code = 500
         should_retry = status_code >= 500
 
-        assert should_retry == True
+        assert should_retry
 
     def test_abort_error_handling(self):
         """Test handling of user-initiated abort."""
         error_name = "AbortError"
         is_abort_error = error_name == "AbortError"
 
-        assert is_abort_error == True
+        assert is_abort_error
 
     def test_timeout_configuration(self):
         """Test timeout configuration in milliseconds."""
@@ -160,14 +158,14 @@ class TestApiClientRequest:
         content_type = "application/json"
         is_json = "application/json" in content_type
 
-        assert is_json == True
+        assert is_json
 
     def test_response_parsing_text(self):
         """Test text response parsing for non-JSON."""
         content_type = "text/plain"
         is_json = "application/json" in content_type
 
-        assert is_json == False
+        assert not is_json
 
     def test_error_message_extraction(self):
         """Test extraction of error messages from responses."""

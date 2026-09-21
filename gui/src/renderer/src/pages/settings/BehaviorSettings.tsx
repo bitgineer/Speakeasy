@@ -309,7 +309,7 @@ export default function BehaviorSettings(): JSX.Element {
             <div className={`transition-all duration-300 overflow-hidden ${localSettings.show_recording_indicator ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
               <label className="flex items-center justify-between cursor-pointer ml-6 pl-4 border-l-2 border-[var(--color-border)] mt-4">
                 <div>
-                  <span className="text-[var(--color-text-primary)]">Always show "Ready" status</span>
+                  <span className="text-[var(--color-text-primary)]">Always show &quot;Ready&quot; status</span>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                     Keep the indicator visible on screen when idle
                   </p>
@@ -339,7 +339,7 @@ export default function BehaviorSettings(): JSX.Element {
               <div>
                 <span className="text-[var(--color-text-primary)]">Remove filler words</span>
                 <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  Automatically remove common filler words like "um", "uh", "like", etc.
+                  Automatically remove common filler words like &quot;um&quot;, &quot;uh&quot;, &quot;like&quot;, etc.
                 </p>
               </div>
               <div className="relative">
