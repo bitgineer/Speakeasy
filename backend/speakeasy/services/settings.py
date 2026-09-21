@@ -51,19 +51,6 @@ class AppSettings(BaseModel):
         default=None, description="Additional filler words to remove"
     )
 
-    # Grammar correction settings
-    enable_grammar_correction: bool = Field(
-        default=False, description="Enable AI grammar correction"
-    )
-    grammar_model: str = Field(
-        default="vennify/t5-base-grammar-correction",
-        description="Grammar correction model name",
-    )
-    grammar_device: str = Field(
-        default="auto",
-        description="Device for grammar model (auto/cuda/cpu)",
-    )
-
     # Live transcription settings
     live_transcription: bool = Field(
         default=False, description="Enable real-time partial transcription while recording"

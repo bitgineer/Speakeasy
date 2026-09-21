@@ -66,10 +66,9 @@ class TranscribeStartResponse(BaseModel):
 
 
 class TranscribeStopRequest(BaseModel):
-    auto_paste: bool = True
+    auto_paste: bool | None = None
     language: str | None = Field(None, max_length=10)
     instruction: str | None = Field(None, max_length=1000)
-    grammar_correction: bool = False
 
 
 class TranscribeStopResponse(BaseModel):
@@ -101,9 +100,6 @@ class SettingsUpdateRequest(BaseModel):
     theme: str | None = Field(None, max_length=50)
     enable_text_cleanup: bool | None = None
     custom_filler_words: list[str] | None = Field(None, max_length=100)
-    enable_grammar_correction: bool | None = None
-    grammar_model: str | None = Field(None, max_length=200)
-    grammar_device: str | None = Field(None, pattern=r"^(cuda|cpu|auto)$")
     live_transcription: bool | None = None
     live_chunk_seconds: float | None = Field(None, ge=1.0, le=10.0)
     live_auto_paste: bool | None = None
@@ -165,6 +161,15 @@ def on_state_change(state: TranscriberState) -> None:
             },
         )
     )
+
+
+def _resolve_auto_paste(requested: bool | None) -> bool:
+    """Use the persisted setting when the caller did not specify auto-paste."""
+    if requested is not None:
+        return requested
+    if settings_service:
+        return settings_service.get().auto_paste
+    return True
 
 
 def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> None:
@@ -291,6 +296,14 @@ async def lifespan(app: FastAPI):
 
     # Initialize transcriber
     transcriber = TranscriberService(on_state_change=on_state_change)
+
+    # Apply the saved input device when it is still present
+    if settings.device_name:
+        try:
+            transcriber.set_device(settings.device_name)
+        except ValueError as e:
+            logger.warning(f"Saved input device unavailable, using the system default: {e}")
+
     # Pre-warm CUDA to absorb first-touch overhead (5-10s in WSL2)
     from .core.models import warmup_cuda
 
@@ -498,11 +511,8 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
         settings = settings_service.get() if settings_service else None
         language = body.language or (settings.language if settings else "auto")
 
-        # Construct instruction if grammar correction is requested
+        # Construct instruction if provided
         instruction = body.instruction
-        if body.grammar_correction and not instruction:
-            # Default instruction for grammar correction if not provided
-            instruction = "Transcribe the audio exactly as spoken, but correct any grammatical errors. Maintain the original language."
 
         # Create progress callback for long transcriptions
         def on_transcription_progress(
@@ -556,8 +566,8 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
             },
         )
 
-        # Auto-paste if requested
-        if body.auto_paste:
+        # Auto-paste unless the caller overrides the persisted setting
+        if _resolve_auto_paste(body.auto_paste):
             insert_text(cleaned_text)
 
         return TranscribeStopResponse(

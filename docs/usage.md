@@ -8,13 +8,16 @@ Press the global hotkey to start recording and press it again to stop. The defau
 While recording:
 
 - The recording overlay appears above other windows, bottom center of the display under your
-  cursor. It shows a timer, a stop button, and the live transcript when live captions are on.
+  cursor. It shows a timer, a stop button, a cancel button, and the live transcript when live
+  captions are on.
 - The tray icon turns red.
 - The Dashboard status chip shows Recording.
 
 When you stop, the overlay shows Processing while the final transcription runs. The result is
-saved to history, copied to the clipboard, and pasted into the active window. The paste is
-performed by the backend.
+saved to history, copied to the clipboard, and pasted into the active window when auto-paste is
+enabled (the default). The paste is performed by the backend.
+
+Cancelling from the overlay discards the recording. Nothing is transcribed, saved, or pasted.
 
 ### Hotkey modes
 

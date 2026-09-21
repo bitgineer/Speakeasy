@@ -58,5 +58,4 @@ was edited by hand, restart the app so the backend reloads it.
 
 ## Known limitations
 
-See the list at the end of [configuration.md](configuration.md). It covers the auto-paste toggle,
-grammar correction, the download progress dialog, recording cancel, tray quit, and `server_port`.
+See the list at the end of [configuration.md](configuration.md).

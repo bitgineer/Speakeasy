@@ -50,6 +50,16 @@ def setup_logging(verbose: bool = False) -> None:
     os.environ.setdefault("NEMO_LOG_LEVEL", "ERROR")
 
 
+def default_port() -> int:
+    """Read the persisted server_port setting, falling back to 8765."""
+    try:
+        from .services.settings import SettingsService, get_default_settings_path
+
+        return SettingsService(get_default_settings_path()).load().server_port
+    except Exception:
+        return 8765
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -66,8 +76,8 @@ def main() -> int:
     parser.add_argument(
         "--port",
         type=int,
-        default=8765,
-        help="Port to bind to (default: 8765)",
+        default=None,
+        help="Port to bind to (default: the server_port setting, or 8765)",
     )
 
     parser.add_argument(
@@ -84,6 +94,9 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+
+    if args.port is None:
+        args.port = default_port()
 
     setup_logging(verbose=args.verbose)
 

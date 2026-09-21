@@ -419,7 +419,7 @@ class ModelWrapper:
             "distil-small.en",
         ]:
             if model_name.startswith("distil-"):
-                return f"Systran/faster-{model_name}"
+                return f"Systran/faster-distil-whisper-{model_name.removeprefix('distil-')}"
             return f"Systran/faster-whisper-{model_name}"
         return model_name
 

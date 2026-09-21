@@ -7,7 +7,7 @@
 import { app, BrowserWindow } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createTray, destroyTray } from './tray'
-import { createMainWindow, createRecordingIndicator, getMainWindow } from './windows'
+import { createMainWindow, createRecordingIndicator, getMainWindow, setQuitting } from './windows'
 import { startBackend, stopBackend } from './backend'
 import { setupIpcHandlers } from './ipc-handlers'
 import { unregisterGlobalHotkey, stopUiohook } from './hotkey'
@@ -71,6 +71,7 @@ if (!gotTheLock) {
 
   // Handle app quit
   app.on('before-quit', async () => {
+    setQuitting(true)
     console.log('[BEFORE-QUIT] Starting shutdown sequence...')
     console.log('[BEFORE-QUIT] Unregistering global hotkey...')
     unregisterGlobalHotkey()

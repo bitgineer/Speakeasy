@@ -49,14 +49,4 @@ AI-powered text enhancement.
 Features:
 - Automatic filler word removal
 - Custom filler word lists
-- Grammar correction integration
 - Preserves original text for comparison
-
-## Grammar Processor (`grammar_processor.py`)
-AI grammar correction using LLM instructions.
-
-Features:
-- Model selection (GPT-4, Claude, etc.)
-- Custom instruction support
-- Text comparison before/after
-- Optional per-transcription or global setting

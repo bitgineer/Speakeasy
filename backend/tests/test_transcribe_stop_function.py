@@ -38,13 +38,11 @@ class TestTranscribeStopFunction:
             "auto_paste": True,
             "language": None,
             "instruction": None,
-            "grammar_correction": False,
         }
 
         assert "auto_paste" in body
         assert "language" in body
         assert "instruction" in body
-        assert "grammar_correction" in body
 
     def test_auto_paste_default(self):
         """Test auto_paste default value."""
@@ -52,11 +50,28 @@ class TestTranscribeStopFunction:
 
         assert auto_paste_default
 
-    def test_grammar_correction_default(self):
-        """Test grammar_correction default value."""
-        grammar_correction_default = False
+    def test_auto_paste_falls_back_to_the_persisted_setting(self, monkeypatch):
+        """Omitting the flag uses the setting; an explicit value wins."""
+        from unittest.mock import Mock
 
-        assert not grammar_correction_default
+        from speakeasy import server
+
+        settings = Mock()
+        settings.auto_paste = False
+        settings_service = Mock()
+        settings_service.get.return_value = settings
+        monkeypatch.setattr(server, "settings_service", settings_service)
+
+        assert server._resolve_auto_paste(None) is False
+        assert server._resolve_auto_paste(True) is True
+        assert server._resolve_auto_paste(False) is False
+
+    def test_auto_paste_defaults_to_true_without_settings(self, monkeypatch):
+        from speakeasy import server
+
+        monkeypatch.setattr(server, "settings_service", None)
+
+        assert server._resolve_auto_paste(None) is True
 
     def test_language_parameter(self):
         """Test language parameter handling."""

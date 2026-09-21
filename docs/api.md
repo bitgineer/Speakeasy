@@ -14,8 +14,9 @@ status codes with a `detail` field.
 | POST | `/api/transcribe/stop` | Stop, transcribe, and return the result |
 | POST | `/api/transcribe/cancel` | Discard the recording |
 
-`POST /api/transcribe/stop` accepts `{auto_paste, language, instruction, grammar_correction}`
-and returns `{id, text, duration_ms, model_used, language}`.
+`POST /api/transcribe/stop` accepts `{auto_paste, language, instruction}` and returns
+`{id, text, duration_ms, model_used, language}`. When `auto_paste` is omitted, the persisted
+setting decides whether the result is pasted.
 
 ## History
 

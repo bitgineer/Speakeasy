@@ -126,9 +126,6 @@ class TestSettingsServiceSave:
             "theme",
             "enable_text_cleanup",
             "custom_filler_words",
-            "enable_grammar_correction",
-            "grammar_model",
-            "grammar_device",
             "server_port",
         ]
 

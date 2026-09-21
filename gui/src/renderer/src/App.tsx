@@ -8,6 +8,7 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useAppStore, useHistoryStore, useSettingsStore, initHistoryWebSocket } from './store'
+import { configureBackendPort } from './api/backend-port'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSpinner from './components/LoadingSpinner'
 import Sidebar from './components/Sidebar'
@@ -75,15 +76,17 @@ function MainLayout(): JSX.Element {
   const { fetchSettings, settings } = useSettingsStore()
   
   useEffect(() => {
-    fetchHealth()
-    fetchHistory()
-    fetchSettings()
-    
-    // Initialize WebSocket subscription for real-time transcription updates
-    initHistoryWebSocket()
-    
+    configureBackendPort().then(() => {
+      fetchHealth()
+      fetchHistory()
+      fetchSettings()
+
+      // Initialize WebSocket subscription for real-time transcription updates
+      initHistoryWebSocket()
+    })
+
     const interval = setInterval(fetchHealth, 5000)
-    
+
     return () => clearInterval(interval)
   }, [fetchHealth, fetchHistory, fetchSettings])
   

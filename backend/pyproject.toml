@@ -40,7 +40,7 @@ dependencies = [
     "torch>=2.0.0,<2.6.0",
     "nemo_toolkit[asr]>=2.0.0",
 
-    # Grammar Correction
+    # Model downloads and Voxtral support
     "transformers>=4.56.0",
     "huggingface_hub[hf_xet]>=0.21",
 

@@ -81,9 +81,6 @@ export interface Settings {
   theme: string
   enable_text_cleanup: boolean
   custom_filler_words: string[] | null
-  enable_grammar_correction: boolean
-  grammar_model: string
-  grammar_device: string
   server_port: number
   live_transcription: boolean
   live_chunk_seconds: number
@@ -105,9 +102,6 @@ export interface SettingsUpdateRequest {
   theme?: string
   enable_text_cleanup?: boolean
   custom_filler_words?: string[] | null
-  enable_grammar_correction?: boolean
-  grammar_model?: string
-  grammar_device?: string
   live_transcription?: boolean
   live_chunk_seconds?: number
   live_auto_paste?: boolean

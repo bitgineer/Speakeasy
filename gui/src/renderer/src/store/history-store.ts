@@ -9,7 +9,14 @@ import { create } from 'zustand'
 import { apiClient } from '../api/client'
 import wsClient from '../api/websocket'
 import { useAppStore } from './app-store'
-import type { TranscriptionRecord, HistoryStats, TranscriptionEvent, LiveTranscriptEvent } from '../api/types'
+import { useDownloadStore } from './download-store'
+import type {
+  TranscriptionRecord,
+  HistoryStats,
+  TranscriptionEvent,
+  LiveTranscriptEvent,
+  DownloadProgressEvent,
+} from '../api/types'
 
 interface HistoryStore {
   // Data
@@ -249,7 +256,7 @@ export function initHistoryWebSocket(): void {
     }
   })
 
-  // Listen for updates (e.g. grammar correction)
+  // Listen for updates (e.g. edited text)
   wsClient.onTranscriptionUpdate((event: TranscriptionEvent) => {
     const { items } = useHistoryStore.getState()
     const index = items.findIndex(item => item.id === event.id)
@@ -274,6 +281,10 @@ export function initHistoryWebSocket(): void {
   wsClient.on<LiveTranscriptEvent>('live_transcript', (event) => {
     useAppStore.getState().setLiveTranscriptText(event.text)
     window.api?.sendLiveTranscript?.(event.text)
+  })
+
+  wsClient.on<DownloadProgressEvent>('download_progress', (event) => {
+    useDownloadStore.getState().updateFromWebSocket(event)
   })
 }
 

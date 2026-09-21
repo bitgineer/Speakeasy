@@ -86,9 +86,6 @@ Settings:
   theme: string,               // Theme name
   enable_text_cleanup: boolean,
   custom_filler_words: string[],
-  enable_grammar_correction: boolean,
-  grammar_model: string,        // LLM model for correction
-  grammar_device: string,       // "cuda" | "cpu" | "auto"
   server_port: number           // Backend server port (default: 8765)
 }
 ```

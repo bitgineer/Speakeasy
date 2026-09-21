@@ -3,6 +3,7 @@ import { uIOhook, UiohookKey } from "uiohook-napi";
 import { showRecordingIndicator, hideRecordingIndicator } from "./windows";
 import { setTrayRecording } from "./tray";
 import { sendToRenderer } from "./ipc-handlers";
+import { getBackendPort } from "./backend";
 
 let currentHotkey: string | null = null;
 let currentMode: "toggle" | "push-to-talk" = "toggle";
@@ -176,7 +177,7 @@ export async function startRecording(): Promise<void> {
     showRecordingIndicator();
     sendToRenderer("recording:start");
 
-    const response = await fetch("http://127.0.0.1:8765/api/transcribe/start", {
+    const response = await fetch(`http://127.0.0.1:${getBackendPort()}/api/transcribe/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -223,10 +224,10 @@ export async function stopRecording(): Promise<void> {
     // Notify renderer immediately that recording has stopped and processing started
     sendToRenderer("recording:processing");
 
-    const response = await fetch("http://127.0.0.1:8765/api/transcribe/stop", {
+    const response = await fetch(`http://127.0.0.1:${getBackendPort()}/api/transcribe/stop`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ auto_paste: true }),
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) throw new Error(`Backend returned ${response.status}`);
@@ -262,7 +263,7 @@ export async function cancelRecording(): Promise<void> {
     // hideRecordingIndicator()
 
     const response = await fetch(
-      "http://127.0.0.1:8765/api/transcribe/cancel",
+      `http://127.0.0.1:${getBackendPort()}/api/transcribe/cancel`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

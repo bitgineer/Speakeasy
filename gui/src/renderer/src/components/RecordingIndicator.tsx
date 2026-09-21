@@ -188,6 +188,10 @@ export default function RecordingIndicator(): JSX.Element | null {
     window.api?.stopRecording?.()
   }
 
+  const handleCancel = (): void => {
+    window.api?.cancelRecording?.()
+  }
+
   return (
     <div className="flex items-center justify-center w-full h-full overflow-hidden">
       {/* Just the pill button - no background layers */}
@@ -209,6 +213,7 @@ export default function RecordingIndicator(): JSX.Element | null {
           <RecordingPill
             durationMs={duration}
             onStop={handleStop}
+            onCancel={handleCancel}
             isLocked={status === 'locked'}
           />
         )}

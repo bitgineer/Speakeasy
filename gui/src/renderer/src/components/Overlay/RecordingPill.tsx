@@ -1,13 +1,19 @@
 import { motion } from 'motion/react'
-import { Square, Lock } from 'lucide-react'
+import { Square, Lock, X } from 'lucide-react'
 
 interface RecordingPillProps {
   durationMs: number
   onStop: () => void
+  onCancel: () => void
   isLocked?: boolean
 }
 
-export function RecordingPill({ durationMs, onStop, isLocked }: RecordingPillProps): JSX.Element {
+export function RecordingPill({
+  durationMs,
+  onStop,
+  onCancel,
+  isLocked,
+}: RecordingPillProps): JSX.Element {
   const seconds = Math.floor(durationMs / 1000)
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
@@ -49,9 +55,18 @@ export function RecordingPill({ durationMs, onStop, isLocked }: RecordingPillPro
 
       <button
         onClick={onStop}
+        title="Stop and transcribe"
         className="p-1.5 hover:bg-white/10 rounded-full transition-colors group"
       >
         <Square className="w-4 h-4 fill-zinc-400 text-zinc-400 group-hover:fill-white group-hover:text-white transition-colors" />
+      </button>
+
+      <button
+        onClick={onCancel}
+        title="Cancel recording"
+        className="p-1.5 hover:bg-white/10 rounded-full transition-colors group"
+      >
+        <X className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
       </button>
     </motion.div>
   )

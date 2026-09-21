@@ -11,6 +11,11 @@ import { startOverlayTracking, stopOverlayTracking, updatePosition } from './ove
 
 let mainWindow: BrowserWindow | null = null
 let recordingIndicator: BrowserWindow | null = null
+let isQuitting = false
+
+export function setQuitting(value: boolean): void {
+  isQuitting = value
+}
 
 /**
  * Create the main dashboard window
@@ -51,8 +56,9 @@ export function createMainWindow(): BrowserWindow {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  // Hide instead of close (keep in tray)
+  // Hide instead of close (keep in tray), except during an explicit quit
   mainWindow.on('close', (event) => {
+    if (isQuitting) return
     if (!mainWindow?.isDestroyed()) {
       event.preventDefault()
       mainWindow?.hide()

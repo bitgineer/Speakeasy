@@ -7,11 +7,24 @@
 import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
 import { app } from 'electron'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { net } from 'electron'
 
 let backendProcess: ChildProcess | null = null
 let backendPort = 8765
+
+function readConfiguredPort(): number {
+  try {
+    const settingsPath = join(app.getPath('home'), '.speakeasy', 'settings.json')
+    const port = JSON.parse(readFileSync(settingsPath, 'utf-8')).server_port
+    if (typeof port === 'number' && port >= 1024 && port <= 65535) {
+      return port
+    }
+  } catch {
+    // no settings file yet; use the default
+  }
+  return 8765
+}
 const BACKEND_STARTUP_TIMEOUT = 120000 // 120 seconds for first-time model download
 
 // Platform specific Python executable
@@ -119,6 +132,8 @@ async function waitForBackend(timeoutMs: number = BACKEND_STARTUP_TIMEOUT): Prom
  * Start the Python backend process
  */
 export async function startBackend(): Promise<void> {
+  backendPort = readConfiguredPort()
+
   // Check if backend is already running (maybe started externally in dev)
   if (await checkBackendHealth()) {
     console.log('Backend already running')

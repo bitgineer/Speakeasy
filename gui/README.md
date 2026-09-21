@@ -62,9 +62,5 @@ gruvbox, everforest, nord, kanagawa, ayu, and one-dark.
 
 ## Known gaps
 
-- The model download progress dialog is not reachable: the WebSocket subscription that drives it
-  is not mounted.
-- The Behavior page's grammar controls call backend routes that do not exist.
-- Cancelling a recording has backend and IPC support but no UI.
-
-Full list in [docs/configuration.md](../docs/configuration.md#known-limitations).
+The remaining limitations are tracked in
+[docs/configuration.md](../docs/configuration.md#known-limitations).
