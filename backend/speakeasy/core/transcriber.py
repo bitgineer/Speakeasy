@@ -25,6 +25,7 @@ import scipy.signal
 import sounddevice as sd
 import torch
 
+from .live_transcript import LiveTranscript, speech_end_sample
 from .models import ProgressCallback, TranscriptionResult
 
 if TYPE_CHECKING:
@@ -344,8 +345,9 @@ class TranscriberService:
             self._live_cancel.set()
 
     def _run_live_transcription(self, generation: int, cancel: threading.Event) -> None:
-        """Background thread: transcribe full accumulated audio every N seconds."""
+        transcript = LiveTranscript()
         last_text = ""
+        decoded_speech_end = 0
         next_pass = time.monotonic() + self._live_chunk_seconds
         while self._state == TranscriberState.RECORDING and generation == self._live_generation:
             delay = next_pass - time.monotonic()
@@ -366,19 +368,23 @@ class TranscriberService:
                 if not chunks:
                     continue
                 full_audio = np.concatenate(chunks)
-                # Check minimum duration using native sample rate
                 native_sr = self._recorder._native_samplerate or self.SAMPLE_RATE
                 if len(full_audio) < native_sr * self.MIN_LIVE_AUDIO_SECONDS:
                     continue
 
-                # Resample from native rate to target 16kHz
-                native_sr = self._recorder._native_samplerate or self.SAMPLE_RATE
+                # Silence after the last spoken word makes the model decode the same
+                # words differently, and there is nothing new to show while it lasts.
+                speech_end = speech_end_sample(full_audio, native_sr)
+                if speech_end <= decoded_speech_end:
+                    continue
+                audio = full_audio[:speech_end]
+
                 if native_sr != self.SAMPLE_RATE:
-                    n_target = round(len(full_audio) * float(self.SAMPLE_RATE) / native_sr)
-                    full_audio = scipy.signal.resample(full_audio, n_target).astype(np.float32)
+                    n_target = round(len(audio) * float(self.SAMPLE_RATE) / native_sr)
+                    audio = scipy.signal.resample(audio, n_target).astype(np.float32)
 
                 with self._model_lock:
-                    result = self._model.transcribe(full_audio, self.SAMPLE_RATE)
+                    result = self._model.transcribe(audio, self.SAMPLE_RATE)
 
                 # A quick stop/start can be back to RECORDING before this pass
                 # returns; the generation is what tells the sessions apart.
@@ -389,12 +395,13 @@ class TranscriberService:
                 ):
                     return
 
-                text = result.text.strip()
-                logger.debug(f"[live] result: '{text}' ({len(full_audio)} samples)")
-                if text and text != last_text:
-                    last_text = text
+                decoded_speech_end = speech_end
+                display = transcript.ingest(result.text.strip())
+                logger.debug(f"[live] result: '{display}' ({len(audio)} samples)")
+                if display and display != last_text:
+                    last_text = display
                     if self._live_callback:
-                        self._live_callback(text)
+                        self._live_callback(display)
             except Exception as e:
                 logger.warning(f"Live transcription chunk failed: {e}")
 
