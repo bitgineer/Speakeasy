@@ -104,6 +104,7 @@ class SettingsUpdateRequest(BaseModel):
     live_chunk_seconds: float | None = Field(None, ge=1.0, le=10.0)
     live_auto_paste: bool | None = None
     server_port: int | None = Field(None, ge=1024, le=65535)
+    debug_logging: bool | None = None
 
     @field_validator("hotkey")
     @classmethod
@@ -202,7 +203,7 @@ def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> 
                 logger.error(f"LIVE CALLBACK broadcast scheduling failed: {e}", exc_info=True)
 
             # Auto-paste into active window (runs regardless of broadcast result)
-            logger.info(
+            logger.debug(
                 f"LIVE CALLBACK: auto_paste={settings.live_auto_paste}, text='{cleaned[:40]}'"
             )
             if settings.live_auto_paste:
@@ -210,7 +211,7 @@ def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> 
                     from .utils.paste import replace_active_text
 
                     replace_active_text(cleaned)
-                    logger.info("LIVE CALLBACK: paste completed")
+                    logger.debug("LIVE CALLBACK: paste completed")
                 except Exception as e:
                     logger.error(f"LIVE CALLBACK paste failed: {e}", exc_info=True)
 
@@ -284,6 +285,10 @@ async def lifespan(app: FastAPI):
     # Initialize settings
     settings_service = SettingsService(get_default_settings_path())
     settings = settings_service.load()
+
+    if settings.debug_logging:
+        logging.getLogger("speakeasy").setLevel(logging.DEBUG)
+        logger.info("Debug logging enabled")
 
     # Initialize history database
     history = HistoryService(get_default_db_path())

@@ -83,6 +83,7 @@ class AudioRecorder:
         self._stream: sd.InputStream | None = None
         self._recording_start_time: float | None = None
         self._lock = threading.Lock()
+        self._last_status_log = 0.0
 
         # Device selection
         self._device_name: str | None = None
@@ -123,15 +124,19 @@ class AudioRecorder:
     ) -> None:
         """Callback for audio stream. Minimal copy for performance."""
         if status:
-            logger.warning(f"Audio status: {status}")
-        with self._lock:
-            audio_chunk = indata.copy().flatten()
-            self._buffer.append(audio_chunk)
-            if len(self._buffer) <= 3:
-                max_amp = np.abs(audio_chunk).max() if len(audio_chunk) > 0 else 0.0
-                logger.info(
-                    f"Audio callback #{len(self._buffer)}: received {len(audio_chunk)} samples, max amplitude: {max_amp:.4f}"
-                )
+            now = time.monotonic()
+            if now - self._last_status_log >= 10.0:
+                self._last_status_log = now
+                logger.warning(f"Audio status: {status}")
+        # No lock here: blocking the audio callback drops samples. list.append is
+        # atomic, and readers snapshot the list before dropping it.
+        audio_chunk = indata.copy().flatten()
+        self._buffer.append(audio_chunk)
+        if len(self._buffer) <= 3:
+            max_amp = np.abs(audio_chunk).max() if len(audio_chunk) > 0 else 0.0
+            logger.info(
+                f"Audio callback #{len(self._buffer)}: received {len(audio_chunk)} samples, max amplitude: {max_amp:.4f}"
+            )
 
     # -- Recording lifecycle --
 
@@ -182,6 +187,7 @@ class AudioRecorder:
                 channels=self._channels,
                 dtype=np.float32,
                 device=device_id,
+                latency="high",
                 callback=self._audio_callback,
             )
             logger.info("Starting audio stream...")
@@ -205,24 +211,22 @@ class AudioRecorder:
         with self._lock:
             if not self._buffer:
                 raise RuntimeError("No audio recorded - microphone may not be working or is muted")
-
-            audio_data = np.concatenate(self._buffer)
-            native_sr = self._native_samplerate or self._target_sample_rate
-
-            logger.info(
-                f"Audio data: {len(audio_data)} samples at {native_sr}Hz "
-                f"({len(audio_data) / native_sr:.2f}s), max amp: {np.abs(audio_data).max():.4f}"
-            )
-
-            # Resample if device rate differs from target
-            if native_sr != self._target_sample_rate:
-                logger.info(f"Resampling from {native_sr}Hz to {self._target_sample_rate}Hz")
-                target_samples = round(
-                    len(audio_data) * float(self._target_sample_rate) / native_sr
-                )
-                audio_data = scipy.signal.resample(audio_data, target_samples).astype(np.float32)
-
+            chunks = list(self._buffer)
             self._buffer = []
+
+        audio_data = np.concatenate(chunks)
+        native_sr = self._native_samplerate or self._target_sample_rate
+
+        logger.info(
+            f"Audio data: {len(audio_data)} samples at {native_sr}Hz "
+            f"({len(audio_data) / native_sr:.2f}s), max amp: {np.abs(audio_data).max():.4f}"
+        )
+
+        # Resample if device rate differs from target
+        if native_sr != self._target_sample_rate:
+            logger.info(f"Resampling from {native_sr}Hz to {self._target_sample_rate}Hz")
+            target_samples = round(len(audio_data) * float(self._target_sample_rate) / native_sr)
+            audio_data = scipy.signal.resample(audio_data, target_samples).astype(np.float32)
 
         self._recording_start_time = None
         self._native_samplerate = None
@@ -347,16 +351,21 @@ class TranscriberService:
             delay = next_pass - time.monotonic()
             if delay > 0 and cancel.wait(delay):
                 return
-            next_pass = max(next_pass + self._live_chunk_seconds, time.monotonic())
+            # Leave headroom so a slow pass cannot starve the audio callback
+            next_pass = max(
+                next_pass + self._live_chunk_seconds,
+                time.monotonic() + self._live_chunk_seconds * 0.5,
+            )
             if cancel.is_set() or generation != self._live_generation:
                 return
             if self._state != TranscriberState.RECORDING:
                 return
             try:
                 with self._recorder._lock:
-                    if not self._recorder._buffer:
-                        continue
-                    full_audio = np.concatenate(self._recorder._buffer)
+                    chunks = list(self._recorder._buffer)
+                if not chunks:
+                    continue
+                full_audio = np.concatenate(chunks)
                 # Check minimum duration using native sample rate
                 native_sr = self._recorder._native_samplerate or self.SAMPLE_RATE
                 if len(full_audio) < native_sr * self.MIN_LIVE_AUDIO_SECONDS:
@@ -368,19 +377,8 @@ class TranscriberService:
                     n_target = round(len(full_audio) * float(self.SAMPLE_RATE) / native_sr)
                     full_audio = scipy.signal.resample(full_audio, n_target).astype(np.float32)
 
-                # Transcribe with tqdm suppressed
-                import os as _os
-
-                _old = _os.environ.get("TQDM_DISABLE")
-                _os.environ["TQDM_DISABLE"] = "1"
-                try:
-                    with self._model_lock:
-                        result = self._model.transcribe(full_audio, self.SAMPLE_RATE)
-                finally:
-                    if _old is not None:
-                        _os.environ["TQDM_DISABLE"] = _old
-                    else:
-                        _os.environ.pop("TQDM_DISABLE", None)
+                with self._model_lock:
+                    result = self._model.transcribe(full_audio, self.SAMPLE_RATE)
 
                 # A quick stop/start can be back to RECORDING before this pass
                 # returns; the generation is what tells the sessions apart.
@@ -392,7 +390,7 @@ class TranscriberService:
                     return
 
                 text = result.text.strip()
-                logger.info(f"[live] result: '{text}' ({len(full_audio)} samples)")
+                logger.debug(f"[live] result: '{text}' ({len(full_audio)} samples)")
                 if text and text != last_text:
                     last_text = text
                     if self._live_callback:

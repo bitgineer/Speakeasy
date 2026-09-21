@@ -28,7 +28,8 @@ export default function BehaviorSettings(): JSX.Element {
     custom_filler_words: '',
     live_transcription: false,
     live_chunk_seconds: 3.0,
-    live_auto_paste: false
+    live_auto_paste: false,
+    debug_logging: false
   })
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle')
@@ -63,7 +64,8 @@ export default function BehaviorSettings(): JSX.Element {
         custom_filler_words: settings.custom_filler_words?.join(', ') ?? '',
         live_transcription: settings.live_transcription ?? false,
         live_chunk_seconds: settings.live_chunk_seconds ?? 3.0,
-        live_auto_paste: settings.live_auto_paste ?? false
+        live_auto_paste: settings.live_auto_paste ?? false,
+        debug_logging: settings.debug_logging ?? false
       }
       
       // Only update if we haven't modified local settings yet (initial load)
@@ -87,7 +89,8 @@ export default function BehaviorSettings(): JSX.Element {
         : null,
       live_transcription: localSettings.live_transcription,
       live_chunk_seconds: localSettings.live_chunk_seconds,
-      live_auto_paste: localSettings.live_auto_paste
+      live_auto_paste: localSettings.live_auto_paste,
+      debug_logging: localSettings.debug_logging
     })
 
     if (success) {
@@ -316,6 +319,30 @@ export default function BehaviorSettings(): JSX.Element {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Diagnostics */}
+        <section className="card p-4">
+          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Diagnostics</h2>
+
+          <label className="flex items-center justify-between cursor-pointer">
+            <div>
+              <span className="text-[var(--color-text-primary)]">Verbose debug logging</span>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                Log each live transcription pass and paste action. Applies after an app restart.
+              </p>
+            </div>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={localSettings.debug_logging}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, debug_logging: e.target.checked }))}
+                disabled={isSaving}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
+            </div>
+          </label>
         </section>
       </div>
     </div>

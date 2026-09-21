@@ -788,7 +788,7 @@ class ModelWrapper:
             temp_manifest_path = safe_write_manifest(manifest_data)
 
             with torch.inference_mode():
-                out = self._model.transcribe(temp_manifest_path)
+                out = self._model.transcribe(temp_manifest_path, verbose=False)
             return out[0].text if out else ""
 
         finally:
@@ -833,6 +833,7 @@ class ModelWrapper:
                 audio=temp_manifest_path,
                 source_lang=source_lang,
                 target_lang=target_lang,
+                verbose=False,
             )
             return out[0].text.strip() if out and len(out) > 0 else ""
         except Exception:

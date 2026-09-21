@@ -26,6 +26,7 @@ stopped; unknown fields are ignored and missing fields take their default.
 | `live_chunk_seconds` | number | `3.0` | Live caption interval, 1 to 10 seconds |
 | `live_auto_paste` | boolean | `false` | Rewrite the active text field with each live update |
 | `server_port` | number | `8765` | Backend port. Applied on the next app start |
+| `debug_logging` | boolean | `false` | Log every live transcription pass and paste action. Applies after an app restart |
 
 ### Note on auto-paste
 

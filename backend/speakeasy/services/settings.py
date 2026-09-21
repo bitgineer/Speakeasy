@@ -51,6 +51,9 @@ class AppSettings(BaseModel):
         default=None, description="Additional filler words to remove"
     )
 
+    # Diagnostics
+    debug_logging: bool = Field(default=False, description="Enable verbose backend logging")
+
     # Live transcription settings
     live_transcription: bool = Field(
         default=False, description="Enable real-time partial transcription while recording"

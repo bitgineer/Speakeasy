@@ -85,6 +85,7 @@ export interface Settings {
   live_transcription: boolean
   live_chunk_seconds: number
   live_auto_paste: boolean
+  debug_logging: boolean
 }
 
 export interface SettingsUpdateRequest {
@@ -105,6 +106,7 @@ export interface SettingsUpdateRequest {
   live_transcription?: boolean
   live_chunk_seconds?: number
   live_auto_paste?: boolean
+  debug_logging?: boolean
 }
 
 export interface SettingsUpdateResponse {
