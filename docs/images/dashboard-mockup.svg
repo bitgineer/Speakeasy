@@ -1,0 +1,37 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="800" height="600" fill="#1e1e1e" />
+  <rect x="0" y="0" width="800" height="40" fill="#2d2d2d" />
+  <circle cx="20" cy="20" r="6" fill="#ff5f56" />
+  <circle cx="40" cy="20" r="6" fill="#ffbd2e" />
+  <circle cx="60" cy="20" r="6" fill="#27c93f" />
+  <text x="360" y="25" font-family="Arial" font-size="14" fill="#888">SpeakEasy</text>
+  
+  <!-- Sidebar -->
+  <rect x="0" y="40" width="60" height="560" fill="#252526" />
+  <rect x="15" y="60" width="30" height="30" rx="5" fill="#3e3e42" />
+  <rect x="15" y="110" width="30" height="30" rx="5" fill="#3e3e42" />
+  <rect x="15" y="160" width="30" height="30" rx="5" fill="#3e3e42" />
+  
+  <!-- Main Content -->
+  <text x="100" y="100" font-family="Arial" font-size="24" fill="#ffffff">Dashboard</text>
+  
+  <!-- Status Card -->
+  <rect x="100" y="130" width="600" height="100" rx="8" fill="#2d2d2d" />
+  <text x="120" y="160" font-family="Arial" font-size="16" fill="#4caf50">● Ready to Transcribe</text>
+  <text x="120" y="190" font-family="Arial" font-size="14" fill="#cccccc">Model: distil-medium.en (Loaded)</text>
+  <text x="120" y="210" font-family="Arial" font-size="14" fill="#cccccc">Device: GPU (CUDA)</text>
+  
+  <!-- Recent History -->
+  <text x="100" y="270" font-family="Arial" font-size="18" fill="#ffffff">Recent Transcriptions</text>
+  <rect x="100" y="290" width="600" height="60" rx="4" fill="#252526" />
+  <text x="120" y="315" font-family="Arial" font-size="14" fill="#eee">"This is a test transcription of the voice command system..."</text>
+  <text x="120" y="335" font-family="Arial" font-size="12" fill="#888">Just now • 2.4s duration</text>
+
+  <rect x="100" y="360" width="600" height="60" rx="4" fill="#252526" />
+  <text x="120" y="385" font-family="Arial" font-size="14" fill="#eee">"Draft an email to the team regarding the new project timeline."</text>
+  <text x="120" y="405" font-family="Arial" font-size="12" fill="#888">5 mins ago • 1.2s duration</text>
+  
+  <!-- Placeholder Text -->
+  <rect x="200" y="480" width="400" height="80" rx="8" fill="#333" stroke="#555" stroke-dasharray="4"/>
+  <text x="400" y="525" font-family="Arial" font-size="16" fill="#888" text-anchor="middle">Screenshot Placeholder</text>
+</svg>

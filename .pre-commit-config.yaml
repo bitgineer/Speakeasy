@@ -1,0 +1,75 @@
+# Pre-commit hooks for SpeakEasy
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Python: Ruff linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # Python: Type checking with mypy (optional - remove if not using)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       files: ^backend/
+  #       additional_dependencies: [types-all]
+
+  # JavaScript/TypeScript: ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: bash -c 'cd gui && npm run lint'
+        language: system
+        files: ^gui/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+      # TypeScript type checking
+      - id: typecheck
+        name: TypeScript Check
+        entry: bash -c 'cd gui && npm run typecheck'
+        language: system
+        files: ^gui/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      # Backend tests (on changed Python files)
+      - id: pytest
+        name: Backend Tests
+        entry: bash -c 'cd backend && python -m pytest tests/ -x -q'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      # Frontend tests (on changed TS/TSX files)
+      - id: vitest
+        name: Frontend Tests
+        entry: bash -c 'cd gui && npm test -- --run'
+        language: system
+        files: ^gui/.*\.(ts|tsx)$
+        pass_filenames: false
+
+# Default stages
+default_stages: [commit]
+
+# Skip hooks for certain commit types (optional)
+ci:
+  skip: [pytest, vitest]  # Skip slow tests in CI (run separately)

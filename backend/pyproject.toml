@@ -1,0 +1,128 @@
+[project]
+name = "speakeasy"
+version = "0.1.0"
+description = "Open Source Voice Transcription with GUI - Backend Service"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+keywords = ["speech-recognition", "transcription", "whisper", "ai", "voice", "voice-to-text", "speech-to-text", "asr", "automatic-speech-recognition", "local-ai", "privacy", "offline", "electron", "desktop-app", "productivity", "developer-tools", "dictation", "machine-learning", "neural-networks", "nvidia", "cuda", "gpu-acceleration", "accessibility", "assistive-technology", "nlp", "natural-language-processing", "audio-processing", "microphone", "voice-commands", "stt", "local-first", "privacy-focused", "security", "cross-platform", "windows", "macos", "linux", "fastapi", "pytorch"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Office/Business :: Scheduling",
+]
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "websockets>=12.0",
+    "slowapi>=0.1.9",
+
+    # Audio
+    "sounddevice>=0.4.6",
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+
+    # ASR Models
+    "faster-whisper>=1.0.0",
+    "torch>=2.0.0,<2.6.0",
+    "nemo_toolkit[asr]>=2.0.0",
+
+    # Grammar Correction
+    "transformers>=4.56.0",
+    "huggingface_hub[hf_xet]>=0.21",
+
+    # Voxtral support (optional heavy dependencies)
+    # "transformers>=4.56",
+    # "mistral-common[audio]>=1.5.0",
+    # "bitsandbytes>=0.45.0",
+
+    # Utilities
+    "pynput>=1.7.6",
+    "pyperclip>=1.8.2",
+
+    # Database
+    "aiosqlite>=0.19.0",
+
+    # Settings
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "cuda-python>=12.3; sys_platform == 'linux' or sys_platform == 'win32'",
+    "dill>=0.3.0",
+]
+
+[project.optional-dependencies]
+linux = [
+    "pulsectl>=23.5.0",
+]
+cuda = [
+    "cuda-python>=12.3",
+]
+voxtral = [
+    "transformers>=4.56",
+    "mistral-common[audio]>=1.5.0",
+    "bitsandbytes>=0.45.0",
+    "pydantic-extra-types>=2.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "httpx>=0.25.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+speakeasy = "speakeasy.__main__:main"
+speakeasy-server = "speakeasy.server:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["speakeasy"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch", marker = "sys_platform == 'win32'" },
+  { index = "pytorch", marker = "sys_platform == 'linux'" },
+]
+torchaudio = [
+  { index = "pytorch", marker = "sys_platform == 'win32'" },
+  { index = "pytorch", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+  { index = "pytorch", marker = "sys_platform == 'win32'" },
+  { index = "pytorch", marker = "sys_platform == 'linux'" },
+]
