@@ -48,56 +48,54 @@ This project and everyone participating in it is governed by our commitment to:
 
 ### Prerequisites
 
-- Python 3.10 - 3.12
-- Node.js 18+ (LTS)
-- FFmpeg in system PATH
-- UV package manager (`pip install uv`)
+- Python 3.12 (the setup script installs it through uv)
+- Node.js 18+
+- FFmpeg on `PATH` for batch and file transcription
 - Git
 
-### Backend Setup
+### One-command setup
+
+```bash
+python install.py --no-launch
+```
+
+This installs uv and Python when needed, creates `backend/.venv`, installs the backend and GUI
+dependencies, and checks FFmpeg. Details in [docs/development.md](docs/development.md).
+
+### Manual setup
 
 ```bash
 cd backend
 uv venv --python 3.12
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv pip install -e ".[dev]"
-```
+uv pip install --python .venv/bin/python -e ".[dev]"           # macOS/Linux
+uv pip install --python .venv/Scripts/python.exe -e ".[dev]"   # Windows
 
-### Frontend Setup
-
-```bash
-cd gui
+cd ../gui
 npm install
 ```
 
 ### Running Tests
 
-**Backend**:
+Backend, 409 tests with mocked models and no GPU requirement:
+
 ```bash
 cd backend
-# Install dev dependencies
-uv sync --extra dev
-
-# Run all tests
-uv run pytest tests/ -v
-
-# Run with coverage
-uv run pytest tests/ -v --cov=speakeasy --cov-report=html
-
-# Run specific test file
-uv run pytest tests/test_transcriberservice__set_state.py -v
+.venv/bin/python -m pytest tests/ -q             # macOS/Linux
+.venv/Scripts/python.exe -m pytest tests/ -q     # Windows
 ```
 
-**Frontend**:
+Frontend:
+
 ```bash
 cd gui
+npm test
 npm run lint
 npm run typecheck
 ```
 
 ## Testing Guidelines
 
-We have **387 tests** covering critical functionality:
+We have **409 tests** covering critical functionality:
 
 ### Test Organization
 
@@ -126,7 +124,7 @@ We have **387 tests** covering critical functionality:
 3. **Mock external dependencies** appropriately
 4. **Test both sync and async** methods correctly
 
-See [TESTING_PLAN.md](TESTING_PLAN.md) for the complete testing roadmap.
+The suite lives in `backend/tests/`.
 
 ## Pull Request Process
 
@@ -192,8 +190,7 @@ Use the [Feature Request template](https://github.com/bitgineer/speakeasy/issues
 
 #### Finding Issues to Work On
 
-- Look for issues labeled `good first issue` or `help wanted`
-- Check the [project roadmap](../README.md#roadmap)
+- Look for issues labeled `good first issue` or `help wanted` on the [issue tracker](https://github.com/bitgineer/speakeasy/issues)
 - Comment on an issue before starting work to avoid conflicts
 
 #### Types of Contributions

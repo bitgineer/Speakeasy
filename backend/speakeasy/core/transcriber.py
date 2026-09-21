@@ -395,17 +395,6 @@ class TranscriberService:
                 logger.info(f"[live] result: '{text}' ({len(full_audio)} samples)")
                 if text and text != last_text:
                     last_text = text
-                    # Debug file write (best-effort, don't crash)
-                    try:
-                        import os as _os2
-
-                        _os2.makedirs(_os2.path.expanduser("~/.speakeasy"), exist_ok=True)
-                        with open(_os2.path.expanduser("~/.speakeasy/live_debug.log"), "a") as _f:
-                            _f.write(
-                                f"{__import__('time').time()}: '{text}' ({len(full_audio)} samples)\n"
-                            )
-                    except Exception:
-                        pass
                     if self._live_callback:
                         self._live_callback(text)
             except Exception as e:

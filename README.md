@@ -1,357 +1,196 @@
 # SpeakEasy
 
 <div align="center">
-  <img src="docs/images/logo.png" alt="SpeakEasy Logo" width="120" height="120" />
   <h1>SpeakEasy</h1>
-  <h3>Privacy-First Voice-to-Text for Developers</h3>
+  <h3>Privacy-first voice-to-text for developers</h3>
   <p>
-    Local AI transcription that runs 100% offline. Code at the speed of thought.<br/>
-    <b>Private. Open Source. No Cloud Required.</b>
-  </p>
-  
-  <p align="center">
-    <a href="#-quick-start">🚀 Install</a> •
-    <a href="#-features">✨ Features</a> •
-    <a href="#-usage">💻 Usage</a> •
-    <a href="#-architecture">🏗️ Architecture</a> •
-    <a href="#-contributing">🤝 Contribute</a>
+    Local AI transcription that runs on your machine. Dictate into any app,<br/>
+    transcribe audio files, and keep every word offline.
   </p>
 
   <p>
-    <img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-blue?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMCAxOGMtNC40MTggMC04LTMuNTgyLTgtOHMzLjU4Mi04IDgtOCA4IDMuNTgyIDggOC0zLjU4MiA4LTggOHoiLz48L3N2Zz4=" alt="Platform Support" />
+    <img src="https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-blue?style=flat-square" alt="Platform Support" />
     <img src="https://img.shields.io/github/license/bitgineer/speakeasy?style=flat-square&color=green" alt="License MIT" />
-    <img src="https://img.shields.io/badge/privacy-100%25%20local-success?style=flat-square" alt="Privacy First" />
+    <img src="https://img.shields.io/badge/privacy-local%20inference-success?style=flat-square" alt="Local Inference" />
     <img src="https://img.shields.io/badge/ai-whisper%20%7C%20nemo%20%7C%20voxtral-purple?style=flat-square" alt="AI Models" />
-    <img src="https://img.shields.io/github/stars/bitgineer/speakeasy?style=flat-square&color=yellow" alt="GitHub Stars" />
-    <img src="https://img.shields.io/badge/vibe%20coding-ready-orange?style=flat-square" alt="Vibe Coding" />
     <img src="https://github.com/bitgineer/speakeasy/workflows/Tests/badge.svg" alt="Tests" />
   </p>
 </div>
 
 ---
 
-## 📖 Overview
+## What it is
 
-**SpeakEasy** is an open-source, privacy-focused **voice-to-text** and **speech recognition** application built for developers, writers, and privacy-conscious users. Unlike cloud-based transcription services like Otter.ai, Rev.ai, or Google Speech-to-Text, SpeakEasy runs **entirely offline** on your local machine using open-source AI models including **OpenAI Whisper**, **NVIDIA NeMo**, and **Mistral Voxtral**.
+SpeakEasy is a desktop app and a local backend. The backend records your microphone, runs a
+speech model on your hardware, and serves results over HTTP and WebSocket. The Electron app
+gives you a global hotkey, a recording overlay with live captions, a searchable history, and
+batch transcription of audio files.
 
-- 🎙️ **Real-time transcription** with near-zero latency
-- 🔒 **100% offline** - no internet required, no data leaves your device
-- ⚡ **GPU accelerated** - CUDA support for NVIDIA graphics cards
-- 💻 **Cross-platform** - Windows, macOS, and Linux support
-- 🚀 **Vibe Coding** - Stay in flow, dictate code naturally
-- 🎯 **Developer-first** - IDE integration, hotkeys, CLI support
+Nothing is sent to a cloud service. The only network call is the one-time model download.
 
-### Why Choose SpeakEasy?
+## Requirements
 
-| 🏆 **Best For** | 💡 **Why** |
-|----------------|-----------|
-| **Developers** | Code faster with voice. Global hotkeys work in any IDE (VS Code, Cursor, JetBrains) |
-| **Privacy Advocates** | Zero cloud calls. Your voice stays on your machine |
-| **Writers** | Dictate articles, emails, notes without typing fatigue |
-| **Accessibility** | Voice control for users with RSI, disabilities, or typing limitations |
-| **Security-Conscious** | Air-gapped environments, no data exfiltration risk |
+| Requirement | Notes |
+|---|---|
+| Windows 10/11, macOS, or Linux | Windows and Linux get GPU acceleration when an NVIDIA GPU is present |
+| Python 3.12 | Installed automatically by the setup script through [uv](https://docs.astral.sh/uv/) |
+| Node.js 18 or newer | For the desktop app |
+| FFmpeg on `PATH` | Needed for audio and video file transcription; optional for live dictation |
+| NVIDIA GPU | Optional. CUDA speeds up transcription; CPU works for every model |
 
-## ✨ Features
+## Quick start
 
-### 🎙️ Core Transcription
+Windows:
 
-| Feature | Description |
-|---------|-------------|
-| **Global Hotkey** | Press and hold to transcribe into any active window |
-| **Universal Compatibility** | Works with any application (IDEs, editors, browsers, chat apps) |
-| **Smart Formatting** | Automatic punctuation, capitalization, and code formatting |
-| **Multi-Model Support** | Choose between Whisper, NeMo, or Voxtral based on your needs |
-| **Audio File Processing** | Batch transcribe MP3, WAV, M4A, and more |
-| **Real-time Preview** | See transcription as you speak |
-
-### 🔐 Privacy & Security
-
-- ✅ **100% Offline** - Zero network calls for transcription
-- ✅ **Local Processing** - All models run on your hardware
-- ✅ **No Signup** - No account, email, or API keys required
-- ✅ **No Telemetry** - No usage tracking or data collection
-- ✅ **Open Source** - Full transparency, audit the code
-
-### ⚡ Power Features
-
-- **Batch Transcription**: Process multiple audio files in a queue with real-time progress tracking
-- **Transcription History**: Searchable SQLite database of all your transcriptions
-- **History Import/Export**: Backup and restore your history with merge or replace options
-- **Export Formats**: JSON, TXT, SRT, VTT, CSV, DOCX for different use cases
-- **Model Download Progress**: Real-time download tracking with speed and ETA
-- **Model Caching**: Download and cache models for faster startup times
-- **Custom Hotkeys**: Configure global shortcuts to your preference
-- **System Tray**: Quick access without cluttering your dock
-- **CLI Support**: Command-line transcription for automation
-- **Plugin System**: Custom post-processing scripts (WIP)
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Python 3.10 - 3.12** (Python 3.13+ not yet supported)
-- **Node.js 18+** (LTS recommended)
-- **FFmpeg** (must be in system PATH)
-- **UV** package manager (`pip install uv`)
-- **Windows**: Visual C++ Build Tools
-
-### ⚡ One-Command Install
-
-**Windows (Recommended)**:
-```bash
-git clone https://github.com/bitgineer/speakeasy.git
-cd speakeasy
-start.bat
+```bat
+install.bat
 ```
 
-**macOS/Linux**:
+macOS and Linux:
+
 ```bash
-git clone https://github.com/bitgineer/speakeasy.git
-cd speakeasy
-./start.sh
+./install.sh
 ```
 
-### 🛠️ Manual Setup
+The script installs uv and Python 3.12 if needed, creates the backend environment, installs
+backend and desktop dependencies, checks FFmpeg, and then offers to start the app.
+`start.bat` and `start.sh` are aliases for the same script with launch enabled.
+
+On first launch the backend downloads the default speech model (about 2 GB for Parakeet).
+Later launches start offline.
+
+### Manual setup
 
 ```bash
-# Clone repository
-git clone https://github.com/bitgineer/speakeasy.git
-cd speakeasy
-
-# Setup backend
+# Backend
 cd backend
 uv venv --python 3.12
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv pip install -e ".[cuda]"  # Without CUDA: uv pip install -e .
+uv pip install --python .venv/Scripts/python.exe -e ".[cuda]"   # Windows, NVIDIA GPU
+uv pip install --python .venv/bin/python -e ".[cuda]"           # macOS/Linux
+uv pip install --python .venv/bin/python -e .                   # CPU only
 
-# Run tests
-uv run pytest tests/ -v
-
-# Setup frontend
+# Desktop app
 cd ../gui
 npm install
 npm run dev
 ```
 
-## 💻 Usage
+## Usage
 
-### 🖱️ GUI Mode (Desktop App)
+**Dictate anywhere.** Press the global hotkey (default `Ctrl+Shift+Space`, or `F8` in the
+example settings) and speak. The recording overlay appears above your windows with a timer and
+live captions. Press the hotkey again to stop. The transcript is copied to your clipboard and
+pasted into the active window.
 
-The easiest way to use SpeakEasy is through the Electron GUI:
+Two hotkey modes are supported:
+
+- **Toggle**: press to start, press again to stop.
+- **Push-to-talk**: hold to record, release to stop. Holding for 60 seconds locks recording so
+  you can release the keys; press the combination again to stop.
+
+**Live captions.** While recording, the backend re-transcribes the audio every 1 to 10 seconds
+and pushes the growing transcript to the overlay. The interval and the feature itself are in
+Settings, Behavior.
+
+**History.** Every finished transcription is stored in a local SQLite database. The Dashboard
+lists and searches it, and supports export to TXT, JSON, CSV, SRT, and VTT, plus JSON import.
+
+**Batch transcription.** The Batch page queues local audio or video files and transcribes them
+one at a time with progress. FFmpeg must be installed.
+
+**Statistics.** The Stats page summarizes counts and durations from the history database.
+
+**System tray.** The tray icon shows ready or recording, and offers Open Dashboard, Settings,
+and Quit.
+
+## Models
+
+| Type | Default model | Engine | Notes |
+|---|---|---|---|
+| Parakeet | `nvidia/parakeet-tdt-0.6b-v3` | NVIDIA NeMo | Default. Fast and accurate for English |
+| Whisper | `large-v3`, `medium`, `small`, `base`, `tiny` | faster-whisper (CTranslate2) | Broad language support, sizes from 39 MB to 1.5 GB |
+| Canary | `nvidia/canary-1b-v2` | NVIDIA NeMo | Speech translation and transcription |
+| Voxtral | `mistralai/Voxtral-Mini-3B-2507` | transformers | Requires the `voxtral` extra and a large GPU |
+
+The model can be changed in Settings, Model. Downloads show progress and are cached under the
+Hugging Face cache, so they happen once.
+
+## Configuration
+
+Settings live in `~/.speakeasy/settings.json`. The app writes them when you change something in
+Settings. The backend reads the file at startup.
+
+Common settings:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `model_type`, `model_name` | `parakeet`, `nvidia/parakeet-tdt-0.6b-v3` | Which model to load |
+| `device` | `cuda` | `cuda` or `cpu` |
+| `hotkey`, `hotkey_mode` | `ctrl+shift+space`, `toggle` | Global hotkey and its mode |
+| `auto_paste` | `true` | Paste results into the active window |
+| `enable_text_cleanup` | `true` | Remove filler words and capitalize sentences |
+| `live_transcription` | `false` | Stream captions while recording |
+| `live_chunk_seconds` | `3.0` | Live update interval, 1 to 10 seconds |
+
+See [docs/configuration.md](docs/configuration.md) for the full list.
+
+## Documentation
+
+- [Install](docs/install.md): setup in detail, including a clean reinstall
+- [Usage](docs/usage.md): dictation, live captions, history, batch, stats
+- [Configuration](docs/configuration.md): every setting and where it lives
+- [Troubleshooting](docs/troubleshooting.md): model downloads, audio devices, GPU, ports
+- [Development](docs/development.md): repo layout, tests, lint, typecheck, builds
+- [Architecture](docs/architecture.md): how the app, backend, and models fit together
+- [HTTP and WebSocket API](docs/api.md): the real endpoint surface
+
+## Development
 
 ```bash
-# Quick start with default settings
-npm run dev        # Development mode
-npm run build      # Production build
-npm run start      # Run built app
+cd backend
+.venv/Scripts/python.exe -m pytest tests/ -q     # Windows
+.venv/bin/python -m pytest tests/ -q             # macOS/Linux
+
+cd ../gui
+npm run lint
+npm run typecheck
+npm test
 ```
 
-**Features:**
-- Visual transcription history
-- Model switching (Whisper/NeMo/Voxtral)
-- Settings management
-- Audio file import
+CI runs the backend suite, the frontend lint, typecheck and tests, and a critical-path hotspot
+suite on every push to `main`.
 
-### ⌨️ CLI Mode (Command Line)
+## Troubleshooting
 
-Use SpeakEasy from the terminal for automation and scripting:
+- **First launch seems stuck.** It is downloading the speech model. Progress appears in
+  Settings, Model.
+- **No audio is recorded.** Check Settings, Audio, and confirm the input device works in the
+  system settings.
+- **FFmpeg missing.** Install it and reopen the terminal. Batch and file transcription need it.
+- **CUDA errors.** Set the device to `cpu` in Settings, Model, or reinstall with
+  `python install.py --reinstall --cpu`.
 
-```bash
-# Transcribe with default settings
-python -m speakeasy transcribe
+More in [docs/troubleshooting.md](docs/troubleshooting.md).
 
-# Transcribe an audio file
-python -m speakeasy transcribe --file recording.mp3 --output transcript.txt
+## Privacy
 
-# List available models
-python -m speakeasy models
+- Speech is transcribed on your machine by local models.
+- No telemetry, no accounts, no API keys.
+- The app reaches the network once per model to download weights. After that it runs offline.
+- History and settings stay in `~/.speakeasy/`.
 
-# Use specific model
-python -m speakeasy transcribe --model whisper-large-v3
+## Contributing
 
-# Batch process directory
-python -m speakeasy transcribe --batch ./audio_files/ --output ./transcripts/
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: fork, branch, run the checks in
+[Development](#development), and open a pull request.
 
-# Get help
-python -m speakeasy --help
-python -m speakeasy transcribe --help
-```
+## License
 
-### 🔥 Global Hotkey Mode
+MIT. See [LICENSE](LICENSE).
 
-Set up a global hotkey to transcribe into any active window:
+## Acknowledgments
 
-1. **Start the backend**:
-   ```bash
-   cd backend
-   source .venv/bin/activate
-   python -m speakeasy.server
-   ```
-
-2. **Configure hotkey** in the GUI (default: `Ctrl+Shift+Space`)
-
-3. **Use anywhere**:
-   - Hold hotkey → Speak → Release → Text appears in focused window
-
-### 🎙️ Live Mode
-
-Stream transcription in real-time:
-
-```bash
-# Real-time transcription to stdout
-python -m speakeasy live
-
-# Real-time with specific model
-python -m speakeasy live --model nemo --language en
-
-# Save to file while transcribing
-python -m speakeasy live --output live_transcript.txt
-```
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        USER INTERFACE                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌───────────────┐  ┌───────────────┐  ┌─────────────────┐ │
-│  │  Electron GUI │  │    CLI Tool   │  │  Global Hotkey  │ │
-│  │   (React)     │  │  (Python)     │  │   (Listener)    │ │
-│  └───────┬───────┘  └───────┬───────┘  └────────┬────────┘ │
-└──────────┼──────────────────┼──────────────────┼──────────┘
-           │                  │                  │
-           └──────────────────┼──────────────────┘
-                              │ HTTP API
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     SPEAKEASY BACKEND                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐                │
-│  │   FastAPI Server │  │  Audio Processor │                │
-│  │   (Python)       │  │  (FFmpeg/Buffer) │                │
-│  └────────┬─────────┘  └────────┬─────────┘                │
-│           │                     │                          │
-│           └───────────┬─────────┘                          │
-│                       │ Load & Run                         │
-│           ┌───────────▼───────────┐                       │
-│           │    AI Model Engine    │                       │
-│           │  (CTranslate2/ONNX)   │                       │
-│           └───────────┬───────────┘                       │
-│                       │                                   │
-│           ┌───────────▼───────────┐                       │
-│           │  ┌─────┐ ┌─────┐ ┌──┐ │                       │
-│           │  │Whis │ │NeMo │ │Vox│ │                       │
-│           │  │per  │ │     │ │tral│                       │
-│           │  └─────┘ └─────┘ └──┘ │                       │
-│           └───────────────────────┘                       │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      DATA STORAGE                            │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐                │
-│  │   SQLite DB      │  │   Model Cache    │                │
-│  │  (History/Config)│  │  (~2-10GB each)  │                │
-│  └──────────────────┘  └──────────────────┘                │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Tech Stack**:
-- **Frontend**: Electron + React + Tailwind CSS + TypeScript
-- **Backend**: Python + FastAPI + WebSocket
-- **AI Engine**: PyTorch, CTranslate2, ONNX Runtime
-- **Audio**: FFmpeg, PyAudio, SoundDevice
-- **Database**: SQLite with full-text search
-
-## 🤖 Supported Models
-
-| Model | Size | Speed | Accuracy | Best For | Hardware |
-|-------|------|-------|----------|----------|----------|
-| **Whisper Tiny** | 39MB | ⚡⚡⚡⚡⚡ | ⭐⭐⭐ | Quick tests, low-resource | CPU |
-| **Whisper Base** | 74MB | ⚡⚡⚡⚡ | ⭐⭐⭐⭐ | Balanced speed/accuracy | CPU |
-| **Whisper Small** | 244MB | ⚡⚡⚡ | ⭐⭐⭐⭐ | Good general use | CPU/GPU |
-| **Whisper Medium** | 769MB | ⚡⚡ | ⭐⭐⭐⭐⭐ | High accuracy | GPU recommended |
-| **Whisper Large-v3** | 1.5GB | ⚡ | ⭐⭐⭐⭐⭐ | Best accuracy | GPU required |
-| **NeMo FastConformer** | 110MB | ⚡⚡⚡⚡⚡ | ⭐⭐⭐⭐ | Real-time streaming | GPU recommended |
-| **Voxtral Mini** | 3B | ⚡ | ⭐⭐⭐⭐⭐ | Complex dictation | GPU required |
-| **Voxtral Large** | 7B | ⚡ | ⭐⭐⭐⭐⭐ | Maximum accuracy | High-end GPU |
-
-## 🆚 Alternatives Comparison
-
-| Feature | SpeakEasy | Otter.ai | Whisper API | Dragon | Apple Dictation |
-|---------|-----------|----------|-------------|--------|-----------------|
-| **Privacy** | ✅ 100% offline | ❌ Cloud only | ❌ Cloud only | ❌ Cloud required | ⚠️ Cloud optional |
-| **Cost** | 🆓 Free | 💰 $10-20/mo | 💰 $0.006/min | 💰 $500+ | 🆓 Free |
-| **Open Source** | ✅ Yes | ❌ No | ✅ Yes (API only) | ❌ No | ❌ No |
-| **Offline** | ✅ Yes | ❌ No | ❌ No | ⚠️ Limited | ⚠️ Limited |
-| **Cross-Platform** | ✅ Win/Mac/Linux | ✅ Yes | N/A | ❌ Windows only | ❌ Apple only |
-| **Custom Models** | ✅ Yes | ❌ No | ❌ No | ❌ No | ❌ No |
-| **Latency** | 🟢 <100ms | 🟡 ~1s | 🟡 ~500ms | 🟢 <200ms | 🟡 ~300ms |
-
-## 🗺️ Roadmap
-
-### Current (v0.1.0)
-- [x] Local Whisper transcription
-- [x] Electron GUI
-- [x] Global hotkeys
-- [x] CLI interface
-- [x] Multi-model support (Whisper, NeMo, Voxtral)
-- [x] Audio file processing
-- [x] Batch transcription
-- [x] History import/export
-- [x] Model download progress tracking
-- [x] Real-time WebSocket updates
-- [x] Advanced export formats (SRT, VTT, CSV, DOCX)
-
-### Near-term (v0.2.0)
-- [ ] VS Code extension
-- [ ] Custom wake words
-- [ ] Voice commands (beyond transcription)
-- [ ] Plugin system
-- [ ] Docker deployment
-
-### Future (v1.0.0)
-- [ ] Mobile companion app
-- [ ] Web interface
-- [ ] Enterprise features (SSO, audit logs)
-- [ ] Real-time collaboration
-
-See [GitHub Issues](https://github.com/bitgineer/speakeasy/issues) for detailed backlog.
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
-
-- 🐛 Reporting bugs and requesting features
-- 🛠️ Setting up your development environment
-- 📝 Code style and submission process
-- 👀 Review and approval workflow
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition model
-- [NVIDIA NeMo](https://github.com/NVIDIA/NeMo) - Speech AI toolkit
-- [Mistral AI](https://mistral.ai/) - Voxtral models
-- [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) - Optimized inference
-- [CTranslate2](https://github.com/OpenNMT/CTranslate2) - Fast inference engine
-
----
-
-<div align="center">
-  <p>
-    <b>⭐ Star this repo if you find it useful!</b>
-  </p>
-  <p>
-    <a href="https://github.com/bitgineer/speakeasy/issues">🐛 Report Bug</a> •
-    <a href="https://github.com/bitgineer/speakeasy/issues">💡 Request Feature</a> •
-    <a href="https://github.com/bitgineer/speakeasy/discussions">💬 Discussions</a>
-  </p>
-  <p>
-    <sub>Made with ❤️ for privacy-conscious developers everywhere</sub>
-  </p>
-</div>
+- [OpenAI Whisper](https://github.com/openai/whisper) and [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+- [NVIDIA NeMo](https://github.com/NVIDIA/NeMo)
+- [Mistral AI Voxtral](https://mistral.ai/)
+- [CTranslate2](https://github.com/OpenNMT/CTranslate2)
