@@ -31,6 +31,11 @@ jobs:
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
+      - name: Install system audio and display libraries (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev xvfb
+
       - name: Install dependencies
         run: |
           uv sync --all-extras --dev
@@ -41,7 +46,7 @@ jobs:
           uv run ruff format --check .
 
       - name: Run tests with coverage
-        run: uv run pytest --cov --cov-report=xml --cov-report=term-missing
+        run: xvfb-run --auto-servernum uv run pytest --cov --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
