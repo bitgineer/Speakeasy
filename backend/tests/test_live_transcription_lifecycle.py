@@ -197,7 +197,9 @@ class ShortBufferRecorder(FakeRecorder):
 
 def test_live_transcription_starts_before_three_seconds_of_audio():
     model = Mock()
-    model.transcribe.return_value = TranscriptionResult(text="early", duration_ms=1)
+    model.transcribe.return_value = TranscriptionResult(
+        text="early words prove that live captions start", duration_ms=1
+    )
     events = []
     service = make_service(model, callback=events.append, chunk_seconds=0.1)
     service._recorder = ShortBufferRecorder()

@@ -12,96 +12,117 @@ def committed_words(transcript: LiveTranscript) -> list[str]:
     return transcript._committed
 
 
-def test_first_ingest_holds_back_the_tail_and_renders_everything():
+def test_first_ingest_holds_back_the_newest_words_and_renders_the_rest():
     transcript = LiveTranscript(hold=2)
 
-    assert transcript.ingest("alpha bravo charlie delta") == "alpha bravo charlie delta"
+    assert transcript.ingest("alpha bravo charlie delta") == "alpha bravo"
     assert committed_words(transcript) == ["alpha", "bravo"]
-    assert transcript.render() == "alpha bravo charlie delta"
+    assert transcript.render() == "alpha bravo"
 
 
-def test_append_passes_advance_committed_without_changing_it():
-    transcript = LiveTranscript(hold=2)
-    transcript.ingest("alpha bravo charlie delta")
-
-    display = transcript.ingest("alpha bravo charlie delta echo")
-    assert display == "alpha bravo charlie delta echo"
-    assert committed_words(transcript) == ["alpha", "bravo"]
-
-    transcript.ingest("alpha bravo charlie delta echo foxtrot")
-
-    assert committed_words(transcript) == ["alpha", "bravo", "charlie"]
-    assert transcript.render() == "alpha bravo charlie delta echo foxtrot"
-
-
-def test_tail_revision_is_accepted():
-    transcript = LiveTranscript(hold=2)
-    transcript.ingest("alpha bravo charlie delta")
-
-    assert transcript.ingest("alpha bravo charlie echo") == "alpha bravo charlie echo"
-
-
-def test_committed_revision_is_rejected():
-    transcript = LiveTranscript(hold=2)
-    transcript.ingest("alpha bravo charlie delta echo")
-
-    assert transcript.ingest("alpha bravo charlieX delta echo") is None
-    assert transcript.render() == "alpha bravo charlie delta echo"
-
-
-def test_mid_committed_revision_keeps_committed_and_appends_new_words():
+def test_first_ingest_within_the_hold_renders_nothing():
     transcript = LiveTranscript(hold=6)
-    words = [f"word{n:02d}" for n in range(1, 21)]
-    transcript.ingest(" ".join(words))
-    assert len(committed_words(transcript)) == 14
 
-    revised = words[:4] + ["revised05"] + words[5:] + ["new21"]
-    display = transcript.ingest(" ".join(revised))
-
-    assert display is not None
-    assert display.startswith(" ".join(words[:14]))
-    assert "revised05" not in display
-    assert display.count("new21") == 1
-    assert display.endswith("word20 new21")
+    assert transcript.ingest("alpha bravo") is None
+    assert transcript.render() == ""
 
 
-def test_decoded_head_loss_holds_display_then_recovery_appends_once():
-    transcript = LiveTranscript(hold=6)
-    words = [f"word{n:02d}" for n in range(1, 21)]
-    transcript.ingest(" ".join(words))
-
-    assert transcript.ingest(" ".join(words[12:])) is None
-    assert transcript.render() == " ".join(words)
-
-    display = transcript.ingest(" ".join(words + ["new21"]))
-    assert display == " ".join(words + ["new21"])
-    assert display.count("new21") == 1
-
-
-def test_duplicate_and_empty_decodes_are_no_ops():
+def test_agreeing_decode_advances_display_while_equal_or_shorter_decodes_do_nothing():
     transcript = LiveTranscript(hold=2)
-    transcript.ingest("alpha bravo charlie")
+    assert transcript.ingest("alpha bravo charlie delta") == "alpha bravo"
+
+    assert transcript.ingest("alpha bravo charlie delta echo") is None
+    assert transcript.render() == "alpha bravo"
+
+    assert transcript.ingest("alpha bravo charlie delta echo foxtrot") == "alpha bravo charlie"
 
     assert transcript.ingest("alpha bravo charlie") is None
-    assert transcript.ingest("   ") is None
+    assert transcript.ingest("alpha bravo") is None
     assert transcript.render() == "alpha bravo charlie"
 
 
-def test_committed_never_shrinks_over_a_scripted_sequence():
+def test_held_word_revision_never_reaches_the_display_and_later_commits_recover():
+    transcript = LiveTranscript(hold=2)
+    transcript.ingest("alpha bravo charlie delta")
+
+    assert transcript.ingest("alpha bravo charlieX delta echo") is None
+    assert transcript.render() == "alpha bravo"
+
+    assert transcript.ingest("alpha bravo charlie delta echo foxtrot") is None
+    assert transcript.render() == "alpha bravo"
+
+    display = transcript.ingest("alpha bravo charlie delta echo foxtrot golf")
+
+    assert display == "alpha bravo charlie delta"
+    assert "charlieX" not in display
+    assert "charlieX" not in transcript.render()
+
+
+def test_committed_revision_with_a_locatable_end_appends_without_rewriting():
+    transcript = LiveTranscript(hold=2)
+    transcript.ingest("alpha bravo charlie delta echo foxtrot golf")
+    assert transcript.render() == "alpha bravo charlie delta echo"
+
+    display = transcript.ingest("alpha bravo charlieX delta echo foxtrot golf hotel india")
+
+    assert display == "alpha bravo charlie delta echo foxtrot golf"
+    assert "charlieX" not in display
+
+
+def test_revision_of_the_committed_end_holds_the_render():
+    transcript = LiveTranscript(hold=2)
+    transcript.ingest("alpha bravo charlie delta echo")
+
+    assert transcript.ingest("alpha bravo charlieX delta echo foxtrot") is None
+    assert transcript.render() == "alpha bravo charlie"
+
+
+def test_head_loss_grows_from_the_aligned_end_without_duplicating():
+    transcript = LiveTranscript(hold=2)
+    words = [f"word{n:02d}" for n in range(1, 9)]
+    transcript.ingest(" ".join(words))
+    assert transcript.render() == " ".join(words[:6])
+
+    display = transcript.ingest(" ".join(words[4:] + ["new09"]))
+    assert display == " ".join(words[:7])
+    assert display.count("word05") == 1
+    assert display.count("word06") == 1
+
+    assert transcript.ingest(" ".join(words + ["new09", "new10"])) is None
+    assert transcript.ingest(" ".join(words + ["new09", "new10", "new11"])) == " ".join(words[:8])
+
+
+def test_empty_and_duplicate_decodes_are_no_ops():
+    transcript = LiveTranscript(hold=2)
+    assert transcript.ingest("alpha bravo charlie") == "alpha"
+
+    assert transcript.ingest("alpha bravo charlie") is None
+    assert transcript.ingest("") is None
+    assert transcript.ingest("   ") is None
+    assert transcript.render() == "alpha"
+
+
+def test_displayed_words_never_shrink_or_change_over_a_scripted_sequence():
     transcript = LiveTranscript(hold=3)
     decodes = [
         "alpha bravo charlie delta echo foxtrot",
         "alpha bravo charlie delta echo foxtrot golf",
         "alpha bravo charlieX delta echo foxtrot golf hotel",
         "alpha bravo charlieX delta echo foxtrot golf hotel india",
+        "alpha bravo charlie delta echo foxtrot golf hotel india juliet",
     ]
 
-    previous_committed: list[str] = []
+    previous_display = ""
     for decode in decodes:
         transcript.ingest(decode)
-        committed = committed_words(transcript)
-        assert committed[: len(previous_committed)] == previous_committed
-        previous_committed = committed
+        display = transcript.render()
+        if previous_display:
+            assert display == previous_display or display.startswith(previous_display + " "), (
+                f"display changed:\n  before: {previous_display}\n  after:  {display}"
+            )
+        previous_display = display
+
+    assert previous_display == "alpha bravo charlie delta"
 
 
 def test_speech_end_sample_finds_the_end_of_speech():

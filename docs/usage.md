@@ -30,7 +30,8 @@ Cancelling from the overlay discards the recording. Nothing is transcribed, save
 
 Enable live captions in Settings, Behavior. The backend re-transcribes the audio every
 `live_chunk_seconds` (1 to 10 seconds, default 3) and pushes the growing transcript to the
-overlay. The overlay shows the newest text, up to a fixed height, and scrolls as you speak.
+overlay. Later passes only add to it; shown words are not revised by a later decode. The
+overlay scrolls as you speak.
 
 Live captions add CPU/GPU load during recording because each pass transcribes the audio recorded
 so far.

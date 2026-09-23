@@ -1,9 +1,4 @@
-"""Stable live transcription text: a frozen committed prefix plus a short revisable tail.
-
-The live thread re-decodes the whole recording each pass, and the model does not
-guarantee that two decodes of the same speech agree. This module keeps the words the
-user has already read stable and leaves only the newest words revisable.
-"""
+"""Live transcription text that only ever grows; the final decode owns corrections."""
 
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
@@ -54,48 +49,52 @@ def speech_end_sample(
 class LiveTranscript:
     """One recording session's live display.
 
-    ``committed`` words have been read by the user and never change. ``tail`` covers the
-    newest words and is the only region a later decode may revise.
+    ``committed`` words have been rendered and never change. ``pending`` words are held
+    back until a decode moves past them. A decode that revises a committed word is
+    ignored: shown words stay, and its words beyond the committed region are appended.
     """
 
     def __init__(self, hold: int = HOLD_WORDS) -> None:
         self._hold = max(0, hold)
         self._committed: list[str] = []
-        self._tail: list[str] = []
+        self._pending: list[str] = []
 
     def render(self) -> str:
-        return " ".join(self._committed + self._tail)
+        return " ".join(self._committed)
 
     def ingest(self, text: str) -> str | None:
-        """Merge one decode into the display. Returns the full text when it changed."""
+        """Merge one decode into the display.
+
+        Returns the rendered text only when the committed prefix grew this call.
+        """
         new = text.split()
         if not new:
             return None
 
-        if not self._committed and not self._tail:
+        if not self._committed and not self._pending:
             cut = max(0, len(new) - self._hold)
-            self._committed, self._tail = new[:cut], new[cut:]
-            return self.render()
+            self._committed, self._pending = new[:cut], new[cut:]
+            return self.render() if self._committed else None
 
-        display = self._committed + self._tail
+        display = self._committed + self._pending
         common = _common_prefix_length(display, new)
         if common >= len(self._committed):
             commit_end = max(len(self._committed), common - self._hold)
             new_committed = display[:commit_end]
-            new_tail = new[commit_end:]
+            new_pending = new[commit_end:]
         else:
             anchor = _aligned_committed_end(self._committed, new)
             if anchor is None:
                 return None
-            new_committed = self._committed
-            new_tail = new[anchor:]
+            continuation = new[anchor:]
+            held = min(self._hold, len(continuation))
+            new_committed = self._committed + continuation[: len(continuation) - held]
+            new_pending = continuation[len(continuation) - held :]
 
-        if new_committed == self._committed and new_tail == self._tail:
-            return None
-
+        grew = new_committed != self._committed
         self._committed = new_committed
-        self._tail = new_tail
-        return self.render()
+        self._pending = new_pending
+        return self.render() if grew else None
 
 
 def _common_prefix_length(left: list[str], right: list[str]) -> int:

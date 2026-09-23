@@ -51,8 +51,9 @@ SpeakEasy is a desktop app plus a local server.
 1. The hotkey or the overlay button posts `/api/transcribe/start`. The transcriber opens an input
    stream at the device's native rate, mono, and moves to `recording`.
 2. If live captions are enabled, a background thread every `live_chunk_seconds` concatenates the
-   audio recorded so far, resamples it to 16 kHz, and transcribes it. Changed text is cleaned and
-   broadcast as a `live_transcript` event.
+   audio recorded so far, resamples it to 16 kHz, and transcribes it. The current display text is
+   cleaned and broadcast as a `live_transcript` event after each pass; shown words are not revised
+   by a later decode.
 3. Stop posts `/api/transcribe/stop`. The transcriber stops the stream and the live thread, then
    transcribes the full recording. Recordings over five minutes are transcribed in two-minute
    chunks with `transcription_progress` events.
