@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { X } from 'lucide-react'
 
 interface HotkeyInputProps {
   value: string
@@ -174,9 +175,9 @@ export default function HotkeyInput({
       : 'Click to set hotkey'
   
   return (
-    <div>
+    <div className="hotkey-input">
       {label && <label className="label">{label}</label>}
-      <div className="relative">
+      <div className="hotkey-field">
         <input
           ref={inputRef}
           type="text"
@@ -190,28 +191,27 @@ export default function HotkeyInput({
           readOnly
           disabled={disabled}
           placeholder="Click to set hotkey"
-          className={`input pr-20 cursor-pointer ${isCapturing ? 'ring-2 ring-blue-500' : ''}`}
+          aria-label={label ? undefined : 'Recording hotkey'}
+          data-capturing={isCapturing}
+          className="input"
         />
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <div className="hotkey-actions">
+          {isCapturing && <span className="muted text-caption">Recording...</span>}
           {value && !isCapturing && (
             <button
               type="button"
               onClick={clearHotkey}
               disabled={disabled}
-              className="p-1 text-gray-500 hover:text-gray-300 disabled:opacity-50"
+              className="icon-button"
               title="Clear hotkey"
+              aria-label="Clear hotkey"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={14} aria-hidden="true" />
             </button>
-          )}
-          {isCapturing && (
-            <span className="text-xs text-blue-400 animate-pulse">Recording...</span>
           )}
         </div>
       </div>
-      {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+      {hint && <p className="field-hint">{hint}</p>}
     </div>
   )
 }

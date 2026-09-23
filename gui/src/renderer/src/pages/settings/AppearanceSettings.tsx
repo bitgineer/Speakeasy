@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, Monitor, Moon, Palette, Sun } from 'lucide-react'
+import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useSettingsStore } from '../../store'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
@@ -20,7 +20,6 @@ import {
   storeAccent,
   useSystemPrefersDark
 } from '../../utils/theme'
-import { cn } from '@/lib/utils'
 
 const themeOptions: {
   id: ThemeSetting
@@ -115,40 +114,36 @@ export default function AppearanceSettings(): JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-edge-control border-t-accent-solid rounded-full animate-spin" />
+      <div className="workspace settings-loading">
+        <span className="spinner animate-spin" role="status" aria-label="Loading appearance settings" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Palette className="w-6 h-6 text-accent-text" />
-          <h1 className="text-page font-semibold">Appearance</h1>
+    <div className="workspace">
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Settings / appearance</p>
+          <h1>Appearance</h1>
+          <p className="page-subtitle">Theme and accent color for the interface.</p>
         </div>
-        <SaveStatusIndicator status={saveStatus} onSave={handleSave} />
-      </div>
+        <div className="page-actions">
+          <SaveStatusIndicator status={saveStatus} onSave={handleSave} />
+        </div>
+      </header>
 
-      <div className="space-y-6">
-        <section className="card p-4">
-          <h2 className="text-heading font-semibold mb-4">Theme</h2>
-          <div className="grid grid-cols-1 gap-3">
+      <div className="settings-stack">
+        <section className="card settings-panel" aria-labelledby="theme-title">
+          <div className="settings-head">
+            <h2 id="theme-title">Theme</h2>
+          </div>
+          <div className="option-list">
             {themeOptions.map((option) => {
               const ThemeIcon = option.icon
               const selected = selectedTheme === option.id
               return (
-                <label
-                  key={option.id}
-                  className={cn(
-                    'flex items-center gap-4 p-3 rounded-panel border cursor-pointer',
-                    'transition-[border-color,background-color] duration-fast ease-standard',
-                    selected
-                      ? 'border-accent-solid bg-accent-muted'
-                      : 'border-edge-subtle bg-surface-raised hover:border-edge-strong'
-                  )}
-                >
+                <label key={option.id} className="option" data-selected={selected}>
                   <input
                     type="radio"
                     name="theme"
@@ -159,20 +154,18 @@ export default function AppearanceSettings(): JSX.Element {
                     className="sr-only"
                   />
 
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface-sunken text-content-secondary">
-                    <ThemeIcon className="h-5 w-5" aria-hidden="true" />
+                  <span className="option-icon">
+                    <ThemeIcon size={18} strokeWidth={1.75} aria-hidden="true" />
                   </span>
 
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-center gap-2 text-ui font-medium text-content-primary">
+                  <span className="option-body">
+                    <span className="option-title">
                       {option.name}
                       {selected && (
-                        <Check className="h-4 w-4 text-accent-text" aria-hidden="true" />
+                        <Check className="text-accent-text" size={14} aria-hidden="true" />
                       )}
                     </span>
-                    <span className="block text-small text-content-muted mt-0.5 truncate">
-                      {option.description}
-                    </span>
+                    <span className="option-meta">{option.description}</span>
                   </span>
                 </label>
               )
@@ -180,22 +173,15 @@ export default function AppearanceSettings(): JSX.Element {
           </div>
         </section>
 
-        <section className="card p-4">
-          <h2 className="text-heading font-semibold mb-4">Accent</h2>
-          <div className="grid grid-cols-1 gap-3">
+        <section className="card settings-panel" aria-labelledby="accent-title">
+          <div className="settings-head">
+            <h2 id="accent-title">Accent</h2>
+          </div>
+          <div className="option-list">
             {accentOptions.map((option) => {
               const selected = selectedAccent === option.id
               return (
-                <label
-                  key={option.id}
-                  className={cn(
-                    'flex items-center gap-4 p-3 rounded-panel border cursor-pointer',
-                    'transition-[border-color,background-color] duration-fast ease-standard',
-                    selected
-                      ? 'border-accent-solid bg-accent-muted'
-                      : 'border-edge-subtle bg-surface-raised hover:border-edge-strong'
-                  )}
-                >
+                <label key={option.id} className="option" data-selected={selected}>
                   <input
                     type="radio"
                     name="accent"
@@ -207,21 +193,19 @@ export default function AppearanceSettings(): JSX.Element {
                   />
 
                   <span
-                    className="h-10 w-10 shrink-0 rounded-control border border-edge-subtle"
+                    className="option-swatch"
                     style={{ backgroundColor: option.preview }}
                     aria-hidden="true"
                   />
 
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-center gap-2 text-ui font-medium text-content-primary">
+                  <span className="option-body">
+                    <span className="option-title">
                       {option.name}
                       {selected && (
-                        <Check className="h-4 w-4 text-accent-text" aria-hidden="true" />
+                        <Check className="text-accent-text" size={14} aria-hidden="true" />
                       )}
                     </span>
-                    <span className="block text-small text-content-muted mt-0.5 truncate">
-                      {option.description}
-                    </span>
+                    <span className="option-meta">{option.description}</span>
                   </span>
                 </label>
               )
