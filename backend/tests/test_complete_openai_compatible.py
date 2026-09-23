@@ -180,7 +180,10 @@ async def test_detail_never_contains_the_key_the_prompt_or_the_body():
     secret = "sk-super-secret"
 
     def handler(request):
-        return httpx.Response(401, json={"error": "BODY-MARKER"})
+        return httpx.Response(
+            401,
+            json={"error": {"message": "sk-super-secret PROMPT-MARKER BODY-MARKER"}},
+        )
 
     request = LlmRequest(system="PROMPT-MARKER", user="PROMPT-MARKER")
 
@@ -190,6 +193,18 @@ async def test_detail_never_contains_the_key_the_prompt_or_the_body():
 
     assert secret not in excinfo.value.detail
     assert "PROMPT-MARKER" not in excinfo.value.detail
+    assert "[redacted]" in excinfo.value.detail
+
+
+async def test_bare_string_error_is_ignored():
+    def handler(request):
+        return httpx.Response(500, json={"error": "BODY-MARKER"})
+
+    async with _client(handler) as client:
+        with pytest.raises(ProviderError) as excinfo:
+            await complete_openai_compatible(PROVIDER, REQUEST, None, client=client)
+
+    assert excinfo.value.detail == "provider server error (500)"
     assert "BODY-MARKER" not in excinfo.value.detail
 
 

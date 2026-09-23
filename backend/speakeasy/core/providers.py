@@ -63,7 +63,7 @@ async def complete_openai_compatible(
         client = httpx.AsyncClient(timeout=provider.timeout_seconds + 2.0)
     try:
         response = await client.post(url, json=payload, headers=headers)
-        content = _content_of(response)
+        content = _content_of(response, (api_key, request.system, request.user))
     except httpx.TimeoutException as exc:
         timeout = provider.timeout_seconds
         raise ProviderError("timeout", f"provider timed out after {timeout:g}s") from exc
@@ -120,7 +120,7 @@ def _get_models(
     except httpx.HTTPError as exc:
         raise ProviderError("connection", "could not reach the provider") from exc
 
-    error = _status_error(response)
+    error = _status_error(response, (api_key,))
     if error is not None:
         raise error
     try:
@@ -149,8 +149,8 @@ def _parse_models(payload: object) -> list[ProviderModel]:
     return sorted(by_id.values(), key=lambda model: model.id)
 
 
-def _content_of(response: httpx.Response) -> str:
-    error = _status_error(response)
+def _content_of(response: httpx.Response, redactions: tuple[str | None, ...]) -> str:
+    error = _status_error(response, redactions)
     if error is not None:
         raise error
     try:
@@ -162,11 +162,13 @@ def _content_of(response: httpx.Response) -> str:
     return content.strip()
 
 
-def _status_error(response: httpx.Response) -> ProviderError | None:
+def _status_error(
+    response: httpx.Response, redactions: tuple[str | None, ...]
+) -> ProviderError | None:
     status = response.status_code
     if 200 <= status < 300:
         return None
-    message = _provider_message(response)
+    message = _provider_message(response, redactions)
     suffix = f": {message}" if message else ""
     if status in (401, 403):
         return ProviderError("auth", f"provider rejected the API key{suffix}")
@@ -177,8 +179,11 @@ def _status_error(response: httpx.Response) -> ProviderError | None:
     return ProviderError("bad_response", f"provider returned HTTP {status}{suffix}")
 
 
-def _provider_message(response: httpx.Response) -> str | None:
-    """The provider's own error message when the body carries the OpenAI-compatible shape."""
+def _provider_message(response: httpx.Response, redactions: tuple[str | None, ...]) -> str | None:
+    """The provider's own error message when the body carries the OpenAI-compatible shape.
+
+    The request key and prompt text are redacted before the message is surfaced.
+    """
     try:
         payload = response.json()
     except ValueError:
@@ -191,7 +196,11 @@ def _provider_message(response: httpx.Response) -> str | None:
     message = error.get("message")
     if not isinstance(message, str) or not message.strip():
         return None
-    return message.strip()[:_ERROR_MESSAGE_MAX_CHARS]
+    text = message.strip()
+    for item in redactions:
+        if item:
+            text = text.replace(item, "[redacted]")
+    return text[:_ERROR_MESSAGE_MAX_CHARS]
 
 
 PROVIDER_ADAPTERS: dict[ProviderKind, ProviderAdapter] = {

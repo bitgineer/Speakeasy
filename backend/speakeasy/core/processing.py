@@ -206,7 +206,7 @@ class ProviderError(Exception):
 
     ``detail`` never contains the request key, the prompt, or the full response body.
     A status failure may include up to 200 characters of the provider's own
-    ``error.message``.
+    ``error.message``, with the request key and prompt text redacted.
     """
 
     def __init__(self, reason: ProviderReason, detail: str) -> None:
