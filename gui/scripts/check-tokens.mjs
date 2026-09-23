@@ -25,7 +25,7 @@ const stylesRoot = join(srcRoot, 'styles')
 const loadedStyles = ['tokens.css', 'themes.css', 'globals.css'].map((f) => join(stylesRoot, f))
 const tailwindConfig = join(guiRoot, 'tailwind.config.js')
 
-const LEGACY_BASELINE = 554
+const LEGACY_BASELINE = 407
 const HEX_ALLOWLIST = []
 const ACCENT_ROLE_TOKENS = new Set([
   '--accent-solid',
@@ -116,7 +116,7 @@ const defined = declaredNames(allRules)
 const tsxFiles = walk(srcRoot, '.tsx')
 let legacyUsages = 0
 const arbitraryViolations = []
-const ARBITRARY_BASELINE = 19
+const ARBITRARY_BASELINE = 17
 
 for (const file of tsxFiles) {
   const text = read(file)

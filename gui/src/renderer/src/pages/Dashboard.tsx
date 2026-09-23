@@ -6,6 +6,7 @@
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Download, X } from "lucide-react";
 import { useHistoryStore, useAppStore } from "../store";
 import HistoryItem from "../components/HistoryItem";
 import HistoryItemSkeleton from "../components/HistoryItemSkeleton";
@@ -13,6 +14,8 @@ import ExportDialog from "../components/ExportDialog";
 import Pagination from "../components/Pagination";
 import ModelLoadingBanner from "../components/ModelLoadingBanner";
 import ModeChips from "../components/ModeChips";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { perfMonitor } from "../utils/performance";
 
 export default function Dashboard(): JSX.Element {
@@ -33,7 +36,7 @@ export default function Dashboard(): JSX.Element {
     clearError,
   } = useHistoryStore();
 
-  const { isRecording, modelLoaded, modelLoading, modelName } = useAppStore();
+  const { modelLoading, modelName } = useAppStore();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -44,7 +47,7 @@ export default function Dashboard(): JSX.Element {
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => listRef.current,
-    estimateSize: () => 150, // Estimate height including gap
+    estimateSize: () => 128, // Estimate height including gap
     overscan: 5,
   });
 
@@ -124,6 +127,16 @@ export default function Dashboard(): JSX.Element {
     [search, searchQuery],
   );
 
+  const handleSearchClear = useCallback(() => {
+    // Cancel pending debounce and clear immediately
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    useHistoryStore.setState({ searchQuery: "" });
+    void search("");
+    setIsSearching(false);
+  }, [search]);
+
   // Delete handler
   const handleDelete = useCallback(
     async (id: string) => {
@@ -133,193 +146,99 @@ export default function Dashboard(): JSX.Element {
   );
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Recording status */}
-          {isRecording ? (
-            <div className="flex items-center gap-2 text-[var(--color-recording)]">
-              <div className="w-2 h-2 rounded-full bg-[var(--color-recording)] animate-pulse" />
-              <span className="text-sm font-medium">Recording...</span>
-            </div>
-          ) : modelLoaded ? (
-            <div className="flex items-center gap-2 text-[var(--color-success)]">
-              <div className="w-2 h-2 rounded-full bg-[var(--color-success)]" />
-              <span className="text-sm">Ready</span>
-              {modelName && (
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  ({modelName})
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-[var(--color-warning)]">
-              <div className="w-2 h-2 rounded-full bg-[var(--color-warning)]" />
-              <span className="text-sm">No model loaded</span>
-            </div>
-          )}
+    <div className="workspace workspace-dashboard">
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Capture / review</p>
+          <h1>Transcription history</h1>
+          <p className="page-subtitle">Your recent voice work, ready to search and reuse.</p>
         </div>
-
-        <div className="flex items-center gap-4">
-          <ModeChips />
-          <div className="text-sm text-[var(--color-text-muted)]">
-            {total > 0 && (
-              <span>
-                {total} transcription{total !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
-          <button
+        <div className="page-actions">
+          {total > 0 && (
+            <span className="pill">
+              {total} transcription{total !== 1 ? "s" : ""}
+            </span>
+          )}
+          <Button
+            variant="secondary"
             onClick={() => setShowExportDialog(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] hover:shadow-md hover:-translate-y-px rounded-lg transition-all duration-200 border border-[var(--color-border)] cursor-pointer"
             title="Export history (Ctrl+E)"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-            <span>Export</span>
-          </button>
+            <Download size={14} aria-hidden="true" />
+            Export history
+          </Button>
         </div>
+      </header>
+
+      <div className="toolbar">
+        <ModeChips />
+        <span className="muted">Sorted newest first</span>
       </div>
+
+      <form className="search-row" role="search" onSubmit={handleSearchSubmit}>
+        <Input
+          ref={searchInputRef}
+          type="search"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search transcriptions"
+          aria-label="Search transcriptions"
+        />
+        {searchQuery && (
+          <Button type="button" variant="ghost" onClick={handleSearchClear} title="Clear search">
+            Clear
+          </Button>
+        )}
+        <Button type="submit" variant="secondary">
+          Search
+        </Button>
+      </form>
+
+      {isSearching && <p className="search-status">Searching...</p>}
 
       {/* Model Loading Banner */}
       {modelLoading && (
-        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+        <div className="mb-3">
           <ModelLoadingBanner modelName={modelName} />
         </div>
       )}
 
-      {/* Search bar */}
-      <div className="px-4 py-4 border-b border-[var(--color-border)]">
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder="Search transcriptions..."
-            className="input pl-10 pr-10"
-          />
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          {searchQuery && (
-          <button
-            type="button"
-            onClick={() => {
-              // Cancel pending debounce and clear immediately
-              if (debounceTimeoutRef.current) {
-                clearTimeout(debounceTimeoutRef.current);
-              }
-              useHistoryStore.setState({ searchQuery: "" });
-              search("");
-              setIsSearching(false);
-            }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] p-1 rounded-md transition-all duration-150 hover:scale-110"
-          >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
-        </form>
-        {isSearching && (
-          <div className="mt-2 flex items-center gap-2 text-sm text-[var(--color-text-muted)] px-1">
-            <div className="w-3 h-3 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
-            <span>Searching...</span>
-          </div>
-        )}
-      </div>
-
       {/* Error message */}
       {error && (
-        <div className="mx-4 mt-4 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-error)] text-sm">{error}</span>
-          <button
-            onClick={clearError}
-            className="text-[var(--color-error)] hover:opacity-80"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+        <div className="error-banner" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={clearError} title="Dismiss error" aria-label="Dismiss error">
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}
 
-      {/* History list */}
-      <div ref={listRef} className="flex-1 overflow-auto px-4 py-4">
-        {isLoading ? (
-          // Loading skeleton
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <HistoryItemSkeleton key={i} />
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          // Empty state
-          <div className="flex flex-col items-center justify-center h-full text-center py-16">
-            <div className="w-20 h-20 mb-6 rounded-full bg-gradient-to-br from-[var(--color-primary-dim)] to-[var(--color-bg-primary)] flex items-center justify-center text-[var(--color-primary)] animate-pulse subtle-glow">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
+      <section aria-labelledby="history-title">
+        <div className="section-bar">
+          <h2 id="history-title">Recent records</h2>
+          <span>{items.length > 0 ? `Showing ${items.length} of ${total}` : ""}</span>
+        </div>
+
+        <div ref={listRef} className="record-list">
+          {isLoading ? (
+            // Loading skeleton
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <HistoryItemSkeleton key={i} />
+              ))}
             </div>
-            <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">
-              {searchQuery ? "No results found" : "No transcriptions yet"}
-            </h3>
-            <p className="text-[var(--color-text-muted)] text-base max-w-md leading-relaxed">
-              {searchQuery
-                ? "Try adjusting your search or filters to find what you're looking for."
-                : "Press your hotkey to start recording. Your transcriptions will appear here and be ready to organize, edit, and export."}
-            </p>
-          </div>
-        ) : (
-          // History items
-          <>
+          ) : items.length === 0 ? (
+            // Empty state
+            <div className="empty-state">
+              <h3>{searchQuery ? "No results found" : "No transcriptions yet"}</h3>
+              <p>
+                {searchQuery
+                  ? "No transcriptions match your search. Try a different word."
+                  : "Press your hotkey to start recording. Transcriptions land here, ready to copy and export."}
+              </p>
+            </div>
+          ) : (
+            // History items
             <div
               style={{
                 height: `${rowVirtualizer.getTotalSize()}px`,
@@ -338,7 +257,7 @@ export default function Dashboard(): JSX.Element {
                     left: 0,
                     width: "100%",
                     transform: `translateY(${virtualItem.start}px)`,
-                    paddingBottom: "0.75rem", // Equivalent to space-y-3 gap
+                    paddingBottom: "var(--space-3)",
                   }}
                 >
                   <HistoryItem
@@ -349,9 +268,9 @@ export default function Dashboard(): JSX.Element {
                 </div>
               ))}
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
 
       {/* Pagination controls */}
       {!isLoading && items.length > 0 && (
