@@ -36,6 +36,39 @@ def test_schema_pins_route_fields():
     assert "TranscriptionProgressEvent" in schemas
 
 
+def test_schema_contains_processing_components():
+    expected = {
+        "ProcessingMode",
+        "ProviderKind",
+        "AppMatch",
+        "ToneProfile",
+        "LlmProvider",
+        "HotkeyBinding",
+        "ProviderKeyRequest",
+        "ProviderKeyResponse",
+    }
+    assert expected <= set(component_schemas())
+
+
+def test_schema_components_never_expose_api_keys():
+    for name, schema in component_schemas().items():
+        assert "api_key" not in schema.get("properties", {}), f"{name} exposes api_key"
+
+
+def test_settings_update_request_carries_processing_fields():
+    properties = component_schemas()["SettingsUpdateRequest"]["properties"]
+    for field in (
+        "active_mode",
+        "active_provider_id",
+        "default_tone",
+        "tone_profiles",
+        "command_prompt",
+        "providers",
+        "hotkeys",
+    ):
+        assert field in properties
+
+
 def test_download_event_matches_state_manager():
     progress = ModelDownloadProgress(
         download_id="d-1",

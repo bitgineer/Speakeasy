@@ -1,9 +1,46 @@
 {
   "components": {
     "schemas": {
+      "AppMatch": {
+        "description": "One rule that ties a tone profile to an app identifier or a window title.",
+        "properties": {
+          "field": {
+            "enum": [
+              "app",
+              "title"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "pattern": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "pattern"
+        ],
+        "title": "AppMatch",
+        "type": "object"
+      },
       "AppSettings": {
         "description": "Application settings with validation.",
         "properties": {
+          "active_mode": {
+            "$ref": "#/components/schemas/ProcessingMode",
+            "default": "dictate",
+            "description": "Mode the primary hotkey records in"
+          },
+          "active_provider_id": {
+            "default": "",
+            "description": "Provider used by LLM modes. Empty means none, because the update endpoint filters None and cannot clear a nullable field.",
+            "maxLength": 50,
+            "title": "Active Provider Id",
+            "type": "string"
+          },
           "always_show_indicator": {
             "default": true,
             "description": "Keep indicator visible when idle",
@@ -15,6 +52,13 @@
             "description": "Automatically paste after transcription",
             "title": "Auto Paste",
             "type": "boolean"
+          },
+          "command_prompt": {
+            "default": "The user will speak an instruction. Carry it out and output only the text to insert, with no explanation.",
+            "description": "System prompt for command mode",
+            "maxLength": 4000,
+            "title": "Command Prompt",
+            "type": "string"
           },
           "compute_type": {
             "default": "float16",
@@ -42,6 +86,10 @@
             "description": "Enable verbose backend logging",
             "title": "Debug Logging",
             "type": "boolean"
+          },
+          "default_tone": {
+            "$ref": "#/components/schemas/ToneProfile",
+            "description": "Tone used when no profile matches"
           },
           "device": {
             "default": "cuda",
@@ -87,6 +135,14 @@
             "title": "Hotkey Mode",
             "type": "string"
           },
+          "hotkeys": {
+            "description": "Global hotkey bindings",
+            "items": {
+              "$ref": "#/components/schemas/HotkeyBinding"
+            },
+            "title": "Hotkeys",
+            "type": "array"
+          },
           "language": {
             "default": "auto",
             "description": "Language code or 'auto'",
@@ -125,6 +181,14 @@
             "title": "Model Type",
             "type": "string"
           },
+          "providers": {
+            "description": "Configured OpenAI-compatible providers",
+            "items": {
+              "$ref": "#/components/schemas/LlmProvider"
+            },
+            "title": "Providers",
+            "type": "array"
+          },
           "server_port": {
             "default": 8765,
             "description": "Backend server port",
@@ -142,6 +206,14 @@
             "description": "UI theme name",
             "title": "Theme",
             "type": "string"
+          },
+          "tone_profiles": {
+            "description": "Per-app tone profiles for write mode",
+            "items": {
+              "$ref": "#/components/schemas/ToneProfile"
+            },
+            "title": "Tone Profiles",
+            "type": "array"
           }
         },
         "title": "AppSettings",
@@ -561,6 +633,41 @@
         "title": "HistoryListResponse",
         "type": "object"
       },
+      "HotkeyBinding": {
+        "description": "A global chord. ``mode`` None records in ``active_mode`` at press time.",
+        "properties": {
+          "accelerator": {
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9+]+$",
+            "title": "Accelerator",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trigger": {
+            "default": "toggle",
+            "enum": [
+              "toggle",
+              "push-to-talk"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accelerator"
+        ],
+        "title": "HotkeyBinding",
+        "type": "object"
+      },
       "ImportRequest": {
         "properties": {
           "data": {
@@ -591,6 +698,51 @@
           "text"
         ],
         "title": "LiveTranscriptEvent",
+        "type": "object"
+      },
+      "LlmProvider": {
+        "description": "One OpenAI-compatible chat endpoint. Credentials live in secrets.json, not here.",
+        "properties": {
+          "base_url": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Base Url",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ProviderKind",
+            "default": "local"
+          },
+          "label": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Label",
+            "type": "string"
+          },
+          "model": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Model",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 20.0,
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "LlmProvider",
         "type": "object"
       },
       "ModelLoadRequest": {
@@ -640,8 +792,83 @@
         "title": "ModelLoadRequest",
         "type": "object"
       },
+      "ProcessingMode": {
+        "description": "How a transcript is processed before it is inserted.",
+        "enum": [
+          "write",
+          "command",
+          "dictate"
+        ],
+        "title": "ProcessingMode",
+        "type": "string"
+      },
+      "ProviderKeyRequest": {
+        "properties": {
+          "key": {
+            "maxLength": 500,
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "ProviderKeyRequest",
+        "type": "object"
+      },
+      "ProviderKeyResponse": {
+        "properties": {
+          "has_key": {
+            "title": "Has Key",
+            "type": "boolean"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_id",
+          "has_key"
+        ],
+        "title": "ProviderKeyResponse",
+        "type": "object"
+      },
+      "ProviderKind": {
+        "description": "Transport family of an OpenAI-compatible chat provider.",
+        "enum": [
+          "local",
+          "openai",
+          "groq",
+          "custom"
+        ],
+        "title": "ProviderKind",
+        "type": "string"
+      },
       "SettingsUpdateRequest": {
         "properties": {
+          "active_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_provider_id": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Provider Id"
+          },
           "always_show_indicator": {
             "anyOf": [
               {
@@ -663,6 +890,18 @@
               }
             ],
             "title": "Auto Paste"
+          },
+          "command_prompt": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command Prompt"
           },
           "compute_type": {
             "anyOf": [
@@ -701,6 +940,16 @@
               }
             ],
             "title": "Debug Logging"
+          },
+          "default_tone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToneProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "device": {
             "anyOf": [
@@ -766,6 +1015,20 @@
               }
             ],
             "title": "Hotkey Mode"
+          },
+          "hotkeys": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/HotkeyBinding"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotkeys"
           },
           "language": {
             "anyOf": [
@@ -838,6 +1101,20 @@
             ],
             "title": "Model Type"
           },
+          "providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LlmProvider"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providers"
+          },
           "server_port": {
             "anyOf": [
               {
@@ -873,6 +1150,20 @@
               }
             ],
             "title": "Theme"
+          },
+          "tone_profiles": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ToneProfile"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tone Profiles"
           }
         },
         "title": "SettingsUpdateRequest",
@@ -922,6 +1213,35 @@
           "recording"
         ],
         "title": "StatusEvent",
+        "type": "object"
+      },
+      "ToneProfile": {
+        "description": "A rewrite tone used in write mode when one of its matches fires.",
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/AppMatch"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "prompt": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ToneProfile",
         "type": "object"
       },
       "TranscribeStartResponse": {
@@ -1877,7 +2197,7 @@
         "summary": "Settings Get"
       },
       "put": {
-        "description": "Update settings.",
+        "description": "Update settings.\n\nTop-level fields replace. ``None`` is filtered out. Nested groups\n(``default_tone``, ``providers``, ``hotkeys``) replace wholesale, ``[]`` clears a\nlist, and ``\"\"`` clears ``active_provider_id``.",
         "operationId": "settings_update_api_settings_put",
         "requestBody": {
           "content": {
@@ -1912,6 +2232,73 @@
           }
         },
         "summary": "Settings Update"
+      }
+    },
+    "/api/settings/provider-keys": {
+      "get": {
+        "description": "Report which configured providers have a stored key, without the key values.",
+        "operationId": "settings_provider_keys_api_settings_provider_keys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Settings Provider Keys"
+      }
+    },
+    "/api/settings/providers/{provider_id}/key": {
+      "put": {
+        "description": "Store or clear the API key for a configured provider.\n\nAn empty ``key`` clears the entry. The key value is never returned or logged.",
+        "operationId": "settings_provider_key_set_api_settings_providers__provider_id__key_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Settings Provider Key Set"
       }
     },
     "/api/transcribe/batch": {

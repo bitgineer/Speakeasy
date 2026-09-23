@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import SettingsService
+from speakeasy.services.settings import ProcessingMode, ProviderKind, SettingsService
 
 
 class TestSettingsServiceSave:
@@ -131,6 +131,40 @@ class TestSettingsServiceSave:
 
         for field in expected_fields:
             assert field in data, f"Missing field: {field}"
+
+    def test_save_round_trips_processing_settings(self, temp_settings_path):
+        service = SettingsService(settings_path=temp_settings_path)
+        service.load()
+        service.update(
+            active_mode="write",
+            active_provider_id="ollama",
+            default_tone={"name": "Default", "prompt": "Be brief."},
+            tone_profiles=[
+                {
+                    "name": "Slack",
+                    "prompt": "Casual.",
+                    "matches": [{"field": "app", "pattern": "slack"}],
+                }
+            ],
+            command_prompt="Carry out the instruction.",
+            providers=[
+                {"id": "ollama", "label": "Local", "kind": "local", "model": "llama3.1:8b"}
+            ],
+            hotkeys=[
+                {"accelerator": "ctrl+shift+w", "trigger": "toggle", "mode": "write"}
+            ],
+        )
+
+        reloaded = SettingsService(settings_path=temp_settings_path).load()
+
+        assert reloaded.active_mode is ProcessingMode.WRITE
+        assert reloaded.active_provider_id == "ollama"
+        assert reloaded.default_tone.prompt == "Be brief."
+        assert reloaded.tone_profiles[0].matches[0].pattern == "slack"
+        assert reloaded.command_prompt == "Carry out the instruction."
+        assert reloaded.providers[0].kind is ProviderKind.LOCAL
+        assert reloaded.providers[0].model == "llama3.1:8b"
+        assert reloaded.hotkeys[0].mode is ProcessingMode.WRITE
 
 
 if __name__ == "__main__":

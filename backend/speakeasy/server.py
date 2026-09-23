@@ -14,8 +14,11 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -51,9 +54,14 @@ from .services.download_state import (
 )
 from .services.export import ExportFormat, export_service
 from .services.history import HistoryService
+from .services.secrets import get_key, set_key
 from .services.settings import (
     AppSettings,
+    HotkeyBinding,
+    LlmProvider,
+    ProcessingMode,
     SettingsService,
+    ToneProfile,
     get_default_db_path,
     get_default_settings_path,
 )
@@ -118,6 +126,13 @@ class SettingsUpdateRequest(BaseModel):
     live_auto_paste: bool | None = None
     server_port: int | None = Field(None, ge=1024, le=65535)
     debug_logging: bool | None = None
+    active_mode: ProcessingMode | None = None
+    active_provider_id: str | None = Field(None, max_length=50)
+    default_tone: ToneProfile | None = None
+    tone_profiles: list[ToneProfile] | None = None
+    command_prompt: str | None = Field(None, max_length=4000)
+    providers: list[LlmProvider] | None = None
+    hotkeys: list[HotkeyBinding] | None = None
 
     @field_validator("hotkey")
     @classmethod
@@ -133,6 +148,15 @@ class SettingsUpdateResponse(BaseModel):
     status: str
     settings: AppSettings | None = None
     reload_required: bool
+
+
+class ProviderKeyRequest(BaseModel):
+    key: str = Field(..., max_length=500)
+
+
+class ProviderKeyResponse(BaseModel):
+    provider_id: str
+    has_key: bool
 
 
 class ModelLoadRequest(BaseModel):
@@ -1046,7 +1070,12 @@ async def settings_get():
 @app.put("/api/settings", response_model=SettingsUpdateResponse)
 @limiter.limit("20/minute")
 async def settings_update(request: Request, body: SettingsUpdateRequest):
-    """Update settings."""
+    """Update settings.
+
+    Top-level fields replace. ``None`` is filtered out. Nested groups
+    (``default_tone``, ``providers``, ``hotkeys``) replace wholesale, ``[]`` clears a
+    list, and ``""`` clears ``active_provider_id``.
+    """
     if not settings_service:
         raise HTTPException(status_code=503, detail="Settings not initialized")
 
@@ -1057,7 +1086,13 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
         return {"status": "ok", "reload_required": False}
 
     old_settings = settings_service.get()
-    new_settings = settings_service.update(**updates)
+    try:
+        new_settings = settings_service.update(**updates)
+    except ValidationError as exc:
+        fields = ", ".join(
+            ".".join(str(part) for part in error["loc"]) for error in exc.errors()
+        )
+        raise HTTPException(status_code=400, detail=f"Invalid settings: {fields}") from exc
 
     # Check if model reload is required
     reload_required = (
@@ -1088,6 +1123,52 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
         "status": "ok",
         "settings": new_settings.model_dump(),
         "reload_required": reload_required,
+    }
+
+
+@app.exception_handler(RequestValidationError)
+async def _hide_key_validation_echo(request: Request, exc: RequestValidationError):
+    """Answer key-route validation failures without echoing the submitted value."""
+    is_key_route = request.url.path.startswith(
+        "/api/settings/providers/"
+    ) and request.url.path.endswith("/key")
+    if is_key_route:
+        return JSONResponse(status_code=422, content={"detail": "Invalid key request"})
+    return await request_validation_exception_handler(request, exc)
+
+
+@app.put(
+    "/api/settings/providers/{provider_id}/key",
+    response_model=ProviderKeyResponse,
+)
+@limiter.limit("20/minute")
+async def settings_provider_key_set(
+    request: Request, provider_id: str, body: ProviderKeyRequest
+):
+    """Store or clear the API key for a configured provider.
+
+    An empty ``key`` clears the entry. The key value is never returned or logged.
+    """
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    known_ids = {provider.id for provider in settings_service.get().providers}
+    if provider_id not in known_ids:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {provider_id}")
+
+    set_key(provider_id, body.key)
+    return {"provider_id": provider_id, "has_key": bool(body.key)}
+
+
+@app.get("/api/settings/provider-keys")
+async def settings_provider_keys():
+    """Report which configured providers have a stored key, without the key values."""
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    return {
+        provider.id: get_key(provider.id) is not None
+        for provider in settings_service.get().providers
     }
 
 

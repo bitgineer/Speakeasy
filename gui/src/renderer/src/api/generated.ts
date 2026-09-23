@@ -411,8 +411,54 @@ export interface paths {
         /**
          * Settings Update
          * @description Update settings.
+         *
+         *     Top-level fields replace. ``None`` is filtered out. Nested groups
+         *     (``default_tone``, ``providers``, ``hotkeys``) replace wholesale, ``[]`` clears a
+         *     list, and ``""`` clears ``active_provider_id``.
          */
         put: operations["settings_update_api_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/provider-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Settings Provider Keys
+         * @description Report which configured providers have a stored key, without the key values.
+         */
+        get: operations["settings_provider_keys_api_settings_provider_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/providers/{provider_id}/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Settings Provider Key Set
+         * @description Store or clear the API key for a configured provider.
+         *
+         *     An empty ``key`` clears the entry. The key value is never returned or logged.
+         */
+        put: operations["settings_provider_key_set_api_settings_providers__provider_id__key_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -580,10 +626,34 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AppMatch
+         * @description One rule that ties a tone profile to an app identifier or a window title.
+         */
+        AppMatch: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "app" | "title";
+            /** Pattern */
+            pattern: string;
+        };
+        /**
          * AppSettings
          * @description Application settings with validation.
          */
         AppSettings: {
+            /**
+             * @description Mode the primary hotkey records in
+             * @default dictate
+             */
+            active_mode: components["schemas"]["ProcessingMode"];
+            /**
+             * Active Provider Id
+             * @description Provider used by LLM modes. Empty means none, because the update endpoint filters None and cannot clear a nullable field.
+             * @default
+             */
+            active_provider_id: string;
             /**
              * Always Show Indicator
              * @description Keep indicator visible when idle
@@ -596,6 +666,12 @@ export interface components {
              * @default true
              */
             auto_paste: boolean;
+            /**
+             * Command Prompt
+             * @description System prompt for command mode
+             * @default The user will speak an instruction. Carry it out and output only the text to insert, with no explanation.
+             */
+            command_prompt: string;
             /**
              * Compute Type
              * @description Compute precision
@@ -613,6 +689,8 @@ export interface components {
              * @default false
              */
             debug_logging: boolean;
+            /** @description Tone used when no profile matches */
+            default_tone?: components["schemas"]["ToneProfile"];
             /**
              * Device
              * @description Device to run on (cuda/cpu)
@@ -644,6 +722,11 @@ export interface components {
              * @enum {string}
              */
             hotkey_mode: "toggle" | "push-to-talk";
+            /**
+             * Hotkeys
+             * @description Global hotkey bindings
+             */
+            hotkeys?: components["schemas"]["HotkeyBinding"][];
             /**
              * Language
              * @description Language code or 'auto'
@@ -681,6 +764,11 @@ export interface components {
              */
             model_type: string;
             /**
+             * Providers
+             * @description Configured OpenAI-compatible providers
+             */
+            providers?: components["schemas"]["LlmProvider"][];
+            /**
              * Server Port
              * @description Backend server port
              * @default 8765
@@ -698,6 +786,11 @@ export interface components {
              * @default default
              */
             theme: string;
+            /**
+             * Tone Profiles
+             * @description Per-app tone profiles for write mode
+             */
+            tone_profiles?: components["schemas"]["ToneProfile"][];
         };
         /** BatchCreateRequest */
         BatchCreateRequest: {
@@ -830,6 +923,21 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * HotkeyBinding
+         * @description A global chord. ``mode`` None records in ``active_mode`` at press time.
+         */
+        HotkeyBinding: {
+            /** Accelerator */
+            accelerator: string;
+            mode?: components["schemas"]["ProcessingMode"] | null;
+            /**
+             * Trigger
+             * @default toggle
+             * @enum {string}
+             */
+            trigger: "toggle" | "push-to-talk";
+        };
         /** ImportRequest */
         ImportRequest: {
             /** Data */
@@ -847,6 +955,36 @@ export interface components {
             /** Text */
             text: string;
         };
+        /**
+         * LlmProvider
+         * @description One OpenAI-compatible chat endpoint. Credentials live in secrets.json, not here.
+         */
+        LlmProvider: {
+            /**
+             * Base Url
+             * @default
+             */
+            base_url: string;
+            /** Id */
+            id: string;
+            /** @default local */
+            kind: components["schemas"]["ProviderKind"];
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Model
+             * @default
+             */
+            model: string;
+            /**
+             * Timeout Seconds
+             * @default 20
+             */
+            timeout_seconds: number;
+        };
         /** ModelLoadRequest */
         ModelLoadRequest: {
             /** Compute Type */
@@ -858,18 +996,48 @@ export interface components {
             /** Model Type */
             model_type: string;
         };
+        /**
+         * ProcessingMode
+         * @description How a transcript is processed before it is inserted.
+         * @enum {string}
+         */
+        ProcessingMode: "write" | "command" | "dictate";
+        /** ProviderKeyRequest */
+        ProviderKeyRequest: {
+            /** Key */
+            key: string;
+        };
+        /** ProviderKeyResponse */
+        ProviderKeyResponse: {
+            /** Has Key */
+            has_key: boolean;
+            /** Provider Id */
+            provider_id: string;
+        };
+        /**
+         * ProviderKind
+         * @description Transport family of an OpenAI-compatible chat provider.
+         * @enum {string}
+         */
+        ProviderKind: "local" | "openai" | "groq" | "custom";
         /** SettingsUpdateRequest */
         SettingsUpdateRequest: {
+            active_mode?: components["schemas"]["ProcessingMode"] | null;
+            /** Active Provider Id */
+            active_provider_id?: string | null;
             /** Always Show Indicator */
             always_show_indicator?: boolean | null;
             /** Auto Paste */
             auto_paste?: boolean | null;
+            /** Command Prompt */
+            command_prompt?: string | null;
             /** Compute Type */
             compute_type?: string | null;
             /** Custom Filler Words */
             custom_filler_words?: string[] | null;
             /** Debug Logging */
             debug_logging?: boolean | null;
+            default_tone?: components["schemas"]["ToneProfile"] | null;
             /** Device */
             device?: ("cuda" | "cpu") | null;
             /** Device Name */
@@ -880,6 +1048,8 @@ export interface components {
             hotkey?: string | null;
             /** Hotkey Mode */
             hotkey_mode?: ("toggle" | "push-to-talk") | null;
+            /** Hotkeys */
+            hotkeys?: components["schemas"]["HotkeyBinding"][] | null;
             /** Language */
             language?: string | null;
             /** Live Auto Paste */
@@ -892,12 +1062,16 @@ export interface components {
             model_name?: string | null;
             /** Model Type */
             model_type?: string | null;
+            /** Providers */
+            providers?: components["schemas"]["LlmProvider"][] | null;
             /** Server Port */
             server_port?: number | null;
             /** Show Recording Indicator */
             show_recording_indicator?: boolean | null;
             /** Theme */
             theme?: string | null;
+            /** Tone Profiles */
+            tone_profiles?: components["schemas"]["ToneProfile"][] | null;
         };
         /** SettingsUpdateResponse */
         SettingsUpdateResponse: {
@@ -913,6 +1087,21 @@ export interface components {
             recording: boolean;
             /** State */
             state: string;
+        };
+        /**
+         * ToneProfile
+         * @description A rewrite tone used in write mode when one of its matches fires.
+         */
+        ToneProfile: {
+            /** Matches */
+            matches?: components["schemas"]["AppMatch"][];
+            /** Name */
+            name: string;
+            /**
+             * Prompt
+             * @default
+             */
+            prompt: string;
         };
         /** TranscribeStartResponse */
         TranscribeStartResponse: {
@@ -1597,6 +1786,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsUpdateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    settings_provider_keys_api_settings_provider_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    settings_provider_key_set_api_settings_providers__provider_id__key_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderKeyResponse"];
                 };
             };
             /** @description Validation Error */
