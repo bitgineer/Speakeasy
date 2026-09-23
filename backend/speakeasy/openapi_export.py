@@ -39,10 +39,16 @@ def write() -> Path:
     return SCHEMA_PATH
 
 
+def committed_text() -> str:
+    """Read the committed schema, normalizing line endings from checkouts."""
+    if not SCHEMA_PATH.exists():
+        return ""
+    return SCHEMA_PATH.read_bytes().decode("utf-8").replace("\r\n", "\n")
+
+
 def check() -> bool:
     """Return True when the committed file already matches the schema."""
-    committed = SCHEMA_PATH.read_bytes().decode("utf-8") if SCHEMA_PATH.exists() else ""
-    if committed == render():
+    if committed_text() == render():
         return True
 
     print(f"{SCHEMA_PATH} is out of date.")

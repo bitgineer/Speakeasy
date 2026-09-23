@@ -1,7 +1,6 @@
 """Contract tests binding the committed OpenAPI schema to the server models."""
 
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import get_args
 
 from speakeasy import openapi_export
@@ -15,15 +14,13 @@ from speakeasy.services.batch import BatchFileStatus, BatchJobStatus
 from speakeasy.services.download_state import DownloadStatus, ModelDownloadProgress
 from speakeasy.services.history import TranscriptionRecord as HistoryRecord
 
-SCHEMA_PATH = Path(__file__).resolve().parents[1] / "openapi.json"
-
 
 def component_schemas() -> dict:
     return openapi_export.build_schema()["components"]["schemas"]
 
 
 def test_committed_schema_matches_render():
-    assert SCHEMA_PATH.read_bytes().decode("utf-8") == openapi_export.render()
+    assert openapi_export.committed_text() == openapi_export.render()
 
 
 def test_schema_contains_every_contract_component():
