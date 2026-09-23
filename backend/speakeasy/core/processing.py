@@ -1,11 +1,19 @@
-"""Pure planning for AI processing modes.
+"""Pure planning and execution for AI processing modes.
 
 Turns settings, a requested mode, the focused app, and provider key presence into a
-``ProcessingPlan``. No I/O and no persistence live here.
+``ProcessingPlan``, then runs the plan against a caller-supplied provider call. No I/O and
+no persistence live here; the only provider I/O is the injected ``complete`` callable.
 """
+
+import asyncio
+import re
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from speakeasy.core.text_cleanup import safe_cleanup
 from speakeasy.services.settings import (
     AppSettings,
     LlmProvider,
@@ -25,6 +33,13 @@ WRITE_SYSTEM = (
     "Rewrite the dictated text so it reads naturally in the current application. "
     "Preserve the speaker's meaning, facts, and language. Output only the rewritten text."
 )
+
+# Bounded provider input: a longer dictation degrades to its fallback text.
+MAX_LLM_INPUT_CHARS = 6000
+
+ProviderReason = Literal[
+    "timeout", "connection", "auth", "rate_limit", "server", "bad_response", "cancelled"
+]
 
 
 class FocusedApp(BaseModel):
@@ -124,7 +139,9 @@ def _provider_issue(settings: AppSettings, keyed_provider_ids: frozenset[str]) -
     return None
 
 
-def _ready_provider(settings: AppSettings, keyed_provider_ids: frozenset[str]) -> LlmProvider | None:
+def _ready_provider(
+    settings: AppSettings, keyed_provider_ids: frozenset[str]
+) -> LlmProvider | None:
     if _provider_issue(settings, keyed_provider_ids) is not None:
         return None
     return _active_provider(settings)
@@ -171,3 +188,141 @@ def describe_readiness(
         ModeReadiness(mode=ProcessingMode.COMMAND, ready=reason is None, reason=reason),
         ModeReadiness(mode=ProcessingMode.DICTATE, ready=True, reason=None),
     ]
+
+
+class ProviderError(Exception):
+    """A provider call failure with a safe, human-readable detail.
+
+    ``detail`` never contains a key, a prompt, or a response body.
+    """
+
+    def __init__(self, reason: ProviderReason, detail: str) -> None:
+        super().__init__(detail)
+        self.reason = reason
+        self.detail = detail
+
+
+class LlmRequest(BaseModel):
+    """One chat completion request, already resolved by the plan."""
+
+    model_config = ConfigDict(frozen=True)
+
+    system: str
+    user: str
+
+
+class LlmResponse(BaseModel):
+    """The provider's reply text."""
+
+    model_config = ConfigDict(frozen=True)
+
+    text: str
+
+
+CompleteFn = Callable[[LlmRequest], Awaitable[LlmResponse]]
+
+
+class ProcessResult(BaseModel):
+    """The executor's outcome. ``insertable`` is False only when a newer run superseded it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    text: str
+    error: str | None = None
+    insertable: bool = True
+
+
+@dataclass
+class ProcessingRun:
+    """Single-slot owner of the in-flight provider call.
+
+    The app records one session at a time, so one slot is the true invariant.
+    """
+
+    generation: int = 0
+    task: asyncio.Task | None = None
+
+    def supersede(self) -> None:
+        """Invalidate the current generation and cancel the in-flight task. Idempotent."""
+        self.generation += 1
+        if self.task is not None:
+            self.task.cancel()
+            self.task = None
+
+
+_active_run = ProcessingRun()
+
+
+def begin_processing() -> ProcessingRun:
+    """Supersede whatever is in flight, then hand back the current run."""
+    _active_run.supersede()
+    return _active_run
+
+
+def cancel_processing() -> None:
+    """Cancel the in-flight provider call, if any."""
+    _active_run.supersede()
+
+
+_FENCE = re.compile(r"^```[^\n]*\n(.*?)\n```$", re.DOTALL)
+
+
+def sanitize(text: str) -> str:
+    """Strip, and unwrap one markdown fence that wraps the whole response."""
+    text = text.strip()
+    fenced = _FENCE.match(text)
+    if fenced is not None:
+        return fenced.group(1).strip()
+    return text
+
+
+async def execute_plan(
+    plan: ProcessingPlan,
+    text: str,
+    *,
+    complete: CompleteFn | None,
+    run: ProcessingRun,
+) -> ProcessResult:
+    """Run the plan's LLM step. Never raises for provider trouble.
+
+    Every degraded path returns the plan's fallback text: the cleaned transcript when the
+    plan carries cleanup, the raw text otherwise. A superseded run returns its fallback
+    with ``error="cancelled"`` and ``insertable=False``, so the caller must not paste it.
+    """
+    fallback = (
+        safe_cleanup(text, custom_fillers=plan.cleanup.custom_fillers, use_cache=True)
+        if plan.cleanup is not None
+        else text
+    )
+    if plan.rewrite is None or complete is None:
+        return ProcessResult(text=fallback)
+    if not text.strip():
+        return ProcessResult(text=fallback)
+    if len(text) > MAX_LLM_INPUT_CHARS:
+        return ProcessResult(text=fallback, error="transcript too long for AI processing")
+
+    generation = run.generation
+    request = LlmRequest(system=plan.rewrite.system_prompt, user=text)
+    task: asyncio.Task[LlmResponse] = asyncio.create_task(complete(request))
+    run.task = task
+    try:
+        response = await asyncio.wait_for(task, timeout=plan.rewrite.provider.timeout_seconds)
+    except asyncio.TimeoutError:
+        timeout = plan.rewrite.provider.timeout_seconds
+        return ProcessResult(text=fallback, error=f"provider timed out after {timeout:g}s")
+    except ProviderError as exc:
+        return ProcessResult(text=fallback, error=exc.detail)
+    except asyncio.CancelledError:
+        if run.generation != generation:
+            return ProcessResult(text=fallback, error="cancelled", insertable=False)
+        raise
+    finally:
+        if run.task is task:
+            run.task = None
+
+    if run.generation != generation:
+        return ProcessResult(text=fallback, error="cancelled", insertable=False)
+    sanitized = sanitize(response.text)
+    if not sanitized:
+        return ProcessResult(text=fallback, error="empty response")
+    return ProcessResult(text=sanitized)
