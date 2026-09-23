@@ -6,9 +6,9 @@ Status: framed, not started. Branch `feat/ui-overhaul`, stacked on `feat/ai-proc
 
 The owner wants the entire interface redone: every page, every field, every selector. No designs exist. The standard to build and judge against is the `better-*` skill family (`better-interface`, `better-accessibility`, `better-layout`, `better-writing`, `better-typography`, `better-colors`, `better-ui`), with `variant` for direction exploration, `break` for state stress, and `interface-review` for change reviews.
 
-The current UI is a half-built system. `styles/tokens.css` defines spacing, type, shadow, radius, and motion tokens. `styles/themes.css` defines nine dark color themes. Components mix three dialects: 554 direct `var(--...)` usages, 27 raw hex values, and 242 Tailwind token classes. No light theme exists. There is no rendered baseline, no repository-scope audit, and no automated interface gate. The repo has no interface guidelines beyond `CONTRIBUTING.md`, which does not cover design.
+The current UI is a half-built system. `styles/tokens.css` defines spacing, type, shadow, radius, and motion tokens. `styles/themes.css` defines nine dark color themes. Components style themselves almost entirely through 554 direct `var(--...)` references; the Tailwind token utilities are nearly unused (13 named token classes). The config maps `primary`/`success`/`warning`/`error`/`info` scales to variables that do not exist in the stylesheets, and 14 usages of those classes in the ui primitives render with no color at all. Twenty-seven raw hex values are mostly theme-preview swatches in Appearance settings, which is data rather than drift. No light theme exists. There is no rendered baseline, no repository-scope audit, and no automated interface gate. The repo has no interface guidelines beyond `CONTRIBUTING.md`, which does not cover design.
 
-## Inventory (43 tsx files)
+## Inventory (44 tsx files)
 
 | Group | Surfaces |
 |---|---|
@@ -22,12 +22,19 @@ The current UI is a half-built system. `styles/tokens.css` defines spacing, type
 
 States to capture and re-verify for every interactive surface: default, hover, focus, active, disabled, loading, empty, error, long text, narrow width, and 200% zoom.
 
+## Known starting findings (verified)
+
+- Semantic scale classes are broken. `gui/tailwind.config.js` maps `primary`, `success`, `warning`, `error`, and `info` to `--color-*-N00` variables that no stylesheet defines. `ui/badge.tsx` variants, `ui/input.tsx` error state, and `ui/label.tsx` use them, so those states render with no color. 14 usages.
+- Direct `var(--...)` references dominate (554) while token utilities are nearly unused (13). Theme changes today depend on every component spelling the same variable names by hand.
+- The nine community themes are dark-only. No light theme exists.
+- The 27 raw hex values are theme swatches in Appearance settings, intentional data rather than drift.
+
 ## Definition of done (falsifiable)
 
-1. A committed capture script produces baseline and after images for every surface and state; both runs exist as artifacts.
+1. A committed capture script produces baseline and after images for every surface and state; both runs exist as artifacts. The tray menu is captured manually, since a native menu cannot be screenshotted through CDP.
 2. A repository-scope `better-interface` review at the end reports no HIGH findings and no unresolved MEDIUM findings; accepted exceptions are listed with reasons.
 3. Every escalation trigger in `better-interface` is clear. Named controls, visible focus, keyboard reachability, reduced-motion support, 320px and 200% zoom containment, AA contrast, no color-only meaning, confirmations for destructive actions, truncation escape hatches, recoverable errors.
-4. One token layer is the only source of visual values. A committed check fails on raw hex, one-off px, and unmapped var usage in components.
+4. One token layer is the only source of visual values. A committed check reconciles three layers: component usage, the Tailwind config mapping, and the CSS variable definitions. It fails on raw hex, one-off px, dangling `var()` references, token classes the config never generates, and scale mappings with no defined variable.
 5. Every interactive component renders its empty, loading, error, disabled, and long-text states, proven by `break`.
 6. Copy passes `better-writing` across every surface.
 7. The app runs every flow with the existing test suites green, driven live via `verify-speakeasy`.
@@ -48,10 +55,10 @@ Recommendation: prototype A and B, choose one, then reduce the theme story to Li
 
 ## Phases
 
-- **Phase 0. Harness and audit.** Build the capture script (Electron over CDP via `verify-speakeasy`, or a Playwright Electron scaffold under `gui/e2e`, which currently does not exist). Capture every surface and state. Run the repository-scope `better-interface` review and file the ranked findings as the work list. Gate: captures exist, audit list reviewed.
+- **Phase 0. Harness and audit.** Build the capture script using the project-local `verify-speakeasy` skill (Electron over CDP plus the backend), which already exists at `.opencode/skills/verify-speakeasy`. Add an e2e scaffold only if a browser suite earns its place. Capture every surface and state. Run the repository-scope `better-interface` review and file the ranked findings as the work list. Gate: captures exist, audit list reviewed.
 - **Phase 1. Direction.** `variant` builds the shell plus Dashboard plus Processing settings in the shortlisted directions against real data. Side-by-side captures. Owner picks. Gate: signed-off direction.
 - **Phase 2. Tokens and primitives.** Rebuild `tokens.css` and `themes.css` to the chosen direction. Rebuild `ui/*` and add select, combobox, and field primitives. Land the token check. Gate: primitives pass `break` and the accessibility checks, token check green.
-- **Phase 3. Shell and first pages.** Sidebar, page frame, settings layout pattern, Dashboard, History.
+- **Phase 3. Shell and first pages.** Sidebar, page frame, settings layout pattern, Dashboard including its History section.
 - **Phase 4. Batch and Stats.**
 - **Phase 5. Settings pages,** including Processing and the mode chips.
 - **Phase 6. Overlay, tray menu, dialogs, toasts.**
