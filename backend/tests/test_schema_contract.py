@@ -31,6 +31,11 @@ def test_schema_contains_every_contract_component():
 def test_schema_pins_route_fields():
     schemas = component_schemas()
     assert "instruction" in schemas["TranscribeStopRequest"]["properties"]
+    assert "mode" in schemas["TranscribeStopRequest"]["properties"]
+    assert {"original_text", "processing_error", "mode"} <= set(
+        schemas["TranscribeStopResponse"]["properties"]
+    )
+    assert {"original_text", "processing_error"} <= set(schemas["TranscriptionEvent"]["properties"])
     assert "next_cursor" in schemas["HistoryListResponse"]["properties"]
     assert "server_port" in schemas["SettingsUpdateRequest"]["properties"]
     assert "TranscriptionProgressEvent" in schemas
@@ -46,6 +51,9 @@ def test_schema_contains_processing_components():
         "HotkeyBinding",
         "ProviderKeyRequest",
         "ProviderKeyResponse",
+        "ModeStatusResponse",
+        "ProcessingStatusResponse",
+        "FocusedAppResponse",
     }
     assert expected <= set(component_schemas())
 

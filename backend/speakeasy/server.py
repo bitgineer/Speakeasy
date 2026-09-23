@@ -40,6 +40,14 @@ from .core.config import (
     get_languages_for_model,
 )
 from .core.models import TranscriptionResult, get_gpu_info, recommend_model
+from .core.processing import (
+    begin_processing,
+    cancel_processing,
+    describe_readiness,
+    execute_plan,
+    resolve_processing,
+)
+from .core.providers import build_provider_client
 from .core.text_cleanup import (
     clear_cached_processor,
     safe_cleanup,
@@ -65,6 +73,7 @@ from .services.settings import (
     get_default_db_path,
     get_default_settings_path,
 )
+from .utils.focused_app import detect_focused_app
 from .utils.paste import insert_text
 
 logger = logging.getLogger(__name__)
@@ -90,6 +99,7 @@ class TranscribeStopRequest(BaseModel):
     auto_paste: bool | None = None
     language: str | None = Field(None, max_length=10)
     instruction: str | None = Field(None, max_length=1000)
+    mode: ProcessingMode | None = None
 
 
 class TranscribeStopResponse(BaseModel):
@@ -98,6 +108,9 @@ class TranscribeStopResponse(BaseModel):
     duration_ms: int
     model_used: str | None
     language: str | None
+    mode: ProcessingMode
+    original_text: str | None = None
+    processing_error: str | None = None
 
 
 class HistoryListResponse(BaseModel):
@@ -157,6 +170,22 @@ class ProviderKeyRequest(BaseModel):
 class ProviderKeyResponse(BaseModel):
     provider_id: str
     has_key: bool
+
+
+class ModeStatusResponse(BaseModel):
+    mode: ProcessingMode
+    ready: bool
+    reason: str | None
+
+
+class ProcessingStatusResponse(BaseModel):
+    modes: list[ModeStatusResponse]
+    provider_id: str
+
+
+class FocusedAppResponse(BaseModel):
+    key: str
+    title: str
 
 
 class ModelLoadRequest(BaseModel):
@@ -219,6 +248,11 @@ def _resolve_auto_paste(requested: bool | None) -> bool:
     if settings_service:
         return settings_service.get().auto_paste
     return True
+
+
+def _keyed_provider_ids(settings: AppSettings) -> frozenset[str]:
+    """Provider ids with a stored key, the readiness input the plan and status share."""
+    return frozenset(provider.id for provider in settings.providers if get_key(provider.id))
 
 
 def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> None:
@@ -539,6 +573,7 @@ async def transcribe_start():
         )
 
     try:
+        cancel_processing()
         transcriber.start_recording()
         return TranscribeStartResponse(status="started")
     except RuntimeError as e:
@@ -556,13 +591,16 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
     if not transcriber:
         raise HTTPException(status_code=503, detail="Transcriber not initialized")
 
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
     if not transcriber.is_recording:
         raise HTTPException(status_code=400, detail="Not recording")
 
     try:
         # Get language from request or settings
-        settings = settings_service.get() if settings_service else None
-        language = body.language or (settings.language if settings else "auto")
+        settings = settings_service.get()
+        language = body.language or settings.language
 
         # Construct instruction if provided
         instruction = body.instruction
@@ -593,22 +631,34 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
             instruction=instruction,
         )
 
-        # Apply text cleanup if enabled
-        cleaned_text = result.text
-        if settings and settings.enable_text_cleanup:
-            cleaned_text = safe_cleanup(
-                result.text, custom_fillers=settings.custom_filler_words, use_cache=True
-            )
+        # Plan and run the AI processing step. The response, WebSocket event,
+        # history, and clipboard all read the same outcome.
+        keyed = _keyed_provider_ids(settings)
+        run = begin_processing()
+        app = await asyncio.to_thread(detect_focused_app)
+        plan = resolve_processing(settings, body.mode, app, keyed)
+
+        complete = None
+        if plan.rewrite is not None:
+            provider = plan.rewrite.provider
+            complete = build_provider_client(provider, get_key(provider.id))
+
+        outcome = await execute_plan(plan, result.text, complete=complete, run=run)
+
+        original_text = result.text if outcome.text != result.text else None
 
         # Log transcription to console for CLI visibility
-        logger.info(f"Transcribed ({result.duration_ms}ms): {cleaned_text}")
+        logger.info(f"Transcribed ({result.duration_ms}ms): {outcome.text}")
+        if outcome.error:
+            logger.warning(f"{plan.mode.value} processing degraded: {outcome.error}")
 
         # Save to history
         record = await history.add(
-            text=result.text,
+            text=outcome.text,
             duration_ms=result.duration_ms,
             model_used=result.model_used,
             language=result.language,
+            original_text=original_text,
         )
 
         # Broadcast transcription event
@@ -616,21 +666,27 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
             "transcription",
             TranscriptionEvent(
                 id=record.id,
-                text=cleaned_text,
+                text=outcome.text,
                 duration_ms=result.duration_ms,
+                original_text=original_text,
+                processing_error=outcome.error,
             ).model_dump(),
         )
 
-        # Auto-paste unless the caller overrides the persisted setting
-        if _resolve_auto_paste(body.auto_paste):
-            insert_text(cleaned_text)
+        # Auto-paste unless the caller overrides the persisted setting. A superseded
+        # run records history but never pastes.
+        if _resolve_auto_paste(body.auto_paste) and outcome.insertable:
+            insert_text(outcome.text)
 
         return TranscribeStopResponse(
             id=record.id,
-            text=cleaned_text,
+            text=outcome.text,
             duration_ms=result.duration_ms,
             model_used=result.model_used,
             language=result.language,
+            mode=plan.mode,
+            original_text=original_text,
+            processing_error=outcome.error,
         )
 
     except Exception as e:
@@ -1166,6 +1222,35 @@ async def settings_provider_keys():
         provider.id: get_key(provider.id) is not None
         for provider in settings_service.get().providers
     }
+
+
+# --- Processing ---
+
+
+@app.get("/api/processing/status", response_model=ProcessingStatusResponse)
+async def processing_status():
+    """What each mode will do: readiness per mode plus the active provider id."""
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    settings = settings_service.get()
+    keyed = _keyed_provider_ids(settings)
+    return ProcessingStatusResponse(
+        modes=[
+            ModeStatusResponse(mode=status.mode, ready=status.ready, reason=status.reason)
+            for status in describe_readiness(settings, keyed)
+        ],
+        provider_id=settings.active_provider_id,
+    )
+
+
+@app.get("/api/focused-app", response_model=FocusedAppResponse | None)
+async def focused_app():
+    """The app that currently has focus, for tone match discovery. Null when unknown."""
+    app = await asyncio.to_thread(detect_focused_app)
+    if app is None:
+        return None
+    return FocusedAppResponse(key=app.key, title=app.title)
 
 
 # --- Models ---

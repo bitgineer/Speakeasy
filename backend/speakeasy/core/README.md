@@ -44,7 +44,7 @@ Contains:
 - Model VRAM requirements
 
 ## Text Cleanup (`text_cleanup.py`)
-AI-powered text enhancement.
+Regex-based filler-word cleanup.
 
 Features:
 - Automatic filler word removal

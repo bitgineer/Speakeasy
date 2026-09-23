@@ -27,7 +27,7 @@ class TranscriptionRecord:
     model_used: str | None
     language: str | None
     created_at: datetime
-    original_text: str | None = None  # Original text before AI enhancement
+    original_text: str | None = None  # Raw ASR text before processing
 
     # All valid field names for projection
     VALID_FIELDS = {
@@ -42,7 +42,7 @@ class TranscriptionRecord:
 
     @property
     def is_ai_enhanced(self) -> bool:
-        """Check if this transcription was AI-enhanced (grammar corrected)."""
+        """True when the stored text differs from the raw ASR output."""
         return self.original_text is not None and self.original_text != self.text
 
     def to_dict(self, fields: set[str] | None = None) -> dict:
@@ -194,34 +194,6 @@ class HistoryService:
             await self._db.close()
             self._db = None
 
-    async def update_text(
-        self,
-        record_id: str,
-        new_text: str,
-        original_text: str,
-    ) -> None:
-        """
-        Update the text of an existing transcription (e.g. after grammar correction).
-
-        Args:
-            record_id: The ID of the record to update
-            new_text: The corrected text
-            original_text: The original text (to preserve it)
-        """
-        if not self._db:
-            raise RuntimeError("Database not initialized")
-
-        await self._db.execute(
-            """
-            UPDATE transcriptions
-            SET text = ?, original_text = ?
-            WHERE id = ?
-            """,
-            (new_text, original_text, record_id),
-        )
-        await self._db.commit()
-        logger.debug(f"Updated transcription {record_id} with corrected text")
-
     async def add(
         self,
         text: str,
@@ -236,11 +208,11 @@ class HistoryService:
         Add a new transcription to history.
 
         Args:
-            text: The transcribed text (may be grammar-corrected)
+            text: The text to store (processed text, or the fallback text)
             duration_ms: Duration of transcription in milliseconds
             model_used: Name of the model used
             language: Language of the transcription
-            original_text: Original text before AI enhancement (if applicable)
+            original_text: Raw ASR text before processing, when it differs
             record_id: Existing record ID to preserve (e.g. during import)
             created_at: Existing timestamp to preserve (e.g. during import)
 

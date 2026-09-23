@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/focused-app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Focused App
+         * @description The app that currently has focus, for tone match discovery. Null when unknown.
+         */
+        get: operations["focused_app_api_focused_app_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -388,6 +408,26 @@ export interface paths {
          * @description Get models of a specific type.
          */
         get: operations["models_by_type_api_models__model_type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/processing/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Processing Status
+         * @description What each mode will do: readiness per mode plus the active provider id.
+         */
+        get: operations["processing_status_api_processing_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -890,6 +930,13 @@ export interface components {
             /** Start Date */
             start_date?: string | null;
         };
+        /** FocusedAppResponse */
+        FocusedAppResponse: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -985,6 +1032,14 @@ export interface components {
              */
             timeout_seconds: number;
         };
+        /** ModeStatusResponse */
+        ModeStatusResponse: {
+            mode: components["schemas"]["ProcessingMode"];
+            /** Ready */
+            ready: boolean;
+            /** Reason */
+            reason: string | null;
+        };
         /** ModelLoadRequest */
         ModelLoadRequest: {
             /** Compute Type */
@@ -1002,6 +1057,13 @@ export interface components {
          * @enum {string}
          */
         ProcessingMode: "write" | "command" | "dictate";
+        /** ProcessingStatusResponse */
+        ProcessingStatusResponse: {
+            /** Modes */
+            modes: components["schemas"]["ModeStatusResponse"][];
+            /** Provider Id */
+            provider_id: string;
+        };
         /** ProviderKeyRequest */
         ProviderKeyRequest: {
             /** Key */
@@ -1116,6 +1178,7 @@ export interface components {
             instruction?: string | null;
             /** Language */
             language?: string | null;
+            mode?: components["schemas"]["ProcessingMode"] | null;
         };
         /** TranscribeStopResponse */
         TranscribeStopResponse: {
@@ -1125,8 +1188,13 @@ export interface components {
             id: string;
             /** Language */
             language: string | null;
+            mode: components["schemas"]["ProcessingMode"];
             /** Model Used */
             model_used: string | null;
+            /** Original Text */
+            original_text?: string | null;
+            /** Processing Error */
+            processing_error?: string | null;
             /** Text */
             text: string;
         };
@@ -1136,6 +1204,16 @@ export interface components {
             duration_ms: number;
             /** Id */
             id: string;
+            /**
+             * Original Text
+             * @default null
+             */
+            original_text: string | null;
+            /**
+             * Processing Error
+             * @default null
+             */
+            processing_error: string | null;
             /** Text */
             text: string;
         };
@@ -1241,6 +1319,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    focused_app_api_focused_app_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FocusedAppResponse"] | null;
                 };
             };
         };
@@ -1742,6 +1840,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    processing_status_api_processing_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessingStatusResponse"];
                 };
             };
         };

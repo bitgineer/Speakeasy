@@ -25,6 +25,8 @@ class TranscriptionEvent(BaseModel):
     id: str
     text: str
     duration_ms: int
+    original_text: str | None = None
+    processing_error: str | None = None
 
 
 class TranscriptionProgressEvent(BaseModel):

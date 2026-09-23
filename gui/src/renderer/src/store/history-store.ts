@@ -48,7 +48,7 @@ interface HistoryStore {
   setSearchQuery: (query: string) => void
   search: (query: string) => Promise<void>
   
-  addItem: (item: TranscriptionRecord) => void
+  upsertItem: (item: TranscriptionRecord) => void
   deleteItem: (id: string) => Promise<boolean>
   
   fetchStats: () => Promise<void>
@@ -59,6 +59,19 @@ interface HistoryStore {
 }
 
 const DEFAULT_LIMIT = 50
+
+export function recordFromTranscriptionEvent(event: TranscriptionEvent): TranscriptionRecord {
+  return {
+    id: event.id,
+    text: event.text,
+    duration_ms: event.duration_ms,
+    model_used: null,
+    language: null,
+    created_at: new Date().toISOString(),
+    original_text: event.original_text ?? null,
+    is_ai_enhanced: event.original_text != null && event.original_text !== event.text
+  }
+}
 
 export const useHistoryStore = create<HistoryStore>((set, get) => ({
   // Initial state
@@ -165,13 +178,19 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
     await get().fetchHistory(true)
   },
   
-  addItem: (item) => {
+  upsertItem: (item) => {
     const { items, total } = get()
-    // Add to the beginning of the list
-    set({
-      items: [item, ...items],
-      total: total + 1
-    })
+    const index = items.findIndex(existing => existing.id === item.id)
+    if (index === -1) {
+      set({
+        items: [item, ...items],
+        total: total + 1
+      })
+      return
+    }
+    const next = [...items]
+    next[index] = item
+    set({ items: next })
   },
   
   deleteItem: async (id) => {
@@ -229,53 +248,17 @@ export function initHistoryWebSocket(): void {
   wsClient.connect()
 
   wsClient.onTranscription((event: TranscriptionEvent) => {
-    // When a new transcription comes in via WebSocket, add it to the store
-    const { items, searchQuery } = useHistoryStore.getState()
-    
-    // Create a TranscriptionRecord from the event data
-    const record: TranscriptionRecord = {
-      id: event.id,
-      text: event.text,
-      duration_ms: event.duration_ms,
-      model_used: null,
-      language: null,
-      created_at: new Date().toISOString(),
-      original_text: null,
-      is_ai_enhanced: false
-    }
-    
-    // Only add if not already in the list and no search filter is active
-    const alreadyExists = items.some(item => item.id === record.id)
-    
-    if (!alreadyExists && !searchQuery) {
-      useHistoryStore.getState().addItem(record)
-    } else if (!alreadyExists && searchQuery) {
-      // If search is active, we still increment total but don't add to visible items
-      // User can clear search to see the new item
-      useHistoryStore.setState(state => ({ total: state.total + 1 }))
-    }
-  })
+    const { items, searchQuery, upsertItem } = useHistoryStore.getState()
+    const record = recordFromTranscriptionEvent(event)
 
-  // Listen for updates (e.g. edited text)
-  wsClient.onTranscriptionUpdate((event: TranscriptionEvent) => {
-    const { items } = useHistoryStore.getState()
-    const index = items.findIndex(item => item.id === event.id)
-    
-    if (index !== -1) {
-      const updatedItems = [...items]
-      // Update with new data (casting to any to access extra fields if needed)
-      // The event from backend contains full record data
-      const updateData = event as unknown as TranscriptionRecord
-      
-      updatedItems[index] = {
-        ...updatedItems[index],
-        text: event.text,
-        original_text: updateData.original_text || updatedItems[index].original_text,
-        is_ai_enhanced: updateData.is_ai_enhanced || updatedItems[index].is_ai_enhanced
+    if (searchQuery) {
+      // A filtered list hides non-matching records; count it without showing it.
+      if (!items.some(item => item.id === record.id)) {
+        useHistoryStore.setState(state => ({ total: state.total + 1 }))
       }
-      
-      useHistoryStore.setState({ items: updatedItems })
+      return
     }
+    upsertItem(record)
   })
 
   wsClient.on<LiveTranscriptEvent>('live_transcript', (event) => {

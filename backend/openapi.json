@@ -523,6 +523,24 @@
         "title": "ExportRequest",
         "type": "object"
       },
+      "FocusedAppResponse": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title"
+        ],
+        "title": "FocusedAppResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -745,6 +763,35 @@
         "title": "LlmProvider",
         "type": "object"
       },
+      "ModeStatusResponse": {
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/ProcessingMode"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "mode",
+          "ready",
+          "reason"
+        ],
+        "title": "ModeStatusResponse",
+        "type": "object"
+      },
       "ModelLoadRequest": {
         "properties": {
           "compute_type": {
@@ -801,6 +848,27 @@
         ],
         "title": "ProcessingMode",
         "type": "string"
+      },
+      "ProcessingStatusResponse": {
+        "properties": {
+          "modes": {
+            "items": {
+              "$ref": "#/components/schemas/ModeStatusResponse"
+            },
+            "title": "Modes",
+            "type": "array"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "modes",
+          "provider_id"
+        ],
+        "title": "ProcessingStatusResponse",
+        "type": "object"
       },
       "ProviderKeyRequest": {
         "properties": {
@@ -1293,6 +1361,16 @@
               }
             ],
             "title": "Language"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "TranscribeStopRequest",
@@ -1319,6 +1397,9 @@
             ],
             "title": "Language"
           },
+          "mode": {
+            "$ref": "#/components/schemas/ProcessingMode"
+          },
           "model_used": {
             "anyOf": [
               {
@@ -1330,6 +1411,28 @@
             ],
             "title": "Model Used"
           },
+          "original_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Text"
+          },
+          "processing_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processing Error"
+          },
           "text": {
             "title": "Text",
             "type": "string"
@@ -1340,7 +1443,8 @@
           "text",
           "duration_ms",
           "model_used",
-          "language"
+          "language",
+          "mode"
         ],
         "title": "TranscribeStopResponse",
         "type": "object"
@@ -1354,6 +1458,30 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "original_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Original Text"
+          },
+          "processing_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Processing Error"
           },
           "text": {
             "title": "Text",
@@ -1568,6 +1696,33 @@
           }
         },
         "summary": "Devices Set"
+      }
+    },
+    "/api/focused-app": {
+      "get": {
+        "description": "The app that currently has focus, for tone match discovery. Null when unknown.",
+        "operationId": "focused_app_api_focused_app_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FocusedAppResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Focused App Api Focused App Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Focused App"
       }
     },
     "/api/health": {
@@ -2176,6 +2331,25 @@
           }
         },
         "summary": "Models By Type"
+      }
+    },
+    "/api/processing/status": {
+      "get": {
+        "description": "What each mode will do: readiness per mode plus the active provider id.",
+        "operationId": "processing_status_api_processing_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Processing Status"
       }
     },
     "/api/settings": {

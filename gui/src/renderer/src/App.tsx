@@ -72,7 +72,7 @@ function ThemeInitializer(): null {
 // Main app layout for regular windows
 function MainLayout(): JSX.Element {
   const { fetchHealth, startRecording, setAppState } = useAppStore()
-  const { addItem, fetchHistory } = useHistoryStore()
+  const { upsertItem, fetchHistory } = useHistoryStore()
   const { fetchSettings, settings } = useSettingsStore()
   
   useEffect(() => {
@@ -103,8 +103,16 @@ function MainLayout(): JSX.Element {
     
     const unsubComplete = window.api?.onRecordingComplete((result) => {
       setAppState('idle')
-      const response = result as { id?: string; text?: string; duration_ms?: number; model_used?: string | null; language?: string | null }
+      const response = result as {
+        id?: string
+        text?: string
+        duration_ms?: number
+        model_used?: string | null
+        language?: string | null
+        original_text?: string | null
+      }
       if (response?.id && response?.text) {
+        const originalText = response.original_text ?? null
         const record: TranscriptionRecord = {
           id: response.id,
           text: response.text,
@@ -112,10 +120,10 @@ function MainLayout(): JSX.Element {
           model_used: response.model_used ?? null,
           language: response.language ?? null,
           created_at: new Date().toISOString(),
-          original_text: null,
-          is_ai_enhanced: false
+          original_text: originalText,
+          is_ai_enhanced: originalText !== null && originalText !== response.text
         }
-        addItem(record)
+        upsertItem(record)
       }
     })
     
@@ -129,7 +137,7 @@ function MainLayout(): JSX.Element {
       unsubComplete?.()
       unsubError?.()
     }
-  }, [startRecording, setAppState, addItem])
+  }, [startRecording, setAppState, upsertItem])
   
   return (
     <div className="h-screen flex bg-[var(--color-bg-primary)]">
