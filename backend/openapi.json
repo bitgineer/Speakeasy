@@ -897,6 +897,46 @@
         "title": "ProviderKind",
         "type": "string"
       },
+      "ProviderModelResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "ProviderModelResponse",
+        "type": "object"
+      },
+      "ProviderModelsResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderModelResponse"
+            },
+            "title": "Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "models"
+        ],
+        "title": "ProviderModelsResponse",
+        "type": "object"
+      },
       "SettingsUpdateRequest": {
         "properties": {
           "active_mode": {
@@ -2430,6 +2470,46 @@
           }
         },
         "summary": "Settings Provider Key Set"
+      }
+    },
+    "/api/settings/providers/{provider_id}/models": {
+      "get": {
+        "description": "List the models a configured provider advertises. 502 when the fetch fails.",
+        "operationId": "settings_provider_models_api_settings_providers__provider_id__models_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderModelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Settings Provider Models"
       }
     },
     "/api/transcribe/batch": {

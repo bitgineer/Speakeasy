@@ -32,6 +32,7 @@ import type {
   ProcessingStatusResponse,
   ProviderKeyResponse,
   ProviderKeysResponse,
+  ProviderModelsResponse,
   FocusedAppResponse
 } from './types'
 import { createCache } from './cache'
@@ -281,6 +282,12 @@ class ApiClient {
     return this.request<ProviderKeyResponse>(
       `/api/settings/providers/${encodeURIComponent(providerId)}/key`,
       { method: 'PUT', body: JSON.stringify({ key }) }
+    )
+  }
+
+  async getProviderModels(providerId: string): Promise<ProviderModelsResponse> {
+    return this.request<ProviderModelsResponse>(
+      `/api/settings/providers/${encodeURIComponent(providerId)}/models`
     )
   }
 

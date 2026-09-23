@@ -32,6 +32,8 @@ export type AppMatch = Schemas['AppMatch']
 export type ModeStatusResponse = Schemas['ModeStatusResponse']
 export type ProcessingStatusResponse = Schemas['ProcessingStatusResponse']
 export type ProviderKeyResponse = Schemas['ProviderKeyResponse']
+export type ProviderModel = Schemas['ProviderModelResponse']
+export type ProviderModelsResponse = Schemas['ProviderModelsResponse']
 export type FocusedAppResponse = Schemas['FocusedAppResponse']
 
 /** `GET /api/settings/provider-keys` is a bare map in the schema, so it is typed here. */

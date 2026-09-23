@@ -11,6 +11,12 @@ from speakeasy.services.settings import LlmProvider, ProviderKind
 
 REQUEST = LlmRequest(system="Be natural.", user="hello")
 PROVIDER = LlmProvider(id="p", kind=ProviderKind.CUSTOM, model="m", base_url="https://llm.test/v1")
+OPENROUTER = LlmProvider(
+    id="or",
+    kind=ProviderKind.CUSTOM,
+    model="xiaomi/mimo-v2.6-pro",
+    base_url="https://openrouter.ai/api/v1/chat/completions",
+)
 
 
 def _client(handler) -> httpx.AsyncClient:
@@ -184,4 +190,71 @@ async def test_detail_never_contains_the_key_the_prompt_or_the_body():
 
     assert secret not in excinfo.value.detail
     assert "PROMPT-MARKER" not in excinfo.value.detail
+    assert "BODY-MARKER" not in excinfo.value.detail
+
+
+async def test_a_full_endpoint_base_url_is_not_doubled():
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        return _ok("ok")
+
+    async with _client(handler) as client:
+        await complete_openai_compatible(OPENROUTER, REQUEST, None, client=client)
+
+    assert seen["url"] == "https://openrouter.ai/api/v1/chat/completions"
+
+
+async def test_status_error_includes_the_provider_message():
+    def handler(request):
+        return httpx.Response(404, json={"error": {"message": "model not found"}})
+
+    async with _client(handler) as client:
+        with pytest.raises(ProviderError) as excinfo:
+            await complete_openai_compatible(PROVIDER, REQUEST, None, client=client)
+
+    assert excinfo.value.reason == "bad_response"
+    assert excinfo.value.detail == "provider returned HTTP 404: model not found"
+
+
+async def test_auth_error_includes_the_provider_message():
+    def handler(request):
+        return httpx.Response(401, json={"error": {"message": "No auth credentials found"}})
+
+    async with _client(handler) as client:
+        with pytest.raises(ProviderError) as excinfo:
+            await complete_openai_compatible(PROVIDER, REQUEST, None, client=client)
+
+    assert excinfo.value.reason == "auth"
+    assert excinfo.value.detail == "provider rejected the API key: No auth credentials found"
+
+
+async def test_status_error_truncates_the_provider_message():
+    def handler(request):
+        return httpx.Response(500, json={"error": {"message": "x" * 300}})
+
+    async with _client(handler) as client:
+        with pytest.raises(ProviderError) as excinfo:
+            await complete_openai_compatible(PROVIDER, REQUEST, None, client=client)
+
+    assert excinfo.value.reason == "server"
+    assert excinfo.value.detail == f"provider server error (500): {'x' * 200}"
+
+
+async def test_status_error_ignores_the_rest_of_the_body():
+    def handler(request):
+        return httpx.Response(
+            429,
+            json={
+                "error": {"message": "slow down", "code": "BODY-MARKER"},
+                "detail": "BODY-MARKER",
+            },
+        )
+
+    async with _client(handler) as client:
+        with pytest.raises(ProviderError) as excinfo:
+            await complete_openai_compatible(PROVIDER, REQUEST, None, client=client)
+
+    assert excinfo.value.detail == "provider rate limit reached: slow down"
     assert "BODY-MARKER" not in excinfo.value.detail

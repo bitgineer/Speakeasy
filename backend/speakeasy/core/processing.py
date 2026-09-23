@@ -29,6 +29,9 @@ DEFAULT_BASE_URLS: dict[ProviderKind, str] = {
     ProviderKind.CUSTOM: "",
 }
 
+# Users paste a full endpoint from provider docs; the adapter appends the path itself.
+_ENDPOINT_SUFFIXES = ("/chat/completions", "/completions")
+
 WRITE_SYSTEM = (
     "Rewrite the dictated text so it reads naturally in the current application. "
     "Preserve the speaker's meaning, facts, and language. Output only the rewritten text."
@@ -94,8 +97,16 @@ def requires_key(kind: ProviderKind) -> bool:
 
 
 def effective_base_url(provider: LlmProvider) -> str:
-    """The provider's base URL, falling back to its kind default (empty for custom)."""
-    return provider.base_url or DEFAULT_BASE_URLS[provider.kind]
+    """The provider's API root, falling back to its kind default (empty for custom).
+
+    Accepts a pasted endpoint by stripping a trailing chat-completions path, so the
+    adapter can append its own without doubling it.
+    """
+    url = (provider.base_url or DEFAULT_BASE_URLS[provider.kind]).rstrip("/")
+    for suffix in _ENDPOINT_SUFFIXES:
+        if url.endswith(suffix):
+            return url[: -len(suffix)].rstrip("/")
+    return url
 
 
 def matches_app(profile: ToneProfile, app: FocusedApp) -> bool:
@@ -193,7 +204,9 @@ def describe_readiness(
 class ProviderError(Exception):
     """A provider call failure with a safe, human-readable detail.
 
-    ``detail`` never contains a key, a prompt, or a response body.
+    ``detail`` never contains the request key, the prompt, or the full response body.
+    A status failure may include up to 200 characters of the provider's own
+    ``error.message``.
     """
 
     def __init__(self, reason: ProviderReason, detail: str) -> None:

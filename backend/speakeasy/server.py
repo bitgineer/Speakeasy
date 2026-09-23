@@ -40,13 +40,14 @@ from .core.config import (
 )
 from .core.models import TranscriptionResult, get_gpu_info, recommend_model
 from .core.processing import (
+    ProviderError,
     begin_processing,
     cancel_processing,
     describe_readiness,
     execute_plan,
     resolve_processing,
 )
-from .core.providers import build_provider_client
+from .core.providers import build_provider_client, fetch_provider_models
 from .core.text_cleanup import (
     clear_cached_processor,
     safe_cleanup,
@@ -158,6 +159,15 @@ class ProviderKeyRequest(BaseModel):
 class ProviderKeyResponse(BaseModel):
     provider_id: str
     has_key: bool
+
+
+class ProviderModelResponse(BaseModel):
+    id: str
+    name: str | None = None
+
+
+class ProviderModelsResponse(BaseModel):
+    models: list[ProviderModelResponse]
 
 
 class ModeStatusResponse(BaseModel):
@@ -1210,6 +1220,32 @@ async def settings_provider_keys():
         provider.id: get_key(provider.id) is not None
         for provider in settings_service.get().providers
     }
+
+
+@app.get(
+    "/api/settings/providers/{provider_id}/models",
+    response_model=ProviderModelsResponse,
+)
+@limiter.limit("10/minute")
+async def settings_provider_models(request: Request, provider_id: str):
+    """List the models a configured provider advertises. 502 when the fetch fails."""
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    provider = next(
+        (entry for entry in settings_service.get().providers if entry.id == provider_id), None
+    )
+    if provider is None:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {provider_id}")
+
+    try:
+        models = await fetch_provider_models(provider, get_key(provider_id))
+    except ProviderError as exc:
+        logger.warning(f"Provider {provider_id} model list failed: {exc.detail}")
+        raise HTTPException(status_code=502, detail=exc.detail) from exc
+    return ProviderModelsResponse(
+        models=[ProviderModelResponse(id=model.id, name=model.name) for model in models]
+    )
 
 
 # --- Processing ---

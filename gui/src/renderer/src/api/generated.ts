@@ -506,6 +506,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/providers/{provider_id}/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Settings Provider Models
+         * @description List the models a configured provider advertises. 502 when the fetch fails.
+         */
+        get: operations["settings_provider_models_api_settings_providers__provider_id__models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transcribe/batch": {
         parameters: {
             query?: never;
@@ -1069,6 +1089,18 @@ export interface components {
          * @enum {string}
          */
         ProviderKind: "local" | "openai" | "groq" | "custom";
+        /** ProviderModelResponse */
+        ProviderModelResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name?: string | null;
+        };
+        /** ProviderModelsResponse */
+        ProviderModelsResponse: {
+            /** Models */
+            models: components["schemas"]["ProviderModelResponse"][];
+        };
         /** SettingsUpdateRequest */
         SettingsUpdateRequest: {
             active_mode?: components["schemas"]["ProcessingMode"] | null;
@@ -1942,6 +1974,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProviderKeyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    settings_provider_models_api_settings_providers__provider_id__models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderModelsResponse"];
                 };
             };
             /** @description Validation Error */

@@ -15,6 +15,7 @@ import type {
   FocusedAppResponse,
   LlmProvider,
   ProviderKind,
+  ProviderModel,
   Settings,
   ToneProfile
 } from '../../api/types'
@@ -98,6 +99,9 @@ export default function ProcessingSettings(): JSX.Element {
   const [hasKeys, setHasKeys] = useState<Record<string, boolean>>({})
   const [keyDrafts, setKeyDrafts] = useState<Record<string, string>>({})
   const [savingKeyId, setSavingKeyId] = useState<string | null>(null)
+  const [providerModels, setProviderModels] = useState<Record<string, ProviderModel[]>>({})
+  const [loadingModelsId, setLoadingModelsId] = useState<string | null>(null)
+  const [modelErrors, setModelErrors] = useState<Record<string, string>>({})
   const [focusedApp, setFocusedApp] = useState<FocusedAppResponse | null>(null)
   const [focusedAppLoaded, setFocusedAppLoaded] = useState(false)
 
@@ -192,6 +196,22 @@ export default function ProcessingSettings(): JSX.Element {
         i === index ? { ...profile, ...patch } : profile
       )
     }))
+  }
+
+  const loadModels = async (provider: LlmProvider): Promise<void> => {
+    setLoadingModelsId(provider.id)
+    setModelErrors((current) => ({ ...current, [provider.id]: '' }))
+    try {
+      const response = await apiClient.getProviderModels(provider.id)
+      setProviderModels((current) => ({ ...current, [provider.id]: response.models }))
+    } catch (modelError) {
+      setModelErrors((current) => ({
+        ...current,
+        [provider.id]: modelError instanceof Error ? modelError.message : 'Failed to load models'
+      }))
+    } finally {
+      setLoadingModelsId(null)
+    }
   }
 
   const handleSaveKey = async (providerId: string, key: string): Promise<void> => {
@@ -348,14 +368,45 @@ export default function ProcessingSettings(): JSX.Element {
                       </div>
                       <div>
                         <label className="label">Model</label>
-                        <input
-                          type="text"
-                          value={provider.model}
-                          onChange={(e) => updateProvider(provider.id, { model: e.target.value })}
-                          disabled={isSaving}
-                          placeholder={provider.kind === 'custom' ? 'model id' : undefined}
-                          className="input w-full"
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            list={`provider-models-${provider.id}`}
+                            value={provider.model}
+                            onChange={(e) => updateProvider(provider.id, { model: e.target.value })}
+                            disabled={isSaving}
+                            placeholder={provider.kind === 'custom' ? 'model id' : undefined}
+                            className="input w-full"
+                          />
+                          <datalist id={`provider-models-${provider.id}`}>
+                            {(providerModels[provider.id] ?? []).map((model) => (
+                              <option key={model.id} value={model.id}>
+                                {model.name ?? undefined}
+                              </option>
+                            ))}
+                          </datalist>
+                          <button
+                            onClick={() => void loadModels(provider)}
+                            disabled={!persisted || loadingModelsId === provider.id || isSaving}
+                            className="px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] rounded-md border border-[var(--color-border)] transition-colors disabled:opacity-50 whitespace-nowrap"
+                            title={
+                              persisted ? 'Load models from the provider' : 'Save settings first'
+                            }
+                          >
+                            {loadingModelsId === provider.id ? 'Loading...' : 'Load models'}
+                          </button>
+                        </div>
+                        {providerModels[provider.id] && (
+                          <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                            {providerModels[provider.id].length}{' '}
+                            {providerModels[provider.id].length === 1 ? 'model' : 'models'} available
+                          </p>
+                        )}
+                        {modelErrors[provider.id] && (
+                          <p className="text-xs text-[var(--color-error)] mt-1">
+                            {modelErrors[provider.id]}
+                          </p>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <label className="label">Base URL</label>
