@@ -384,6 +384,7 @@ async function main() {
           return {
             marker: new RegExp(${JSON.stringify(route.marker.source)}, 'i').test(text),
             length: text.trim().length,
+            words: text.trim() ? text.trim().split(/\\s+/).length : 0,
             broken: /System Malfunction|Something went wrong|Failed to load/i.test(text)
           };
         })()`
@@ -391,13 +392,13 @@ async function main() {
         try {
           await waitFor(`route ${route.path} content`, async () => {
             const state = await cdp.evaluate(check)
-            return state.marker && state.length > 40 && !state.broken ? state : null
+            return state.marker && state.words >= 15 && !state.broken ? state : null
           }, ROUTE_TIMEOUT_MS, 400)
         } catch (error) {
           const state = await cdp.evaluate(check).catch(() => null)
           routeFailures.push(
             `${route.path} did not render: ${error.message}` +
-              (state ? ` (length=${state.length} broken=${state.broken})` : '')
+              (state ? ` (words=${state.words} broken=${state.broken})` : '')
           )
         }
 

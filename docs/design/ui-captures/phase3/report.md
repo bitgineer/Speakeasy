@@ -1,8 +1,8 @@
-# Phase 3 report (uncommitted; branch feat/ui-overhaul, HEAD 4ca5c56)
+# Phase 3 report (committed d4b8248; branch feat/ui-overhaul)
 
 ## Files changed
 - `gui/scripts/capture-ui.mjs` (new) isolated 900x670 route harness; `gui/scripts/fixtures/capture-history.json` (new) 4-record seed incl. AI-processed and long text; `gui/package.json` adds `capture:ui`.
-- `gui/src/renderer/src/lib/navigation.ts` (new) one nav table for sidebar and breadcrumb.
+- `gui/src/renderer/src/utils/navigation.ts` (new) one nav table for sidebar and breadcrumb. It first landed under `lib/`, which the root ignore rule swallows, so it moved.
 - `gui/src/renderer/src/components/Sidebar.tsx` compact 34px rows, uppercase Settings label, lucide glyphs, aria-current, connection footer.
 - `gui/src/renderer/src/App.tsx` shell grid, topbar (breadcrumb + status), skip link.
 - `gui/src/renderer/src/pages/Dashboard.tsx` page head, counts, Export, mode segmented row, search row, pinned pagination.
@@ -36,4 +36,6 @@ Baseline light files are byte-identical to dark (no light theme existed at 14612
 - `--theme` forces `data-theme`/`data-accent` so captures are deterministic.
 - `ExportDialog.tsx` untouched (dialog pass is Phase 6; its legacy aliases remain).
 - A's mode/tone record pills omitted: `TranscriptionRecord` carries no mode or tone field.
-- Live pass via verify-speakeasy: search, clear, copy, Original/Processed, delete with confirm (DB 64 -> 63), next/first page, mode chip write (`active_mode=write`), export dialog open/cancel.
+- Live pass via verify-speakeasy: search, clear, copy, Original/Processed, delete with confirm, next/first page, mode chip write (`active_mode=write`), export dialog open/cancel.
+- The live-pass delete hit the isolated scratch store (`.verify/runs/20260923-190207/home/.speakeasy/speakeasy.db`, 64 to 63 rows). The real store was not modified; its mtime predates the run and it holds 1329 rows.
+- Route markers were hardened after review: a route now needs its marker plus at least 15 words of `main` text, so a blank page cannot pass.
