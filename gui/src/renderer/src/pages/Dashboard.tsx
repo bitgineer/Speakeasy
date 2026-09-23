@@ -12,6 +12,7 @@ import HistoryItemSkeleton from "../components/HistoryItemSkeleton";
 import ExportDialog from "../components/ExportDialog";
 import Pagination from "../components/Pagination";
 import ModelLoadingBanner from "../components/ModelLoadingBanner";
+import ModeChips from "../components/ModeChips";
 import { perfMonitor } from "../utils/performance";
 
 export default function Dashboard(): JSX.Element {
@@ -160,6 +161,7 @@ export default function Dashboard(): JSX.Element {
         </div>
 
         <div className="flex items-center gap-4">
+          <ModeChips />
           <div className="text-sm text-[var(--color-text-muted)]">
             {total > 0 && (
               <span>

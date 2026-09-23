@@ -119,22 +119,6 @@
             "title": "Enable Text Cleanup",
             "type": "boolean"
           },
-          "hotkey": {
-            "default": "ctrl+shift+space",
-            "description": "Global hotkey combination",
-            "title": "Hotkey",
-            "type": "string"
-          },
-          "hotkey_mode": {
-            "default": "toggle",
-            "description": "Hotkey mode: 'toggle' or 'push-to-talk'",
-            "enum": [
-              "toggle",
-              "push-to-talk"
-            ],
-            "title": "Hotkey Mode",
-            "type": "string"
-          },
           "hotkeys": {
             "description": "Global hotkey bindings",
             "items": {
@@ -1056,33 +1040,6 @@
               }
             ],
             "title": "Enable Text Cleanup"
-          },
-          "hotkey": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hotkey"
-          },
-          "hotkey_mode": {
-            "anyOf": [
-              {
-                "enum": [
-                  "toggle",
-                  "push-to-talk"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hotkey Mode"
           },
           "hotkeys": {
             "anyOf": [

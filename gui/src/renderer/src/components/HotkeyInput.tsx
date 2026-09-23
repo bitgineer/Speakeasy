@@ -10,6 +10,8 @@ interface HotkeyInputProps {
   value: string
   onChange: (hotkey: string) => void
   disabled?: boolean
+  label?: string
+  hint?: string
 }
 
 // Map key codes to display names
@@ -74,7 +76,9 @@ function formatHotkeyForDisplay(hotkey: string): string {
 export default function HotkeyInput({
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  label = 'Recording Hotkey',
+  hint = 'Click the input and press your desired key combination (e.g., F8, Ctrl+Shift+R)'
 }: HotkeyInputProps): JSX.Element {
   const [isCapturing, setIsCapturing] = useState(false)
   const [capturedKeys, setCapturedKeys] = useState<Set<string>>(new Set())
@@ -171,7 +175,7 @@ export default function HotkeyInput({
   
   return (
     <div>
-      <label className="label">Recording Hotkey</label>
+      {label && <label className="label">{label}</label>}
       <div className="relative">
         <input
           ref={inputRef}
@@ -207,9 +211,7 @@ export default function HotkeyInput({
           )}
         </div>
       </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Click the input and press your desired key combination (e.g., F8, Ctrl+Shift+R)
-      </p>
+      {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
     </div>
   )
 }

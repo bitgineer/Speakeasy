@@ -4,23 +4,39 @@ import { showRecordingIndicator, hideRecordingIndicator } from "./windows";
 import { setTrayRecording } from "./tray";
 import { sendToRenderer } from "./ipc-handlers";
 import { getBackendPort } from "./backend";
+import {
+  applyBindingPlan,
+  chordKeycodes,
+  chordSatisfied,
+  normalizeHotkey,
+  type HotkeyBinding,
+  type HotkeyFailure,
+  type HotkeyTrigger,
+} from "./hotkey-bindings";
 
-let currentHotkey: string | null = null;
-let currentMode: "toggle" | "push-to-talk" = "toggle";
+export type HotkeyRegisterResult = { ok: true } | { ok: false; failed: HotkeyFailure[] };
+
+let registry: HotkeyBinding[] = [];
+let recordingMode: string | null = null;
+let recordingTrigger: HotkeyTrigger | null = null;
 let isRecordingActive = false;
 let isProcessing = false; // Lock to prevent concurrent operations
 let lastHotkeyTime = 0;
-const DEBOUNCE_MS = 500; // Increased from 300 for better race condition prevention
+const DEBOUNCE_MS = 500;
 
 // Push-to-Talk Auto-Lock
 const LOCK_THRESHOLD_MS = 60000; // 60 seconds
 let lockTimer: NodeJS.Timeout | null = null;
 let isLocked = false;
-let lastPttState = false;
 
-// Track modifier + key states for push-to-talk
-const pttActiveKeys = new Set<number>();
-let pttRequiredKeys: number[] = [];
+// One shared uiohook listener drives every push-to-talk chord.
+interface ChordState {
+  binding: HotkeyBinding;
+  keys: number[];
+  pressed: Set<number>;
+  satisfied: boolean;
+}
+const pttChords = new Map<string, ChordState>();
 let uiohookStarted = false;
 
 // Electron accelerator format -> uiohook key codes
@@ -93,76 +109,148 @@ const keyCodeMap: Record<string, number> = {
   f12: UiohookKey.F12,
 };
 
-function parseHotkeyToKeycodes(hotkey: string): number[] {
-  return hotkey
-    .toLowerCase()
-    .split("+")
-    .map((k) => k.trim())
-    .map((k) => {
-      if (k === "ctrl" || k === "control") return UiohookKey.Ctrl;
-      return keyCodeMap[k] ?? 0;
-    })
-    .filter((k) => k !== 0);
+function debounceAllows(): boolean {
+  const now = Date.now();
+  if (now - lastHotkeyTime < DEBOUNCE_MS) return false;
+  lastHotkeyTime = now;
+  return true;
 }
 
-function normalizeHotkey(hotkey: string): string {
-  return hotkey
-    .split("+")
-    .map((part) => {
-      const lower = part.toLowerCase().trim();
-      switch (lower) {
-        case "ctrl":
-        case "control":
-          return "CommandOrControl";
-        case "cmd":
-        case "command":
-          return "Command";
-        case "alt":
-          return "Alt";
-        case "shift":
-          return "Shift";
-        case "space":
-          return "Space";
-        case "enter":
-        case "return":
-          return "Return";
-        case "esc":
-        case "escape":
-          return "Escape";
-        case "tab":
-          return "Tab";
-        case "backspace":
-          return "Backspace";
-        case "delete":
-          return "Delete";
-        case "up":
-          return "Up";
-        case "down":
-          return "Down";
-        case "left":
-          return "Left";
-        case "right":
-          return "Right";
-        default:
-          if (lower.length === 1) return lower.toUpperCase();
-          if (lower.match(/^f\d+$/)) return lower.toUpperCase();
-          return part;
+function handleTogglePress(binding: HotkeyBinding): void {
+  if (isProcessing) return;
+  if (!debounceAllows()) return;
+
+  if (isRecordingActive) {
+    stopRecording();
+  } else {
+    startFromBinding(binding);
+  }
+}
+
+function installToggle(binding: HotkeyBinding): string | null {
+  const accelerator = normalizeHotkey(binding.accelerator);
+  const registered = globalShortcut.register(accelerator, () => handleTogglePress(binding));
+  if (!registered) return `failed to register ${accelerator}`;
+  return null;
+}
+
+function installPushToTalk(binding: HotkeyBinding): string | null {
+  const accelerator = normalizeHotkey(binding.accelerator);
+  const keys = chordKeycodes(accelerator, keyCodeMap);
+  if (keys.length === 0) return `could not parse accelerator: ${binding.accelerator}`;
+
+  pttChords.set(accelerator, { binding, keys, pressed: new Set(), satisfied: false });
+  ensureUiohookListener();
+  return null;
+}
+
+function installBinding(binding: HotkeyBinding): string | null {
+  return binding.trigger === "push-to-talk" ? installPushToTalk(binding) : installToggle(binding);
+}
+
+function uninstallBinding(binding: HotkeyBinding): void {
+  const accelerator = normalizeHotkey(binding.accelerator);
+  if (binding.trigger === "push-to-talk") {
+    pttChords.delete(accelerator);
+  } else {
+    globalShortcut.unregister(accelerator);
+  }
+}
+
+/**
+ * Transactional registry update. Unregisters removed/changed accelerators,
+ * registers added/changed ones, and on any failure puts the previous set back.
+ *
+ * Failure entries carry the accelerators that could not be registered. A
+ * `restore failed:` entry means that previous binding could not be put back
+ * either; the registry drops it so a later call retries instead of treating it
+ * as still active.
+ */
+export function registerHotkeys(bindings: HotkeyBinding[]): HotkeyRegisterResult {
+  const result = applyBindingPlan(registry, bindings, {
+    install: installBinding,
+    uninstall: uninstallBinding,
+  });
+  registry = result.registry;
+
+  if (result.failed.length > 0) {
+    console.error(
+      `Hotkey registration failed for: ${result.failed
+        .map((failure) => failure.accelerator)
+        .join(", ")}`,
+    );
+    return { ok: false, failed: result.failed };
+  }
+
+  console.log(`Registered ${registry.length} hotkey binding(s)`);
+  return { ok: true };
+}
+
+export function unregisterAllHotkeys(): void {
+  for (const binding of registry) uninstallBinding(binding);
+  registry = [];
+  pttChords.clear();
+}
+
+export function getCurrentBindings(): HotkeyBinding[] {
+  return registry.slice();
+}
+
+function ensureUiohookListener(): void {
+  if (uiohookStarted) return;
+  uIOhook.on("keydown", handleKeydown);
+  uIOhook.on("keyup", handleKeyup);
+  uIOhook.start();
+  uiohookStarted = true;
+}
+
+function handleKeydown(e: { keycode: number }): void {
+  for (const chord of pttChords.values()) {
+    chord.pressed.add(e.keycode);
+    const satisfied = chordSatisfied(chord.pressed, chord.keys);
+
+    if (satisfied && !chord.satisfied) {
+      if (!isRecordingActive && !isProcessing) {
+        if (debounceAllows()) startFromBinding(chord.binding);
+      } else if (isRecordingActive && isLocked && !isProcessing) {
+        if (debounceAllows()) stopRecording();
       }
-    })
-    .join("+");
+    }
+
+    chord.satisfied = satisfied;
+  }
 }
 
-export async function startRecording(): Promise<void> {
+function handleKeyup(e: { keycode: number }): void {
+  for (const chord of pttChords.values()) {
+    chord.pressed.delete(e.keycode);
+    const satisfied = chordSatisfied(chord.pressed, chord.keys);
+
+    if (!satisfied && chord.satisfied && isRecordingActive && !isLocked && !isProcessing) {
+      stopRecording();
+    }
+
+    chord.satisfied = satisfied;
+  }
+}
+
+function startFromBinding(binding: HotkeyBinding): void {
+  recordingTrigger = binding.trigger;
+  startRecording(binding.mode ?? null);
+}
+
+export async function startRecording(mode: string | null = null): Promise<void> {
   if (isRecordingActive || isProcessing) return;
 
   isProcessing = true;
   try {
+    recordingMode = mode;
     isRecordingActive = true;
     isLocked = false;
     console.log("Starting recording");
 
     // Start lock timer for push-to-talk mode
-    if (currentMode === "push-to-talk") {
+    if (recordingTrigger === "push-to-talk") {
       if (lockTimer) clearTimeout(lockTimer);
       lockTimer = setTimeout(() => {
         if (isRecordingActive) {
@@ -175,7 +263,7 @@ export async function startRecording(): Promise<void> {
 
     setTrayRecording(true);
     showRecordingIndicator();
-    sendToRenderer("recording:start");
+    sendToRenderer("recording:start", { mode: recordingMode });
 
     const response = await fetch(`http://127.0.0.1:${getBackendPort()}/api/transcribe/start`, {
       method: "POST",
@@ -194,6 +282,8 @@ export async function startRecording(): Promise<void> {
   } catch (error) {
     console.error("Failed to start recording:", error);
     isRecordingActive = false;
+    recordingMode = null;
+    recordingTrigger = null;
     setTrayRecording(false);
     hideRecordingIndicator();
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -225,11 +315,15 @@ export async function stopRecording(): Promise<void> {
     // Notify renderer immediately that recording has stopped and processing started
     sendToRenderer("recording:processing");
 
+    // The mode rides only when the pressed binding carried one; null means the
+    // backend resolves active_mode at stop time.
+    const body = recordingMode === null ? {} : { mode: recordingMode };
+
     // Generous bound: transcribing a long recording is slow, but a wedged backend must eventually error instead of swallowing input.
     const response = await fetch(`http://127.0.0.1:${getBackendPort()}/api/transcribe/stop`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(15 * 60 * 1000),
     });
 
@@ -242,6 +336,8 @@ export async function stopRecording(): Promise<void> {
     console.error("Failed to stop recording:", error);
     sendToRenderer("recording:error", String(error));
   } finally {
+    recordingMode = null;
+    recordingTrigger = null;
     isProcessing = false;
   }
 }
@@ -281,132 +377,10 @@ export async function cancelRecording(): Promise<void> {
     console.error("Failed to cancel recording:", error);
     sendToRenderer("recording:error", String(error));
   } finally {
+    recordingMode = null;
+    recordingTrigger = null;
     isProcessing = false;
   }
-}
-
-function allPttKeysPressed(): boolean {
-  return pttRequiredKeys.every((k) => pttActiveKeys.has(k));
-}
-
-function setupPushToTalk(hotkey: string): void {
-  // Clean up previous listeners to prevent duplication
-  uIOhook.removeAllListeners("keydown");
-  uIOhook.removeAllListeners("keyup");
-
-  pttRequiredKeys = parseHotkeyToKeycodes(hotkey);
-  pttActiveKeys.clear();
-  lastPttState = false; // Reset state
-
-  if (pttRequiredKeys.length === 0) {
-    console.error("Could not parse hotkey for push-to-talk:", hotkey);
-    return;
-  }
-
-  console.log(`Setting up push-to-talk with keys:`, pttRequiredKeys);
-
-  uIOhook.on("keydown", (e) => {
-    pttActiveKeys.add(e.keycode);
-
-    const currentState = allPttKeysPressed();
-
-    // Handle transition from Not Pressed -> Pressed
-    if (currentState && !lastPttState) {
-      if (!isRecordingActive && !isProcessing) {
-        // Start recording (fresh press)
-        const now = Date.now();
-        if (now - lastHotkeyTime < DEBOUNCE_MS) return;
-        lastHotkeyTime = now;
-        startRecording();
-      } else if (isRecordingActive && isLocked && !isProcessing) {
-        // Stop recording (pressed again while locked)
-        const now = Date.now();
-        if (now - lastHotkeyTime < DEBOUNCE_MS) return;
-        lastHotkeyTime = now;
-        stopRecording();
-      }
-    }
-
-    lastPttState = currentState;
-  });
-
-  uIOhook.on("keyup", (e) => {
-    pttActiveKeys.delete(e.keycode);
-
-    const currentState = allPttKeysPressed();
-
-    // Handle transition from Pressed -> Not Pressed
-    if (!currentState && lastPttState) {
-      if (isRecordingActive && !isLocked && !isProcessing) {
-        // Stop recording (released and NOT locked)
-        stopRecording();
-      }
-      // If locked, we do nothing - recording continues
-    }
-
-    lastPttState = currentState;
-  });
-
-  if (!uiohookStarted) {
-    uIOhook.start();
-    uiohookStarted = true;
-  }
-}
-
-function setupToggleMode(hotkey: string): void {
-  const accelerator = normalizeHotkey(hotkey);
-  console.log(`Registering toggle hotkey: ${hotkey} -> ${accelerator}`);
-
-  const success = globalShortcut.register(accelerator, () => {
-    if (isProcessing) return;
-
-    const now = Date.now();
-    if (now - lastHotkeyTime < DEBOUNCE_MS) return;
-    lastHotkeyTime = now;
-
-    if (isRecordingActive) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  });
-
-  if (success) {
-    console.log(`Toggle hotkey registered: ${accelerator}`);
-  } else {
-    throw new Error(`Failed to register hotkey: ${accelerator}`);
-  }
-}
-
-export function registerGlobalHotkey(
-  hotkey: string,
-  mode: "toggle" | "push-to-talk" = "toggle",
-): void {
-  unregisterGlobalHotkey();
-
-  currentHotkey = hotkey;
-  currentMode = mode;
-
-  if (mode === "push-to-talk") {
-    setupPushToTalk(hotkey);
-  } else {
-    setupToggleMode(hotkey);
-  }
-}
-
-export function unregisterGlobalHotkey(): void {
-  if (currentHotkey && currentMode === "toggle") {
-    const accelerator = normalizeHotkey(currentHotkey);
-    globalShortcut.unregister(accelerator);
-    console.log(`Toggle hotkey unregistered: ${accelerator}`);
-  }
-
-  if (uiohookStarted) {
-    uIOhook.removeAllListeners();
-    pttActiveKeys.clear();
-  }
-
-  currentHotkey = null;
 }
 
 export function stopUiohook(): void {
@@ -414,14 +388,6 @@ export function stopUiohook(): void {
     uIOhook.stop();
     uiohookStarted = false;
   }
-}
-
-export function getCurrentHotkey(): string | null {
-  return currentHotkey;
-}
-
-export function getHotkeyMode(): "toggle" | "push-to-talk" {
-  return currentMode;
 }
 
 export function isRecording(): boolean {

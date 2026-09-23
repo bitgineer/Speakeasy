@@ -6,6 +6,7 @@ interface RecordingPillProps {
   onStop: () => void
   onCancel: () => void
   isLocked?: boolean
+  mode?: string | null
 }
 
 export function RecordingPill({
@@ -13,6 +14,7 @@ export function RecordingPill({
   onStop,
   onCancel,
   isLocked,
+  mode,
 }: RecordingPillProps): JSX.Element {
   const seconds = Math.floor(durationMs / 1000)
   const mins = Math.floor(seconds / 60)
@@ -45,6 +47,12 @@ export function RecordingPill({
         >
           <Lock className="w-4 h-4 text-red-400" />
         </motion.div>
+      )}
+
+      {mode && (
+        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
+          {mode}
+        </span>
       )}
 
       <span className="font-mono text-lg font-medium tracking-wide min-w-[60px] text-center">

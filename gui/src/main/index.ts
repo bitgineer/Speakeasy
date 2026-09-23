@@ -10,7 +10,7 @@ import { createTray, destroyTray } from './tray'
 import { createMainWindow, createRecordingIndicator, getMainWindow, setQuitting } from './windows'
 import { startBackend, stopBackend, MissingBackendEnvironmentError } from './backend'
 import { setupIpcHandlers } from './ipc-handlers'
-import { unregisterGlobalHotkey, stopUiohook } from './hotkey'
+import { unregisterAllHotkeys, stopUiohook } from './hotkey'
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock()
@@ -83,8 +83,8 @@ if (!gotTheLock) {
   app.on('before-quit', async () => {
     setQuitting(true)
     console.log('[BEFORE-QUIT] Starting shutdown sequence...')
-    console.log('[BEFORE-QUIT] Unregistering global hotkey...')
-    unregisterGlobalHotkey()
+    console.log('[BEFORE-QUIT] Unregistering global hotkeys...')
+    unregisterAllHotkeys()
     console.log('[BEFORE-QUIT] Hotkey unregistered. Stopping uiohook...')
     stopUiohook()
     console.log('[BEFORE-QUIT] Uiohook stopped. Stopping backend...')

@@ -7,7 +7,6 @@ Provides HTTP and WebSocket APIs for the Electron frontend.
 import asyncio
 import logging
 import os
-import re
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -18,7 +17,7 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -126,8 +125,6 @@ class SettingsUpdateRequest(BaseModel):
     device: Literal["cuda", "cpu"] | None = None
     language: str | None = Field(None, max_length=10)
     device_name: str | None = Field(None, max_length=200)
-    hotkey: str | None = Field(None, max_length=50)
-    hotkey_mode: Literal["toggle", "push-to-talk"] | None = None
     auto_paste: bool | None = None
     show_recording_indicator: bool | None = None
     always_show_indicator: bool | None = None
@@ -146,15 +143,6 @@ class SettingsUpdateRequest(BaseModel):
     command_prompt: str | None = Field(None, max_length=4000)
     providers: list[LlmProvider] | None = None
     hotkeys: list[HotkeyBinding] | None = None
-
-    @field_validator("hotkey")
-    @classmethod
-    def validate_hotkey_format(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        if not re.match(r"^[a-zA-Z0-9+]+$", v):
-            raise ValueError("Hotkey must contain only alphanumeric characters and +")
-        return v
 
 
 class SettingsUpdateResponse(BaseModel):

@@ -13,7 +13,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSpinner from './components/LoadingSpinner'
 import Sidebar from './components/Sidebar'
 import { ToastProvider } from './context/ToastProvider'
-import type { TranscriptionRecord } from './api/types'
+import { useHotkeyRegistration, useToast } from './hooks'
+import type { HotkeyBinding, HotkeyRegistrationResult, TranscriptionRecord } from './api/types'
 import type { MessageBoxOptions, MessageBoxReturnValue } from 'electron'
 
 // Lazy load components
@@ -26,6 +27,7 @@ const RecordingIndicator = lazy(() => import('./components/RecordingIndicator'))
 const ModelSettings = lazy(() => import('./pages/settings/ModelSettings'))
 const AudioSettings = lazy(() => import('./pages/settings/AudioSettings'))
 const HotkeySettings = lazy(() => import('./pages/settings/HotkeySettings'))
+const ProcessingSettings = lazy(() => import('./pages/settings/ProcessingSettings'))
 const BehaviorSettings = lazy(() => import('./pages/settings/BehaviorSettings'))
 const AppearanceSettings = lazy(() => import('./pages/settings/AppearanceSettings'))
 const DataSettings = lazy(() => import('./pages/settings/DataSettings'))
@@ -74,6 +76,7 @@ function MainLayout(): JSX.Element {
   const { fetchHealth, startRecording, setAppState } = useAppStore()
   const { upsertItem, fetchHistory } = useHistoryStore()
   const { fetchSettings, settings } = useSettingsStore()
+  const { toast } = useToast()
   
   useEffect(() => {
     configureBackendPort().then(() => {
@@ -90,11 +93,12 @@ function MainLayout(): JSX.Element {
     return () => clearInterval(interval)
   }, [fetchHealth, fetchHistory, fetchSettings])
   
-  useEffect(() => {
-    if (settings?.hotkey && window.api) {
-      window.api.registerHotkey(settings.hotkey, settings.hotkey_mode || 'toggle')
-    }
-  }, [settings?.hotkey, settings?.hotkey_mode])
+  useHotkeyRegistration(settings?.hotkeys, (failed) => {
+    const accelerators = failed.map((failure) => failure.accelerator).join(', ')
+    toast.error(
+      `Could not register hotkey${failed.length === 1 ? '' : 's'}: ${accelerators}`
+    )
+  })
    
   useEffect(() => {
     const unsubStart = window.api?.onRecordingStart(() => {
@@ -110,6 +114,7 @@ function MainLayout(): JSX.Element {
         model_used?: string | null
         language?: string | null
         original_text?: string | null
+        processing_error?: string | null
       }
       if (response?.id && response?.text) {
         const originalText = response.original_text ?? null
@@ -124,6 +129,11 @@ function MainLayout(): JSX.Element {
           is_ai_enhanced: originalText !== null && originalText !== response.text
         }
         upsertItem(record)
+      }
+      if (response?.processing_error) {
+        toast.warning(
+          `AI processing failed (${response.processing_error}). The fallback text was inserted.`
+        )
       }
     })
     
@@ -157,6 +167,7 @@ function MainLayout(): JSX.Element {
             <Route path="/settings/model" element={<ModelSettings />} />
             <Route path="/settings/audio" element={<AudioSettings />} />
             <Route path="/settings/hotkey" element={<HotkeySettings />} />
+            <Route path="/settings/processing" element={<ProcessingSettings />} />
             <Route path="/settings/behavior" element={<BehaviorSettings />} />
             <Route path="/settings/appearance" element={<AppearanceSettings />} />
             <Route path="/settings/data" element={<DataSettings />} />
@@ -209,15 +220,14 @@ declare global {
       getBackendStatus: () => Promise<{ running: boolean; port: number }>
       getBackendPort: () => Promise<number>
       checkHealth?: () => Promise<{ state: string }>
-      registerHotkey: (hotkey: string, mode?: string) => Promise<boolean>
-      unregisterHotkey: () => Promise<void>
-      getCurrentHotkey: () => Promise<string | null>
+      registerHotkeys: (bindings: HotkeyBinding[]) => Promise<HotkeyRegistrationResult>
+      getCurrentHotkeys: () => Promise<{ bindings: HotkeyBinding[] }>
       getVersion: () => Promise<string>
       quit: () => Promise<void>
       showError: (title: string, content: string) => Promise<void>
       showMessage: (options: MessageBoxOptions) => Promise<MessageBoxReturnValue>
       onNavigate: (callback: (path: string) => void) => () => void
-      onRecordingStart: (callback: () => void) => () => void
+      onRecordingStart: (callback: (payload: { mode: string | null }) => void) => () => void
       onRecordingLocked?: (callback: () => void) => () => void
       onRecordingProcessing: (callback: () => void) => () => void
       onRecordingComplete: (callback: (result: unknown) => void) => () => void

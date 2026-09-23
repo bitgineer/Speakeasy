@@ -135,14 +135,14 @@ useEffect(() => {
                     ? 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/20 hover:border-fuchsia-500/40' 
                     : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] border border-transparent hover:text-[var(--color-text-primary)]'}
                 `}
-                title={showOriginal ? 'Switch to Enhanced' : 'Switch to Original'}
+                title={showOriginal ? 'Switch to Processed' : 'Switch to Original'}
               >
                 {!showOriginal && (
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 )}
-                {!showOriginal ? 'Enhanced' : 'Original'}
+                {!showOriginal ? 'Processed' : 'Original'}
               </button>
             </>
           )}

@@ -147,7 +147,7 @@ class TestSettingsServiceLoad:
                 os.chmod(temp_settings_path, 0o644)
 
     def test_load_migrates_legacy_hotkey_into_binding(self, temp_settings_path):
-        """A legacy file yields one mode-less binding and keeps the legacy fields."""
+        """A legacy file yields one mode-less binding and drops the legacy fields."""
         legacy = {"hotkey": "ctrl+alt+r", "hotkey_mode": "push-to-talk"}
         temp_settings_path.write_text(json.dumps(legacy))
 
@@ -156,8 +156,8 @@ class TestSettingsServiceLoad:
         assert settings.hotkeys == [
             HotkeyBinding(accelerator="ctrl+alt+r", trigger="push-to-talk", mode=None)
         ]
-        assert settings.hotkey == "ctrl+alt+r"
-        assert settings.hotkey_mode == "push-to-talk"
+        assert "hotkey" not in settings.model_dump()
+        assert "hotkey_mode" not in settings.model_dump()
 
     def test_load_migrates_legacy_hotkey_mode_alone(self, temp_settings_path):
         temp_settings_path.write_text(json.dumps({"hotkey_mode": "push-to-talk"}))

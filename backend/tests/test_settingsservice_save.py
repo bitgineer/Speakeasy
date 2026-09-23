@@ -118,8 +118,6 @@ class TestSettingsServiceSave:
             "device",
             "language",
             "device_name",
-            "hotkey",
-            "hotkey_mode",
             "auto_paste",
             "show_recording_indicator",
             "always_show_indicator",

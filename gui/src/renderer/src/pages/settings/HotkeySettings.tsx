@@ -1,14 +1,32 @@
 /**
  * Hotkey Settings Page
- * 
- * Configuration for keyboard shortcuts.
+ *
+ * Edits the global hotkey binding list: accelerator, trigger, and mode.
  */
 
 import { useEffect, useState, useRef } from 'react'
 import { useSettingsStore } from '../../store'
+import { useToast } from '../../hooks/useToast'
 import HotkeyInput from '../../components/HotkeyInput'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import type { HotkeyBinding, ProcessingMode, Settings } from '../../api/types'
+
+const TRIGGERS: HotkeyBinding['trigger'][] = ['toggle', 'push-to-talk']
+const MODES: { value: '' | ProcessingMode; label: string }[] = [
+  { value: '', label: 'Active mode' },
+  { value: 'write', label: 'Write' },
+  { value: 'command', label: 'Command' },
+  { value: 'dictate', label: 'Dictate' }
+]
+
+function toDraft(settings: Settings): HotkeyBinding[] {
+  return (settings.hotkeys ?? []).map((binding) => ({
+    accelerator: binding.accelerator,
+    trigger: binding.trigger,
+    mode: binding.mode ?? null
+  }))
+}
 
 export default function HotkeySettings(): JSX.Element {
   const {
@@ -20,14 +38,11 @@ export default function HotkeySettings(): JSX.Element {
     updateSettings,
     clearError
   } = useSettingsStore()
+  const { toast } = useToast()
 
-  const [localSettings, setLocalSettings] = useState({
-    hotkey: '',
-    hotkey_mode: 'toggle' as 'toggle' | 'push-to-talk'
-  })
-
+  const [bindings, setBindings] = useState<HotkeyBinding[]>([])
   const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle')
-  const originalSettings = useRef(localSettings)
+  const originalSettings = useRef<HotkeyBinding[]>([])
 
   useKeyboardShortcuts({
     onSave: () => handleSave(),
@@ -35,48 +50,66 @@ export default function HotkeySettings(): JSX.Element {
   })
 
   useEffect(() => {
-    const isDirty = JSON.stringify(localSettings) !== JSON.stringify(originalSettings.current)
-    if (isDirty && saveStatus !== 'saving') {
-      setSaveStatus('unsaved')
-    } else if (!isDirty && saveStatus === 'unsaved') {
-      setSaveStatus('idle')
-    }
-  }, [localSettings, saveStatus])
-
-  useEffect(() => {
     fetchSettings()
   }, [fetchSettings])
 
   useEffect(() => {
     if (settings) {
-      const newSettings = {
-        hotkey: settings.hotkey,
-        hotkey_mode: settings.hotkey_mode || 'toggle'
-      }
-      setLocalSettings(newSettings)
-      originalSettings.current = newSettings
+      const draft = toDraft(settings)
+      setBindings(draft)
+      originalSettings.current = draft
     }
   }, [settings])
 
-  const handleSave = async (): Promise<void> => {
-    setSaveStatus('saving')
-    const success = await updateSettings({
-      hotkey: localSettings.hotkey,
-      hotkey_mode: localSettings.hotkey_mode
-    })
-    
-    if (success) {
-      setSaveStatus('saved')
-      originalSettings.current = localSettings
-
-      // Register the hotkey with Electron
-      if (localSettings.hotkey && window.api) {
-        await window.api.registerHotkey(localSettings.hotkey, localSettings.hotkey_mode)
-      } else if (!localSettings.hotkey && window.api) {
-        await window.api.unregisterHotkey()
-      }
-    } else {
+  useEffect(() => {
+    const isDirty = JSON.stringify(bindings) !== JSON.stringify(originalSettings.current)
+    if (isDirty && saveStatus !== 'saving') {
       setSaveStatus('unsaved')
+    } else if (!isDirty && saveStatus === 'unsaved') {
+      setSaveStatus('idle')
+    }
+  }, [bindings, saveStatus])
+
+  const updateBinding = (index: number, patch: Partial<HotkeyBinding>): void => {
+    setBindings((current) =>
+      current.map((binding, i) => (i === index ? { ...binding, ...patch } : binding))
+    )
+  }
+
+  const duplicateAccelerator = (index: number): boolean => {
+    const accelerator = bindings[index]?.accelerator.trim().toLowerCase()
+    if (!accelerator) return false
+    return bindings.some(
+      (binding, i) => i !== index && binding.accelerator.trim().toLowerCase() === accelerator
+    )
+  }
+
+  const invalid =
+    bindings.some((binding) => binding.accelerator.trim() === '') ||
+    bindings.some((_, index) => duplicateAccelerator(index))
+
+  const handleSave = async (): Promise<void> => {
+    if (invalid) return
+    setSaveStatus('saving')
+    const payload = bindings.map((binding) => ({ ...binding, accelerator: binding.accelerator.trim() }))
+    const success = await updateSettings({ hotkeys: payload })
+
+    if (!success) {
+      setSaveStatus('unsaved')
+      return
+    }
+
+    setSaveStatus('saved')
+    originalSettings.current = payload
+
+    if (window.api) {
+      const result = await window.api.registerHotkeys(payload)
+      if (!result.ok) {
+        const failed = result.failed.map((failure) => failure.accelerator).join(', ')
+        toast.error(
+          `Hotkeys were saved but could not be registered: ${failed}. Another app may be using them.`
+        )
+      }
     }
   }
 
@@ -94,14 +127,17 @@ export default function HotkeySettings(): JSX.Element {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Hotkey Settings</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">Configure keyboard shortcuts for recording</p>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">
+            Global shortcuts for recording. Each binding can dedicate a processing mode.
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <SaveStatusIndicator status={saveStatus} />
           <button
             onClick={handleSave}
-            disabled={isSaving || saveStatus === 'idle' || saveStatus === 'saved'}
+            disabled={isSaving || invalid || saveStatus === 'idle' || saveStatus === 'saved'}
             className="btn-primary"
+            title={invalid ? 'Every binding needs a unique, non-empty accelerator' : undefined}
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
@@ -121,55 +157,112 @@ export default function HotkeySettings(): JSX.Element {
       )}
 
       <div className="space-y-6">
-        {/* Hotkey Configuration */}
         <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Recording Hotkey</h2>
-          <HotkeyInput
-            value={localSettings.hotkey}
-            onChange={(hotkey) => setLocalSettings(prev => ({ ...prev, hotkey }))}
-            disabled={isSaving}
-          />
-          <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-            Press any key combination to set it as your recording hotkey.
-            The hotkey works globally even when the app is in the background.
-          </p>
-        </section>
-
-        {/* Hotkey Mode */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Hotkey Mode</h2>
-          <div className="flex gap-4">
-            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-[var(--color-border)] flex-1 hover:bg-[var(--color-bg-tertiary)] transition-colors">
-              <input
-                type="radio"
-                name="hotkey_mode"
-                value="toggle"
-                checked={localSettings.hotkey_mode === 'toggle'}
-                onChange={() => setLocalSettings(prev => ({ ...prev, hotkey_mode: 'toggle' }))}
-                disabled={isSaving}
-                className="w-4 h-4 mt-1 text-[var(--color-accent)] bg-[var(--color-bg-secondary)] border-[var(--color-border)]"
-              />
-              <div>
-                <span className="text-[var(--color-text-primary)] font-medium">Toggle</span>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">Press to start, press again to stop</p>
-              </div>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-[var(--color-border)] flex-1 hover:bg-[var(--color-bg-tertiary)] transition-colors">
-              <input
-                type="radio"
-                name="hotkey_mode"
-                value="push-to-talk"
-                checked={localSettings.hotkey_mode === 'push-to-talk'}
-                onChange={() => setLocalSettings(prev => ({ ...prev, hotkey_mode: 'push-to-talk' }))}
-                disabled={isSaving}
-                className="w-4 h-4 mt-1 text-[var(--color-accent)] bg-[var(--color-bg-secondary)] border-[var(--color-border)]"
-              />
-              <div>
-                <span className="text-[var(--color-text-primary)] font-medium">Push-to-talk</span>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">Hold to record, release to stop</p>
-              </div>
-            </label>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-medium text-[var(--color-text-primary)]">Recording Hotkeys</h2>
+            <button
+              onClick={() =>
+                setBindings((current) => [
+                  ...current,
+                  { accelerator: '', trigger: 'toggle', mode: null }
+                ])
+              }
+              disabled={isSaving}
+              className="px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] rounded-lg border border-[var(--color-border)] transition-colors disabled:opacity-50"
+            >
+              Add binding
+            </button>
           </div>
+
+          {bindings.length === 0 ? (
+            <p className="text-sm text-[var(--color-text-muted)] py-4 text-center">
+              No hotkeys configured. Recording still works from the overlay.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {bindings.map((binding, index) => (
+                <div
+                  key={index}
+                  className="p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] space-y-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <HotkeyInput
+                        value={binding.accelerator}
+                        onChange={(accelerator) => updateBinding(index, { accelerator })}
+                        disabled={isSaving}
+                        label=""
+                        hint=""
+                      />
+                    </div>
+                    <button
+                      onClick={() =>
+                        setBindings((current) => current.filter((_, i) => i !== index))
+                      }
+                      disabled={isSaving}
+                      className="mt-1 p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)] rounded transition-colors disabled:opacity-50"
+                      title="Remove binding"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className="label">Trigger</label>
+                      <select
+                        value={binding.trigger}
+                        onChange={(e) =>
+                          updateBinding(index, {
+                            trigger: e.target.value as HotkeyBinding['trigger']
+                          })
+                        }
+                        disabled={isSaving}
+                        className="select w-full"
+                      >
+                        {TRIGGERS.map((trigger) => (
+                          <option key={trigger} value={trigger}>
+                            {trigger === 'toggle' ? 'Toggle' : 'Push-to-talk'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="label">Mode</label>
+                      <select
+                        value={binding.mode ?? ''}
+                        onChange={(e) =>
+                          updateBinding(index, {
+                            mode: e.target.value === '' ? null : (e.target.value as ProcessingMode)
+                          })
+                        }
+                        disabled={isSaving}
+                        className="select w-full"
+                      >
+                        {MODES.map((mode) => (
+                          <option key={mode.value} value={mode.value}>
+                            {mode.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {duplicateAccelerator(index) && (
+                    <p className="text-xs text-[var(--color-error)]">
+                      This accelerator is used by another binding.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="mt-4 text-xs text-[var(--color-text-muted)]">
+            Toggle starts and stops on each press. Push-to-talk records while held; hold for 60
+            seconds to lock the recording. Bindings set to &quot;Active mode&quot; use the mode
+            selected on the Dashboard.
+          </p>
         </section>
       </div>
     </div>

@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import AppSettings, SettingsService
+from speakeasy.services.settings import AppSettings, HotkeyBinding, SettingsService
 
 
 class TestSettingsServiceReset:
@@ -40,7 +40,7 @@ class TestSettingsServiceReset:
         service.load()
         service._settings.model_type = "canary"
         service._settings.model_name = "nvidia/canary-1b"
-        service._settings.hotkey = "ctrl+space"
+        service._settings.hotkeys = [HotkeyBinding(accelerator="ctrl+space")]
 
         # Reset
         service.reset()
@@ -48,7 +48,7 @@ class TestSettingsServiceReset:
         # All should be defaults
         assert service._settings.model_type == "parakeet"
         assert service._settings.model_name == "nvidia/parakeet-tdt-0.6b-v3"
-        assert service._settings.hotkey == "ctrl+shift+space"
+        assert service._settings.hotkeys == [HotkeyBinding(accelerator="ctrl+shift+space")]
 
     def test_reset_saves_to_file(self, temp_settings_path):
         """Test that reset saves defaults to file."""

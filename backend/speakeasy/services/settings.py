@@ -98,12 +98,6 @@ class AppSettings(BaseModel):
     # Audio settings
     device_name: str | None = Field(default=None, description="Audio input device name")
 
-    # Hotkey settings
-    hotkey: str = Field(default="ctrl+shift+space", description="Global hotkey combination")
-    hotkey_mode: Literal["toggle", "push-to-talk"] = Field(
-        default="toggle", description="Hotkey mode: 'toggle' or 'push-to-talk'"
-    )
-
     # Processing settings
     active_mode: ProcessingMode = Field(
         default=ProcessingMode.DICTATE, description="Mode the primary hotkey records in"

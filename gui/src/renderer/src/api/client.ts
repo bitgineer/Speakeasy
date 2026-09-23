@@ -28,7 +28,11 @@ import type {
   BatchCreateResponse,
   BatchJob,
   BatchListResponse,
-  BatchRetryRequest
+  BatchRetryRequest,
+  ProcessingStatusResponse,
+  ProviderKeyResponse,
+  ProviderKeysResponse,
+  FocusedAppResponse
 } from './types'
 import { createCache } from './cache'
 import { perfMonitor } from '../utils/performance'
@@ -261,6 +265,27 @@ class ApiClient {
     })
     this.cache.invalidate('/api/settings')
     return result
+  }
+
+  // Processing
+
+  async getProcessingStatus(): Promise<ProcessingStatusResponse> {
+    return this.request<ProcessingStatusResponse>('/api/processing/status')
+  }
+
+  async getProviderKeys(): Promise<ProviderKeysResponse> {
+    return this.request<ProviderKeysResponse>('/api/settings/provider-keys')
+  }
+
+  async setProviderKey(providerId: string, key: string): Promise<ProviderKeyResponse> {
+    return this.request<ProviderKeyResponse>(
+      `/api/settings/providers/${encodeURIComponent(providerId)}/key`,
+      { method: 'PUT', body: JSON.stringify({ key }) }
+    )
+  }
+
+  async getFocusedApp(): Promise<FocusedAppResponse | null> {
+    return this.request<FocusedAppResponse | null>('/api/focused-app')
   }
 
    // Models

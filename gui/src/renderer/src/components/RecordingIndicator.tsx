@@ -8,6 +8,7 @@ import { TranscribingLine } from './Overlay/TranscribingLine'
 export default function RecordingIndicator(): JSX.Element | null {
   const [status, setStatus] = useState<'recording' | 'transcribing' | 'idle' | 'locked' | 'loading'>('idle')
   const [duration, setDuration] = useState(0)
+  const [recordingMode, setRecordingMode] = useState<string | null>(null)
   const startTimeRef = useRef<number>(0)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -117,7 +118,8 @@ export default function RecordingIndicator(): JSX.Element | null {
       if (isActive) setStatus('recording')
     })
 
-    const unsubStart = window.api?.onRecordingStart(() => {
+    const unsubStart = window.api?.onRecordingStart((payload) => {
+      setRecordingMode(payload?.mode ?? null)
       setStatus('recording')
       setDuration(0)
       setLiveText('')
@@ -134,12 +136,14 @@ export default function RecordingIndicator(): JSX.Element | null {
 
     const unsubComplete = window.api?.onRecordingComplete(() => {
       setStatus('idle')
+      setRecordingMode(null)
       setLiveText('')
       startTimeRef.current = 0
     })
     
     const unsubError = window.api?.onRecordingError(() => {
       setStatus('idle')
+      setRecordingMode(null)
       startTimeRef.current = 0
     })
     
@@ -206,7 +210,7 @@ export default function RecordingIndicator(): JSX.Element | null {
         )}
 
         {status === 'idle' && (
-          <IdlePill onClick={handleStart} />
+          <IdlePill onClick={handleStart} mode={settings?.active_mode} />
         )}
 
         {(status === 'recording' || status === 'locked') && (
@@ -215,6 +219,7 @@ export default function RecordingIndicator(): JSX.Element | null {
             onStop={handleStop}
             onCancel={handleCancel}
             isLocked={status === 'locked'}
+            mode={recordingMode}
           />
         )}
 

@@ -750,19 +750,6 @@ export interface components {
              */
             enable_text_cleanup: boolean;
             /**
-             * Hotkey
-             * @description Global hotkey combination
-             * @default ctrl+shift+space
-             */
-            hotkey: string;
-            /**
-             * Hotkey Mode
-             * @description Hotkey mode: 'toggle' or 'push-to-talk'
-             * @default toggle
-             * @enum {string}
-             */
-            hotkey_mode: "toggle" | "push-to-talk";
-            /**
              * Hotkeys
              * @description Global hotkey bindings
              */
@@ -1106,10 +1093,6 @@ export interface components {
             device_name?: string | null;
             /** Enable Text Cleanup */
             enable_text_cleanup?: boolean | null;
-            /** Hotkey */
-            hotkey?: string | null;
-            /** Hotkey Mode */
-            hotkey_mode?: ("toggle" | "push-to-talk") | null;
             /** Hotkeys */
             hotkeys?: components["schemas"]["HotkeyBinding"][] | null;
             /** Language */
