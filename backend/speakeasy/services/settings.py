@@ -7,6 +7,7 @@ Uses Pydantic for validation and JSON file for persistence.
 import json
 import logging
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -23,7 +24,9 @@ class AppSettings(BaseModel):
         description="Model name or HuggingFace repo ID",
     )
     compute_type: str = Field(default="float16", description="Compute precision")
-    device: str = Field(default="cuda", description="Device to run on (cuda/cpu)")
+    device: Literal["cuda", "cpu"] = Field(
+        default="cuda", description="Device to run on (cuda/cpu)"
+    )
     language: str = Field(default="auto", description="Language code or 'auto'")
 
     # Audio settings
@@ -31,7 +34,7 @@ class AppSettings(BaseModel):
 
     # Hotkey settings
     hotkey: str = Field(default="ctrl+shift+space", description="Global hotkey combination")
-    hotkey_mode: str = Field(
+    hotkey_mode: Literal["toggle", "push-to-talk"] = Field(
         default="toggle", description="Hotkey mode: 'toggle' or 'push-to-talk'"
     )
 

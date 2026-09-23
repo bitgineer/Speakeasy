@@ -21,6 +21,8 @@ from typing import Any
 
 import aiosqlite
 
+from ..contracts import BatchProgressEvent
+
 logger = logging.getLogger(__name__)
 
 
@@ -403,15 +405,15 @@ class BatchService:
             # Broadcast initial progress
             await broadcast_fn(
                 "batch_progress",
-                {
-                    "job_id": job_id,
-                    "status": job.status.value,
-                    "current_file": None,
-                    "current_index": 0,
-                    "total_files": len(job.files),
-                    "completed": 0,
-                    "failed": 0,
-                },
+                BatchProgressEvent(
+                    job_id=job_id,
+                    status=job.status.value,
+                    current_file=None,
+                    current_index=0,
+                    total_files=len(job.files),
+                    completed=0,
+                    failed=0,
+                ).model_dump(),
             )
 
             completed_count = 0
@@ -430,15 +432,15 @@ class BatchService:
                 # Broadcast file start
                 await broadcast_fn(
                     "batch_progress",
-                    {
-                        "job_id": job_id,
-                        "status": job.status.value,
-                        "current_file": bf.filename,
-                        "current_index": index,
-                        "total_files": len(job.files),
-                        "completed": completed_count,
-                        "failed": failed_count,
-                    },
+                    BatchProgressEvent(
+                        job_id=job_id,
+                        status=job.status.value,
+                        current_file=bf.filename,
+                        current_index=index,
+                        total_files=len(job.files),
+                        completed=completed_count,
+                        failed=failed_count,
+                    ).model_dump(),
                 )
 
                 # Retry logic: 1 retry allowed
@@ -511,16 +513,16 @@ class BatchService:
                 # Broadcast file completion
                 await broadcast_fn(
                     "batch_progress",
-                    {
-                        "job_id": job_id,
-                        "status": job.status.value,
-                        "current_file": bf.filename,
-                        "current_index": index + 1,
-                        "total_files": len(job.files),
-                        "completed": completed_count,
-                        "failed": failed_count,
-                        "file_status": bf.status.value,
-                    },
+                    BatchProgressEvent(
+                        job_id=job_id,
+                        status=job.status.value,
+                        current_file=bf.filename,
+                        current_index=index + 1,
+                        total_files=len(job.files),
+                        completed=completed_count,
+                        failed=failed_count,
+                        file_status=bf.status.value,
+                    ).model_dump(),
                 )
 
             # Finalize job status
@@ -537,15 +539,15 @@ class BatchService:
             # Final broadcast
             await broadcast_fn(
                 "batch_progress",
-                {
-                    "job_id": job_id,
-                    "status": job.status.value,
-                    "current_file": None,
-                    "current_index": len(job.files),
-                    "total_files": len(job.files),
-                    "completed": completed_count,
-                    "failed": failed_count,
-                },
+                BatchProgressEvent(
+                    job_id=job_id,
+                    status=job.status.value,
+                    current_file=None,
+                    current_index=len(job.files),
+                    total_files=len(job.files),
+                    completed=completed_count,
+                    failed=failed_count,
+                ).model_dump(),
             )
 
             logger.info(

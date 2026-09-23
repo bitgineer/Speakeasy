@@ -229,6 +229,8 @@ class HistoryService:
         model_used: str | None = None,
         language: str | None = None,
         original_text: str | None = None,
+        record_id: str | None = None,
+        created_at: datetime | None = None,
     ) -> TranscriptionRecord:
         """
         Add a new transcription to history.
@@ -239,6 +241,8 @@ class HistoryService:
             model_used: Name of the model used
             language: Language of the transcription
             original_text: Original text before AI enhancement (if applicable)
+            record_id: Existing record ID to preserve (e.g. during import)
+            created_at: Existing timestamp to preserve (e.g. during import)
 
         Returns:
             The created TranscriptionRecord
@@ -246,8 +250,8 @@ class HistoryService:
         if not self._db:
             raise RuntimeError("Database not initialized")
 
-        record_id = str(uuid.uuid4())
-        created_at = datetime.now(timezone.utc)
+        record_id = record_id or str(uuid.uuid4())
+        created_at = created_at or datetime.now(timezone.utc)
 
         await self._db.execute(
             """

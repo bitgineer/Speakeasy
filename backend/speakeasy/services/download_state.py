@@ -45,10 +45,10 @@ class ModelDownloadProgress:
 
     @property
     def progress_percent(self) -> float:
-        """Calculate download progress as percentage (0-1)."""
+        """Calculate download progress as percentage (0-100)."""
         if self.total_bytes <= 0:
             return 0.0
-        return min(self.downloaded_bytes / self.total_bytes, 1.0)
+        return min(self.downloaded_bytes / self.total_bytes * 100.0, 100.0)
 
     @property
     def is_active(self) -> bool:
@@ -237,6 +237,13 @@ class DownloadStateManager:
                 self._current_download.error_message = error_message
                 self._notify_callbacks()
         logger.error(f"Download failed: {error_message}")
+
+    def mark_cancelled(self) -> None:
+        """Mark the current download as cancelled."""
+        with self._state_lock:
+            if self._current_download:
+                self._current_download.status = DownloadStatus.CANCELLED
+                self._notify_callbacks()
 
     def cancel_download(self) -> bool:
         """

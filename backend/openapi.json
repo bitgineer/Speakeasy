@@ -1,0 +1,2212 @@
+{
+  "components": {
+    "schemas": {
+      "AppSettings": {
+        "description": "Application settings with validation.",
+        "properties": {
+          "always_show_indicator": {
+            "default": true,
+            "description": "Keep indicator visible when idle",
+            "title": "Always Show Indicator",
+            "type": "boolean"
+          },
+          "auto_paste": {
+            "default": true,
+            "description": "Automatically paste after transcription",
+            "title": "Auto Paste",
+            "type": "boolean"
+          },
+          "compute_type": {
+            "default": "float16",
+            "description": "Compute precision",
+            "title": "Compute Type",
+            "type": "string"
+          },
+          "custom_filler_words": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional filler words to remove",
+            "title": "Custom Filler Words"
+          },
+          "debug_logging": {
+            "default": false,
+            "description": "Enable verbose backend logging",
+            "title": "Debug Logging",
+            "type": "boolean"
+          },
+          "device": {
+            "default": "cuda",
+            "description": "Device to run on (cuda/cpu)",
+            "enum": [
+              "cuda",
+              "cpu"
+            ],
+            "title": "Device",
+            "type": "string"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Audio input device name",
+            "title": "Device Name"
+          },
+          "enable_text_cleanup": {
+            "default": true,
+            "description": "Remove filler words from transcription",
+            "title": "Enable Text Cleanup",
+            "type": "boolean"
+          },
+          "hotkey": {
+            "default": "ctrl+shift+space",
+            "description": "Global hotkey combination",
+            "title": "Hotkey",
+            "type": "string"
+          },
+          "hotkey_mode": {
+            "default": "toggle",
+            "description": "Hotkey mode: 'toggle' or 'push-to-talk'",
+            "enum": [
+              "toggle",
+              "push-to-talk"
+            ],
+            "title": "Hotkey Mode",
+            "type": "string"
+          },
+          "language": {
+            "default": "auto",
+            "description": "Language code or 'auto'",
+            "title": "Language",
+            "type": "string"
+          },
+          "live_auto_paste": {
+            "default": false,
+            "description": "Auto-paste live transcripts into active window",
+            "title": "Live Auto Paste",
+            "type": "boolean"
+          },
+          "live_chunk_seconds": {
+            "default": 3.0,
+            "description": "Interval in seconds between live transcription updates",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Live Chunk Seconds",
+            "type": "number"
+          },
+          "live_transcription": {
+            "default": false,
+            "description": "Enable real-time partial transcription while recording",
+            "title": "Live Transcription",
+            "type": "boolean"
+          },
+          "model_name": {
+            "default": "nvidia/parakeet-tdt-0.6b-v3",
+            "description": "Model name or HuggingFace repo ID",
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_type": {
+            "default": "parakeet",
+            "description": "ASR model type",
+            "title": "Model Type",
+            "type": "string"
+          },
+          "server_port": {
+            "default": 8765,
+            "description": "Backend server port",
+            "title": "Server Port",
+            "type": "integer"
+          },
+          "show_recording_indicator": {
+            "default": true,
+            "description": "Show recording overlay",
+            "title": "Show Recording Indicator",
+            "type": "boolean"
+          },
+          "theme": {
+            "default": "default",
+            "description": "UI theme name",
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "title": "AppSettings",
+        "type": "object"
+      },
+      "BatchCreateRequest": {
+        "properties": {
+          "file_paths": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "File Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "file_paths"
+        ],
+        "title": "BatchCreateRequest",
+        "type": "object"
+      },
+      "BatchProgressEvent": {
+        "properties": {
+          "completed": {
+            "title": "Completed",
+            "type": "integer"
+          },
+          "current_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current File"
+          },
+          "current_index": {
+            "title": "Current Index",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "file_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "processing",
+                  "completed",
+                  "failed",
+                  "skipped"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Status"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "cancelled",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total_files": {
+            "title": "Total Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "current_file",
+          "current_index",
+          "total_files",
+          "completed",
+          "failed"
+        ],
+        "title": "BatchProgressEvent",
+        "type": "object"
+      },
+      "BatchRetryRequest": {
+        "properties": {
+          "file_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Ids"
+          }
+        },
+        "title": "BatchRetryRequest",
+        "type": "object"
+      },
+      "ConnectedEvent": {
+        "properties": {
+          "model_loaded": {
+            "title": "Model Loaded",
+            "type": "boolean"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "model_loaded"
+        ],
+        "title": "ConnectedEvent",
+        "type": "object"
+      },
+      "DownloadProgressEvent": {
+        "properties": {
+          "bytes_per_second": {
+            "title": "Bytes Per Second",
+            "type": "number"
+          },
+          "download_id": {
+            "title": "Download Id",
+            "type": "string"
+          },
+          "downloaded_bytes": {
+            "title": "Downloaded Bytes",
+            "type": "integer"
+          },
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "estimated_remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Remaining Seconds"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_type": {
+            "title": "Model Type",
+            "type": "string"
+          },
+          "progress_percent": {
+            "title": "Progress Percent",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "downloading",
+              "completed",
+              "cancelled",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "download_id",
+          "model_name",
+          "model_type",
+          "downloaded_bytes",
+          "total_bytes",
+          "progress_percent",
+          "status",
+          "error_message",
+          "elapsed_seconds",
+          "bytes_per_second",
+          "estimated_remaining_seconds"
+        ],
+        "title": "DownloadProgressEvent",
+        "type": "object"
+      },
+      "ErrorEvent": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ErrorEvent",
+        "type": "object"
+      },
+      "ExportFormat": {
+        "description": "Supported export formats.",
+        "enum": [
+          "txt",
+          "json",
+          "csv",
+          "srt",
+          "vtt"
+        ],
+        "title": "ExportFormat",
+        "type": "string"
+      },
+      "ExportRequest": {
+        "properties": {
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          },
+          "include_metadata": {
+            "default": true,
+            "title": "Include Metadata",
+            "type": "boolean"
+          },
+          "record_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Ids"
+          },
+          "search": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          }
+        },
+        "required": [
+          "format"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "gpu_available": {
+            "title": "Gpu Available",
+            "type": "boolean"
+          },
+          "gpu_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gpu Name"
+          },
+          "gpu_vram_gb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gpu Vram Gb"
+          },
+          "model_loaded": {
+            "title": "Model Loaded",
+            "type": "boolean"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "state",
+          "model_loaded",
+          "model_name",
+          "gpu_available",
+          "gpu_name",
+          "gpu_vram_gb"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "HistoryListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "HistoryListResponse",
+        "type": "object"
+      },
+      "ImportRequest": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "merge": {
+            "default": true,
+            "title": "Merge",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ImportRequest",
+        "type": "object"
+      },
+      "LiveTranscriptEvent": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LiveTranscriptEvent",
+        "type": "object"
+      },
+      "ModelLoadRequest": {
+        "properties": {
+          "compute_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compute Type"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cuda",
+                  "cpu"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "model_name": {
+            "maxLength": 200,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_type": {
+            "maxLength": 50,
+            "title": "Model Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_type",
+          "model_name"
+        ],
+        "title": "ModelLoadRequest",
+        "type": "object"
+      },
+      "SettingsUpdateRequest": {
+        "properties": {
+          "always_show_indicator": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Always Show Indicator"
+          },
+          "auto_paste": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Paste"
+          },
+          "compute_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compute Type"
+          },
+          "custom_filler_words": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Filler Words"
+          },
+          "debug_logging": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debug Logging"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cuda",
+                  "cpu"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "enable_text_cleanup": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enable Text Cleanup"
+          },
+          "hotkey": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotkey"
+          },
+          "hotkey_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "toggle",
+                  "push-to-talk"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotkey Mode"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "live_auto_paste": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Auto Paste"
+          },
+          "live_chunk_seconds": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Chunk Seconds"
+          },
+          "live_transcription": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Transcription"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_type": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Type"
+          },
+          "server_port": {
+            "anyOf": [
+              {
+                "maximum": 65535.0,
+                "minimum": 1024.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Port"
+          },
+          "show_recording_indicator": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show Recording Indicator"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          }
+        },
+        "title": "SettingsUpdateRequest",
+        "type": "object"
+      },
+      "SettingsUpdateResponse": {
+        "properties": {
+          "reload_required": {
+            "title": "Reload Required",
+            "type": "boolean"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reload_required"
+        ],
+        "title": "SettingsUpdateResponse",
+        "type": "object"
+      },
+      "StatusEvent": {
+        "properties": {
+          "recording": {
+            "title": "Recording",
+            "type": "boolean"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "recording"
+        ],
+        "title": "StatusEvent",
+        "type": "object"
+      },
+      "TranscribeStartResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "TranscribeStartResponse",
+        "type": "object"
+      },
+      "TranscribeStopRequest": {
+        "properties": {
+          "auto_paste": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Paste"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "title": "TranscribeStopRequest",
+        "type": "object"
+      },
+      "TranscribeStopResponse": {
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "duration_ms",
+          "model_used",
+          "language"
+        ],
+        "title": "TranscribeStopResponse",
+        "type": "object"
+      },
+      "TranscriptionEvent": {
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "duration_ms"
+        ],
+        "title": "TranscriptionEvent",
+        "type": "object"
+      },
+      "TranscriptionProgressEvent": {
+        "properties": {
+          "chunk_text": {
+            "title": "Chunk Text",
+            "type": "string"
+          },
+          "current_chunk": {
+            "title": "Current Chunk",
+            "type": "integer"
+          },
+          "progress_percent": {
+            "title": "Progress Percent",
+            "type": "integer"
+          },
+          "total_chunks": {
+            "title": "Total Chunks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current_chunk",
+          "total_chunks",
+          "chunk_text",
+          "progress_percent"
+        ],
+        "title": "TranscriptionProgressEvent",
+        "type": "object"
+      },
+      "TranscriptionRecord": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_ai_enhanced": {
+            "title": "Is Ai Enhanced",
+            "type": "boolean"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used"
+          },
+          "original_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Text"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "duration_ms",
+          "model_used",
+          "language",
+          "created_at",
+          "original_text",
+          "is_ai_enhanced"
+        ],
+        "title": "TranscriptionRecord",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Local voice transcription API",
+    "title": "SpeakEasy Backend",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/devices": {
+      "get": {
+        "description": "List available audio input devices.",
+        "operationId": "devices_list_api_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Devices List"
+      }
+    },
+    "/api/devices/{device_name}": {
+      "put": {
+        "description": "Set the audio input device.",
+        "operationId": "devices_set_api_devices__device_name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_name",
+            "required": true,
+            "schema": {
+              "title": "Device Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Devices Set"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "description": "Check backend health and status.",
+        "operationId": "health_check_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check"
+      }
+    },
+    "/api/history": {
+      "get": {
+        "description": "List transcription history.\n\nArgs:\n    limit: Maximum number of records to return\n    offset: Number of records to skip (ignored if cursor is provided)\n    search: Optional search query for full-text search\n    cursor: Optional cursor for pagination (from previous response's next_cursor)\n    fields: Optional comma-separated list of fields to include (e.g., \"id,text,created_at\")",
+        "operationId": "history_list_api_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fields"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History List"
+      }
+    },
+    "/api/history/export": {
+      "get": {
+        "description": "Export all transcription history.\n\nArgs:\n    format: Export format (txt, json, csv, srt, vtt)\n    include_metadata: Include metadata for JSON/CSV formats",
+        "operationId": "history_export_get_api_history_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_metadata",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Metadata",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History Export Get"
+      },
+      "post": {
+        "description": "Export transcription history with filtering options.\n\nSupports filtering by date range, search query, or specific record IDs.",
+        "operationId": "history_export_post_api_history_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History Export Post"
+      }
+    },
+    "/api/history/import": {
+      "post": {
+        "description": "Import transcriptions from a previously exported JSON file.\n\nArgs:\n    data: The exported JSON data structure\n    merge: If True, merge with existing history. If False, clear and replace.",
+        "operationId": "history_import_api_history_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History Import"
+      }
+    },
+    "/api/history/stats": {
+      "get": {
+        "description": "Get history statistics.",
+        "operationId": "history_stats_api_history_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "History Stats"
+      }
+    },
+    "/api/history/{record_id}": {
+      "delete": {
+        "description": "Delete a transcription record.",
+        "operationId": "history_delete_api_history__record_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History Delete"
+      },
+      "get": {
+        "description": "Get a specific transcription record.",
+        "operationId": "history_get_api_history__record_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History Get"
+      }
+    },
+    "/api/models": {
+      "get": {
+        "description": "List available models and their info.",
+        "operationId": "models_list_api_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models List"
+      }
+    },
+    "/api/models/cache": {
+      "delete": {
+        "description": "Clear model cache.\n\nArgs:\n    model_name: Specific model to clear, or None to clear all cached models",
+        "operationId": "models_cache_clear_api_models_cache_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "model_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Models Cache Clear"
+      },
+      "get": {
+        "description": "Get model cache information including disk usage.",
+        "operationId": "models_cache_info_api_models_cache_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models Cache Info"
+      }
+    },
+    "/api/models/download/cancel": {
+      "post": {
+        "description": "Cancel the current model download.",
+        "operationId": "models_download_cancel_api_models_download_cancel_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models Download Cancel"
+      }
+    },
+    "/api/models/download/status": {
+      "get": {
+        "description": "Get current download progress or null if no active download.",
+        "operationId": "models_download_status_api_models_download_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models Download Status"
+      }
+    },
+    "/api/models/downloaded": {
+      "get": {
+        "description": "Get list of downloaded/cached models.",
+        "operationId": "models_downloaded_api_models_downloaded_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models Downloaded"
+      }
+    },
+    "/api/models/load": {
+      "post": {
+        "description": "Load a model with download progress tracking.",
+        "operationId": "models_load_api_models_load_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelLoadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Models Load"
+      }
+    },
+    "/api/models/recommend": {
+      "get": {
+        "description": "Get model recommendation based on hardware.",
+        "operationId": "models_recommend_api_models_recommend_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "needs_translation",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Needs Translation",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Models Recommend"
+      }
+    },
+    "/api/models/types": {
+      "get": {
+        "description": "Get available model types.",
+        "operationId": "models_types_api_models_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models Types"
+      }
+    },
+    "/api/models/unload": {
+      "post": {
+        "description": "Unload the current model.",
+        "operationId": "models_unload_api_models_unload_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Models Unload"
+      }
+    },
+    "/api/models/{model_type}": {
+      "get": {
+        "description": "Get models of a specific type.",
+        "operationId": "models_by_type_api_models__model_type__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_type",
+            "required": true,
+            "schema": {
+              "title": "Model Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Models By Type"
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "description": "Get current settings.",
+        "operationId": "settings_get_api_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Settings Get"
+      },
+      "put": {
+        "description": "Update settings.",
+        "operationId": "settings_update_api_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Settings Update"
+      }
+    },
+    "/api/transcribe/batch": {
+      "get": {
+        "description": "List all batch transcription jobs.",
+        "operationId": "batch_list_api_transcribe_batch_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Batch List"
+      },
+      "post": {
+        "description": "Create a new batch transcription job.\n\nArgs:\n    file_paths: List of paths to audio files to transcribe",
+        "operationId": "batch_create_api_transcribe_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Create"
+      }
+    },
+    "/api/transcribe/batch/{job_id}": {
+      "delete": {
+        "description": "Delete a batch transcription job.",
+        "operationId": "batch_delete_api_transcribe_batch__job_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Delete"
+      },
+      "get": {
+        "description": "Get status of a batch transcription job.",
+        "operationId": "batch_get_api_transcribe_batch__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Get"
+      }
+    },
+    "/api/transcribe/batch/{job_id}/cancel": {
+      "post": {
+        "description": "Cancel a batch transcription job.",
+        "operationId": "batch_cancel_api_transcribe_batch__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Cancel"
+      }
+    },
+    "/api/transcribe/batch/{job_id}/retry": {
+      "post": {
+        "description": "Retry failed files in a batch job.\n\nArgs:\n    body: Optional request body. ``file_ids`` selects specific files;\n        omit it, or send an empty body, to retry all failed files.",
+        "operationId": "batch_retry_api_transcribe_batch__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/BatchRetryRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Batch Retry"
+      }
+    },
+    "/api/transcribe/cancel": {
+      "post": {
+        "description": "Cancel current recording without transcribing.",
+        "operationId": "transcribe_cancel_api_transcribe_cancel_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Transcribe Cancel"
+      }
+    },
+    "/api/transcribe/start": {
+      "post": {
+        "description": "Start recording audio.",
+        "operationId": "transcribe_start_api_transcribe_start_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscribeStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Transcribe Start"
+      }
+    },
+    "/api/transcribe/stop": {
+      "post": {
+        "description": "Stop recording and transcribe.",
+        "operationId": "transcribe_stop_api_transcribe_stop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscribeStopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscribeStopResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe Stop"
+      }
+    }
+  }
+}

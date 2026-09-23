@@ -10,6 +10,8 @@ import os
 import re
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +20,16 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from .contracts import (
+    ConnectedEvent,
+    DownloadProgressEvent,
+    ErrorEvent,
+    LiveTranscriptEvent,
+    StatusEvent,
+    TranscriptionEvent,
+    TranscriptionProgressEvent,
+    TranscriptionRecord,
+)
 from .core.config import (
     MODEL_INFO,
     get_available_models,
@@ -40,6 +52,7 @@ from .services.download_state import (
 from .services.export import ExportFormat, export_service
 from .services.history import HistoryService
 from .services.settings import (
+    AppSettings,
     SettingsService,
     get_default_db_path,
     get_default_settings_path,
@@ -89,11 +102,11 @@ class SettingsUpdateRequest(BaseModel):
     model_type: str | None = Field(None, max_length=50)
     model_name: str | None = Field(None, max_length=200)
     compute_type: str | None = Field(None, max_length=20)
-    device: str | None = Field(None, pattern=r"^(cuda|cpu)$")
+    device: Literal["cuda", "cpu"] | None = None
     language: str | None = Field(None, max_length=10)
     device_name: str | None = Field(None, max_length=200)
     hotkey: str | None = Field(None, max_length=50)
-    hotkey_mode: str | None = Field(None, pattern=r"^(toggle|push-to-talk)$")
+    hotkey_mode: Literal["toggle", "push-to-talk"] | None = None
     auto_paste: bool | None = None
     show_recording_indicator: bool | None = None
     always_show_indicator: bool | None = None
@@ -116,10 +129,16 @@ class SettingsUpdateRequest(BaseModel):
         return v
 
 
+class SettingsUpdateResponse(BaseModel):
+    status: str
+    settings: AppSettings | None = None
+    reload_required: bool
+
+
 class ModelLoadRequest(BaseModel):
     model_type: str = Field(..., max_length=50)
     model_name: str = Field(..., max_length=200)
-    device: str = Field(default="cuda", pattern=r"^(cuda|cpu)$")
+    device: Literal["cuda", "cpu"] | None = None
     compute_type: str | None = Field(None, max_length=20)
 
 
@@ -151,15 +170,20 @@ async def broadcast(event_type: str, data: dict) -> None:
         websocket_connections.remove(ws)
 
 
+def _schedule_broadcast(loop: asyncio.AbstractEventLoop, event_type: str, payload: dict) -> None:
+    """Schedule a broadcast from a non-async thread onto the running loop."""
+    loop.call_soon_threadsafe(lambda: asyncio.create_task(broadcast(event_type, payload)))
+
+
 def on_state_change(state: TranscriberState) -> None:
     """Handle transcriber state changes."""
     asyncio.create_task(
         broadcast(
             "status",
-            {
-                "state": state.value,
-                "recording": state == TranscriberState.RECORDING,
-            },
+            StatusEvent(
+                state=state.value,
+                recording=state == TranscriberState.RECORDING,
+            ).model_dump(),
         )
     )
 
@@ -196,8 +220,8 @@ def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> 
 
             # Schedule the WebSocket broadcast on the main event loop
             try:
-                main_loop.call_soon_threadsafe(
-                    lambda c=cleaned: asyncio.create_task(broadcast("live_transcript", {"text": c}))
+                _schedule_broadcast(
+                    main_loop, "live_transcript", LiveTranscriptEvent(text=cleaned).model_dump()
                 )
             except Exception as e:
                 logger.error(f"LIVE CALLBACK broadcast scheduling failed: {e}", exc_info=True)
@@ -520,24 +544,26 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
         instruction = body.instruction
 
         # Create progress callback for long transcriptions
+        loop = asyncio.get_running_loop()
+
         def on_transcription_progress(
             current_chunk: int, total_chunks: int, chunk_text: str
         ) -> None:
             """Broadcast transcription progress via WebSocket."""
-            asyncio.create_task(
-                broadcast(
-                    "transcription_progress",
-                    {
-                        "current_chunk": current_chunk,
-                        "total_chunks": total_chunks,
-                        "chunk_text": chunk_text,
-                        "progress_percent": int((current_chunk / total_chunks) * 100),
-                    },
-                )
+            _schedule_broadcast(
+                loop,
+                "transcription_progress",
+                TranscriptionProgressEvent(
+                    current_chunk=current_chunk,
+                    total_chunks=total_chunks,
+                    chunk_text=chunk_text,
+                    progress_percent=int((current_chunk / total_chunks) * 100),
+                ).model_dump(),
             )
 
         # Stop and transcribe with progress reporting
-        result: TranscriptionResult = transcriber.stop_and_transcribe(
+        result: TranscriptionResult = await asyncio.to_thread(
+            transcriber.stop_and_transcribe,
             language=language,
             progress_callback=on_transcription_progress,
             instruction=instruction,
@@ -564,11 +590,11 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
         # Broadcast transcription event
         await broadcast(
             "transcription",
-            {
-                "id": record.id,
-                "text": cleaned_text,
-                "duration_ms": result.duration_ms,
-            },
+            TranscriptionEvent(
+                id=record.id,
+                text=cleaned_text,
+                duration_ms=result.duration_ms,
+            ).model_dump(),
         )
 
         # Auto-paste unless the caller overrides the persisted setting
@@ -654,7 +680,7 @@ async def history_stats():
 
 
 class ExportRequest(BaseModel):
-    format: str = Field(..., pattern=r"^(txt|json|csv|srt|vtt)$")
+    format: ExportFormat
     include_metadata: bool = True
     start_date: str | None = None  # ISO format
     end_date: str | None = None  # ISO format
@@ -700,7 +726,7 @@ async def history_export_get(
     )
 
 
-@app.get("/api/history/{record_id}")
+@app.get("/api/history/{record_id}", response_model=TranscriptionRecord)
 async def history_get(record_id: str):
     """Get a specific transcription record."""
     if not history:
@@ -790,6 +816,15 @@ async def history_export_post(body: ExportRequest):
 # --- Import ---
 
 
+def _parse_created_at(value) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 class ImportRequest(BaseModel):
     data: dict  # The exported JSON data
     merge: bool = True  # True to merge, False to replace
@@ -847,6 +882,9 @@ async def history_import(request: Request, body: ImportRequest):
                 duration_ms=t.get("duration_ms", 0),
                 model_used=t.get("model_used"),
                 language=t.get("language"),
+                record_id=t.get("id"),
+                created_at=_parse_created_at(t.get("created_at")),
+                original_text=t.get("original_text"),
             )
             imported_count += 1
 
@@ -868,13 +906,8 @@ class BatchCreateRequest(BaseModel):
     file_paths: list[str] = Field(..., min_length=1)
 
 
-class BatchJobResponse(BaseModel):
-    id: str
-    status: str
-    total_files: int
-    completed: int
-    failed: int
-    skipped: int
+class BatchRetryRequest(BaseModel):
+    file_ids: list[str] | None = None
 
 
 @app.post("/api/transcribe/batch")
@@ -953,15 +986,18 @@ async def batch_cancel(job_id: str):
 
 
 @app.post("/api/transcribe/batch/{job_id}/retry")
-async def batch_retry(job_id: str, file_ids: list[str] | None = None):
+async def batch_retry(job_id: str, body: BatchRetryRequest | None = None):
     """
     Retry failed files in a batch job.
 
     Args:
-        file_ids: Specific file IDs to retry, or None to retry all failed
+        body: Optional request body. ``file_ids`` selects specific files;
+            omit it, or send an empty body, to retry all failed files.
     """
     if not batch_service:
         raise HTTPException(status_code=503, detail="Batch service not initialized")
+
+    file_ids = body.file_ids if body else None
 
     try:
         job = await batch_service.retry_failed(job_id, file_ids)
@@ -998,7 +1034,7 @@ async def batch_delete(job_id: str):
 # --- Settings ---
 
 
-@app.get("/api/settings")
+@app.get("/api/settings", response_model=AppSettings)
 async def settings_get():
     """Get current settings."""
     if not settings_service:
@@ -1007,7 +1043,7 @@ async def settings_get():
     return settings_service.to_dict()
 
 
-@app.put("/api/settings")
+@app.put("/api/settings", response_model=SettingsUpdateResponse)
 @limiter.limit("20/minute")
 async def settings_update(request: Request, body: SettingsUpdateRequest):
     """Update settings."""
@@ -1102,7 +1138,14 @@ async def models_recommend(needs_translation: bool = False):
     }
 
 
-def _create_model_download_callback(last_broadcast_time: list) -> Callable[[int, int], bool]:
+def _download_payload(progress) -> dict:
+    """Build the wire payload for a download progress broadcast."""
+    return DownloadProgressEvent(**progress.to_dict()).model_dump()
+
+
+def _create_model_download_callback(
+    last_broadcast_time: list, loop: asyncio.AbstractEventLoop
+) -> Callable[[int, int], bool]:
     """Create a progress callback that throttles WebSocket broadcasts to 1/s."""
     import time
 
@@ -1115,7 +1158,7 @@ def _create_model_download_callback(last_broadcast_time: list) -> Callable[[int,
             last_broadcast_time[0] = now
             current = download_state_manager.current_download
             if current:
-                asyncio.create_task(broadcast("download_progress", current.to_dict()))
+                _schedule_broadcast(loop, "download_progress", _download_payload(current))
         return should_continue
 
     return progress_callback
@@ -1126,13 +1169,16 @@ async def _broadcast_model_load_error(
 ) -> None:
     """Broadcast download error/cancellation and update download state."""
     if cancelled:
-        await broadcast("download_progress", {"status": "cancelled", "model_name": model_name})
+        download_state_manager.mark_cancelled()
+        current = download_state_manager.current_download
+        if current:
+            await broadcast("download_progress", _download_payload(current))
     else:
         download_state_manager.fail_download(error_msg)
         current = download_state_manager.current_download
         if current:
-            await broadcast("download_progress", current.to_dict())
-        await broadcast("error", {"message": error_msg})
+            await broadcast("download_progress", _download_payload(current))
+        await broadcast("error", ErrorEvent(message=error_msg).model_dump())
 
 
 @app.post("/api/models/load")
@@ -1148,28 +1194,30 @@ async def models_load(request: Request, body: ModelLoadRequest):
         download_progress = download_state_manager.start_download(
             model_type=body.model_type, model_name=body.model_name
         )
-        await broadcast("status", {"state": "loading", "model": body.model_name})
-        await broadcast("download_progress", download_progress.to_dict())
+        await broadcast("download_progress", _download_payload(download_progress))
 
+        loop = asyncio.get_running_loop()
         last_broadcast_time = [0.0]
-        transcriber.load_model(
+        device = body.device or "cuda"
+        await asyncio.to_thread(
+            transcriber.load_model,
             model_type=body.model_type,
             model_name=body.model_name,
-            device=body.device,
+            device=device,
             compute_type=body.compute_type,
-            progress_callback=_create_model_download_callback(last_broadcast_time),
+            progress_callback=_create_model_download_callback(last_broadcast_time, loop),
         )
 
         download_state_manager.complete_download()
         current = download_state_manager.current_download
         if current:
-            await broadcast("download_progress", current.to_dict())
+            await broadcast("download_progress", _download_payload(current))
 
         if settings_service:
             settings_service.update(
                 model_type=body.model_type,
                 model_name=body.model_name,
-                device=body.device,
+                device=device,
                 compute_type=body.compute_type,
             )
         _setup_live_transcription()
@@ -1311,8 +1359,10 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_json(
         {
             "type": "connected",
-            "state": transcriber.state.value if transcriber else "not_initialized",
-            "model_loaded": transcriber.is_model_loaded if transcriber else False,
+            **ConnectedEvent(
+                state=transcriber.state.value if transcriber else "not_initialized",
+                model_loaded=transcriber.is_model_loaded if transcriber else False,
+            ).model_dump(),
         }
     )
 

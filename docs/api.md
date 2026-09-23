@@ -40,7 +40,7 @@ Export formats: `txt`, `json`, `csv`, `srt`, `vtt`.
 | GET | `/api/transcribe/batch` | List jobs |
 | GET | `/api/transcribe/batch/{id}` | Job status |
 | POST | `/api/transcribe/batch/{id}/cancel` | Cancel |
-| POST | `/api/transcribe/batch/{id}/retry` | Retry failed files |
+| POST | `/api/transcribe/batch/{id}/retry` | Retry failed files (body `{file_ids?: [...]}`) |
 | DELETE | `/api/transcribe/batch/{id}` | Delete a job |
 
 ## Settings and devices
