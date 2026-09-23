@@ -3,7 +3,6 @@ REM Windows Test Runner for Speakeasy Backend
 REM Usage: run_tests.bat [options]
 REM 
 REM Options:
-REM   hotspot     - Run only hotspot tests (critical path)
 REM   integration - Run integration tests
 REM   all         - Run all tests (default)
 REM   coverage    - Run with coverage report
@@ -25,7 +24,6 @@ set RESET_VENV=0
 
 if "%1"=="" goto run_all
 if "%1"=="help" goto show_help
-if "%1"=="hotspot" set TEST_PATTERN=tests/test_hotspot_*.py
 if "%1"=="integration" set TEST_PATTERN=tests/ -m integration
 if "%1"=="all" set TEST_PATTERN=tests/
 if "%1"=="clean" goto clean
@@ -137,7 +135,6 @@ echo.
 echo Usage: run_tests.bat [option]
 echo.
 echo Options:
-echo   hotspot     Run only hotspot tests (critical path - 75, 24, 22, 21 caller functions)
 echo   integration Run integration tests (multi-step flows)
 echo   all         Run all tests (default)
 echo   coverage    Run with HTML coverage report
@@ -147,7 +144,6 @@ echo   help        Show this help message
 echo.
 echo Examples:
 echo   run_tests.bat              - Run all tests
-echo   run_tests.bat hotspot      - Run critical hotspot tests only
 echo   run_tests.bat coverage     - Run all tests with coverage
 echo   run_tests.bat clean        - Clean test artifacts
 echo   run_tests.bat reset        - Reset venv and dependencies
@@ -160,7 +156,6 @@ echo   - UV package manager installed (https://docs.astral.sh/uv/)
 echo   - Python 3.11+ available
 echo.
 echo Test Categories:
-echo   - Hotspot Tests: Critical functions with many callers (cleanup, add, request, etc.)
 echo   - Integration Tests: Multi-step execution flows
 echo   - Unit Tests: Individual function tests
 echo   - E2E Tests: End-to-end workflow tests (in gui/e2e/)

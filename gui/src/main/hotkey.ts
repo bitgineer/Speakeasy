@@ -180,6 +180,7 @@ export async function startRecording(): Promise<void> {
     const response = await fetch(`http://127.0.0.1:${getBackendPort()}/api/transcribe/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {
@@ -224,10 +225,12 @@ export async function stopRecording(): Promise<void> {
     // Notify renderer immediately that recording has stopped and processing started
     sendToRenderer("recording:processing");
 
+    // Generous bound: transcribing a long recording is slow, but a wedged backend must eventually error instead of swallowing input.
     const response = await fetch(`http://127.0.0.1:${getBackendPort()}/api/transcribe/stop`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
+      signal: AbortSignal.timeout(15 * 60 * 1000),
     });
 
     if (!response.ok) throw new Error(`Backend returned ${response.status}`);
@@ -267,6 +270,7 @@ export async function cancelRecording(): Promise<void> {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15_000),
       },
     );
 

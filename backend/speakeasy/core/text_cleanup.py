@@ -67,18 +67,6 @@ def safe_cleanup(
         logger.warning(f"Text cleanup failed, returning original text: {e}")
         return text
 
-    try:
-        if use_cache:
-            processor = get_cached_processor(custom_fillers=custom_fillers)
-        else:
-            processor = TextCleanupProcessor(custom_fillers=custom_fillers)
-
-        return processor.cleanup(text)
-
-    except Exception as e:
-        logger.warning(f"Text cleanup failed, returning original text: {e}")
-        return text
-
 
 class TextCleanupProcessor:
     """

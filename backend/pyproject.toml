@@ -64,9 +64,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-linux = [
-    "pulsectl>=23.5.0",
-]
 cuda = [
     "cuda-python>=12.3",
 ]

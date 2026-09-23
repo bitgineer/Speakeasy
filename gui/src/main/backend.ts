@@ -9,6 +9,7 @@ import { join } from 'path'
 import { app } from 'electron'
 import { existsSync, readFileSync } from 'fs'
 import { net } from 'electron'
+import { chooseBackendCommand } from './python-command'
 
 let backendProcess: ChildProcess | null = null
 let backendPort = 8765
@@ -31,8 +32,15 @@ const BACKEND_STARTUP_TIMEOUT = 120000 // 120 seconds for first-time model downl
 const isWin = process.platform === 'win32'
 const pythonExec = isWin ? 'python.exe' : 'python3'
 
+export class MissingBackendEnvironmentError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'MissingBackendEnvironmentError'
+  }
+}
+
 // Find python executable or uv
-function getPythonCommand(): { cmd: string, args: string[] } {
+function getPythonCommand() {
   // Check for venv in root project directory
   const rootDir = app.isPackaged 
     ? process.resourcesPath
@@ -54,34 +62,35 @@ function getPythonCommand(): { cmd: string, args: string[] } {
      uvAvailable = false
   }
 
-  if (uvAvailable && existsSync(uvLockPath)) {
-      console.log('[Backend] Using uv to run backend')
-      return { cmd: 'uv', args: ['run', '-m', 'speakeasy', '--port', String(backendPort)] }
-  }
-
   // Check for venv in backend directory (standard install location)
   const backendVenvPython = isWin
     ? join(rootDir, 'backend', '.venv', 'Scripts', 'python.exe')
     : join(rootDir, 'backend', '.venv', 'bin', 'python')
 
-  if (existsSync(backendVenvPython)) {
-    console.log(`[Backend] Using backend venv python: ${backendVenvPython}`)
-    return { cmd: backendVenvPython, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
-  }
-    
   // Check for venv in root directory (legacy/dev override)
   const rootVenvPython = isWin
     ? join(rootDir, '.venv', 'Scripts', 'python.exe')
     : join(rootDir, '.venv', 'bin', 'python')
 
-  if (existsSync(rootVenvPython)) {
-    console.log(`[Backend] Using root venv python: ${rootVenvPython}`)
-    return { cmd: rootVenvPython, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
+  const command = chooseBackendCommand({
+    isPackaged: app.isPackaged,
+    port: backendPort,
+    uvAvailable,
+    uvLockExists: existsSync(uvLockPath),
+    backendVenvPython: existsSync(backendVenvPython) ? backendVenvPython : null,
+    rootVenvPython: existsSync(rootVenvPython) ? rootVenvPython : null,
+    systemPython: pythonExec
+  })
+
+  if (!command.ok) {
+    throw new MissingBackendEnvironmentError(
+      `No Python backend environment found. Checked ${backendVenvPython} and ${rootVenvPython}. ` +
+        'Run install.bat on Windows, or ./install.sh on macOS and Linux, from the repository, then start the app from there.'
+    )
   }
-  
-  // Fallback to system python
-  console.log(`[Backend] Venv not found at ${backendVenvPython} or ${rootVenvPython}, using system python: ${pythonExec}`)
-  return { cmd: pythonExec, args: ['-m', 'speakeasy', '--port', String(backendPort)] }
+
+  console.log(`[Backend] Using ${command.cmd} ${command.args.join(' ')}`)
+  return command
 }
 
 function getBackendPath(): string {

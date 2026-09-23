@@ -157,8 +157,7 @@ npm run typecheck
 npm test
 ```
 
-CI runs the backend suite, the frontend lint, typecheck and tests, and a critical-path hotspot
-suite on every push to `main`.
+CI runs the backend suite and the frontend lint, typecheck and tests on every push to `main`.
 
 ## Troubleshooting
 

@@ -2,30 +2,6 @@
 
 Utility functions and helpers for SpeakEasy backend.
 
-## Audio Devices (`audio_devices.py`)
-Audio input device enumeration and selection.
-
-Features:
-- List all available microphones
-- Get device details (name, channels, sample rate)
-- Default device detection
-- Cross-platform support (Windows, macOS, Linux)
-
-API:
-- `list_audio_devices()` - Return all input devices
-  ```python
-  [
-      {
-          "id": 0,
-          "name": "Built-in Microphone",
-          "channels": 1,
-          "sample_rate": 44100,
-          "is_default": True,
-      },
-      ...,
-  ]
-  ```
-
 ## Clipboard (`clipboard.py`)
 Text insertion into active window.
 

@@ -4,11 +4,11 @@
  * Handles app lifecycle, window management, and backend process coordination.
  */
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, dialog } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createTray, destroyTray } from './tray'
 import { createMainWindow, createRecordingIndicator, getMainWindow, setQuitting } from './windows'
-import { startBackend, stopBackend } from './backend'
+import { startBackend, stopBackend, MissingBackendEnvironmentError } from './backend'
 import { setupIpcHandlers } from './ipc-handlers'
 import { unregisterGlobalHotkey, stopUiohook } from './hotkey'
 
@@ -46,6 +46,16 @@ if (!gotTheLock) {
       await startBackend()
       console.log('Backend started successfully')
     } catch (error) {
+      if (error instanceof MissingBackendEnvironmentError) {
+        dialog.showErrorBox(
+          'SpeakEasy cannot start',
+          'This build does not include the Python backend, and no backend environment was found.\n\n' +
+            'SpeakEasy is distributed through its source setup. Run install.bat on Windows, or ' +
+            './install.sh on macOS and Linux, from the repository, then start the app from there.'
+        )
+        app.quit()
+        return
+      }
       console.error('Failed to start backend:', error)
       // Continue anyway - backend might be running externally in dev
     }

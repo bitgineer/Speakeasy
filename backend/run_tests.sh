@@ -28,7 +28,6 @@ show_help() {
     echo "Usage: ./run_tests.sh [option]"
     echo ""
     echo "Options:"
-    echo "  hotspot     Run only hotspot tests (critical path - 75, 24, 22, 21 caller functions)"
     echo "  integration Run integration tests (multi-step flows)"
     echo "  all         Run all tests (default)"
     echo "  coverage    Run with HTML coverage report"
@@ -37,7 +36,6 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  ./run_tests.sh              - Run all tests"
-    echo "  ./run_tests.sh hotspot      - Run critical hotspot tests only"
     echo "  ./run_tests.sh coverage     - Run all tests with coverage"
     echo "  ./run_tests.sh clean        - Clean test artifacts"
     echo ""
@@ -113,10 +111,6 @@ run_tests() {
 
 # Main logic
 case "${1:-}" in
-    hotspot)
-        TEST_PATTERN="tests/test_hotspot_*.py"
-        run_tests
-        ;;
     integration)
         TEST_PATTERN="tests/ -m integration"
         run_tests

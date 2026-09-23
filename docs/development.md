@@ -60,6 +60,11 @@ npm run build:win     # Windows NSIS installer
 npm run build:linux   # AppImage and deb
 ```
 
+These artifacts are for development only. They do not bundle a Python runtime or the backend
+dependencies. A packaged build exits with setup instructions when no backend environment is found,
+instead of hanging. End-user distribution is `install.py` (`install.bat` on Windows, `install.sh`
+on macOS and Linux), which launches the app with `npm run dev`.
+
 There is no `build:mac` script; the config has a macOS section but the icon assets it expects are
 not all present.
 
@@ -71,10 +76,14 @@ not all present.
 |---|---|
 | Backend Tests | Ruff check and format, then pytest with coverage on Ubuntu |
 | Frontend Tests | ESLint, typecheck, and vitest with coverage on Ubuntu |
-| Backend Hotspot Tests | A critical-path subset (`tests/test_hotspot_*.py`), allowed to fail |
 | All Tests Passed | Summary gate |
 
 The backend job installs PortAudio and xvfb because the suite imports audio and input libraries.
+
+The backend OpenAPI schema is committed at `backend/openapi.json`; regenerate it with
+`python scripts/export_openapi.py` from `backend/`. The GUI derives its API types from it with
+`npm run gen:api`, which writes `gui/src/renderer/src/api/generated.ts`. CI checks that both files
+are current.
 
 ## Conventions
 

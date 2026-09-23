@@ -92,6 +92,10 @@ In development the Electron main process starts the backend itself and waits for
 `http://127.0.0.1:8765/api/health`. If a backend is already running on that port, the app reuses
 it instead of spawning a second one.
 
+`npm run build:win` and `npm run build:linux` produce development artifacts without the backend.
+Normal installs go through the setup script, which prepares the backend environment and starts
+the app with `npm run dev`.
+
 ## Reinstalling
 
 ```bash
