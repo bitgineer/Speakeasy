@@ -1,4 +1,4 @@
-# Phase 5 report (parent 369cf75, pending commit; branch feat/ui-overhaul)
+# Phase 5 report (committed c03eb9a; branch feat/ui-overhaul)
 ## Files changed
 - `gui/src/renderer/src/pages/settings/ModelSettings.tsx` rebuilt: page head, selection and compute panels, downloaded-models rows, reload warning; save/load/sync/delete/clear flows and GPU gating unchanged.
 - `gui/src/renderer/src/pages/settings/BehaviorSettings.tsx` rebuilt: switch rows, conditional filler-words field and live-transcription controls; draft/save payload unchanged.
