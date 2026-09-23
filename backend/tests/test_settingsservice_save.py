@@ -147,12 +147,8 @@ class TestSettingsServiceSave:
                 }
             ],
             command_prompt="Carry out the instruction.",
-            providers=[
-                {"id": "ollama", "label": "Local", "kind": "local", "model": "llama3.1:8b"}
-            ],
-            hotkeys=[
-                {"accelerator": "ctrl+shift+w", "trigger": "toggle", "mode": "write"}
-            ],
+            providers=[{"id": "ollama", "label": "Local", "kind": "local", "model": "llama3.1:8b"}],
+            hotkeys=[{"accelerator": "ctrl+shift+w", "trigger": "toggle", "mode": "write"}],
         )
 
         reloaded = SettingsService(settings_path=temp_settings_path).load()

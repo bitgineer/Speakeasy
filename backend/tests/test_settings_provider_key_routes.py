@@ -23,9 +23,7 @@ def key_store(monkeypatch, tmp_path):
     monkeypatch.setattr(
         server, "set_key", lambda provider_id, key: secrets.set_key(provider_id, key, path)
     )
-    monkeypatch.setattr(
-        server, "get_key", lambda provider_id: secrets.get_key(provider_id, path)
-    )
+    monkeypatch.setattr(server, "get_key", lambda provider_id: secrets.get_key(provider_id, path))
     monkeypatch.setattr(
         server,
         "settings_service",
@@ -39,9 +37,7 @@ def key_store(monkeypatch, tmp_path):
 
 
 async def test_key_round_trip_and_presence(client, key_store):
-    response = await client.put(
-        "/api/settings/providers/openai/key", json={"key": "sk-secret"}
-    )
+    response = await client.put("/api/settings/providers/openai/key", json={"key": "sk-secret"})
 
     assert response.status_code == 200
     assert response.json() == {"provider_id": "openai", "has_key": True}
@@ -69,18 +65,14 @@ async def test_empty_key_clears_presence(client, key_store):
 async def test_oversized_key_is_not_echoed(client, key_store):
     oversized = "sk-" + "x" * 600
 
-    response = await client.put(
-        "/api/settings/providers/openai/key", json={"key": oversized}
-    )
+    response = await client.put("/api/settings/providers/openai/key", json={"key": oversized})
 
     assert response.status_code == 422
     assert oversized not in response.text
 
 
 async def test_unknown_provider_returns_404_without_echoing_the_key(client, key_store):
-    response = await client.put(
-        "/api/settings/providers/missing/key", json={"key": "sk-secret"}
-    )
+    response = await client.put("/api/settings/providers/missing/key", json={"key": "sk-secret"})
 
     assert response.status_code == 404
     assert "sk-secret" not in response.text

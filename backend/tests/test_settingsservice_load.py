@@ -165,9 +165,7 @@ class TestSettingsServiceLoad:
         settings = SettingsService(settings_path=temp_settings_path).load()
 
         assert settings.hotkeys == [
-            HotkeyBinding(
-                accelerator="ctrl+shift+space", trigger="push-to-talk", mode=None
-            )
+            HotkeyBinding(accelerator="ctrl+shift+space", trigger="push-to-talk", mode=None)
         ]
 
     def test_load_migrated_hotkey_survives_a_save_and_reload(self, temp_settings_path):

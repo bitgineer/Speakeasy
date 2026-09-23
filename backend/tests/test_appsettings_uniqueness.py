@@ -18,9 +18,7 @@ def test_duplicate_provider_ids_are_rejected():
 
 def test_duplicate_tone_names_are_rejected():
     with pytest.raises(ValidationError, match="Tone profile names must be unique"):
-        AppSettings(
-            tone_profiles=[ToneProfile(name="Slack"), ToneProfile(name="Slack")]
-        )
+        AppSettings(tone_profiles=[ToneProfile(name="Slack"), ToneProfile(name="Slack")])
 
 
 def test_duplicate_hotkey_accelerators_are_rejected():

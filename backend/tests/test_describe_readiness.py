@@ -46,7 +46,10 @@ def test_dictate_is_always_ready_without_reason():
     ("settings", "reason"),
     [
         (AppSettings(), "no provider configured"),
-        (AppSettings(active_provider_id="gone", providers=[LlmProvider(id="p", model="m")]), "provider not found"),
+        (
+            AppSettings(active_provider_id="gone", providers=[LlmProvider(id="p", model="m")]),
+            "provider not found",
+        ),
         (_provider_settings(LlmProvider(id="p", model="")), "model missing"),
         (_provider_settings(_CUSTOM), "base url missing"),
         (_provider_settings(_OPENAI), "key missing"),

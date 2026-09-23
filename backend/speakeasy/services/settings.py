@@ -121,7 +121,9 @@ class AppSettings(BaseModel):
         default_factory=list, description="Per-app tone profiles for write mode"
     )
     command_prompt: str = Field(
-        default=DEFAULT_COMMAND_PROMPT, max_length=4000, description="System prompt for command mode"
+        default=DEFAULT_COMMAND_PROMPT,
+        max_length=4000,
+        description="System prompt for command mode",
     )
     providers: list[LlmProvider] = Field(
         default_factory=list, description="Configured OpenAI-compatible providers"

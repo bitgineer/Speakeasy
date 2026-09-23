@@ -23,9 +23,7 @@ def settings_service(monkeypatch, temp_settings_path):
 
 
 async def test_invalid_values_return_400(client, settings_service):
-    response = await client.put(
-        "/api/settings", json={"providers": [{"id": "p"}, {"id": "p"}]}
-    )
+    response = await client.put("/api/settings", json={"providers": [{"id": "p"}, {"id": "p"}]})
 
     assert response.status_code == 400
     assert response.json()["detail"].startswith("Invalid settings")

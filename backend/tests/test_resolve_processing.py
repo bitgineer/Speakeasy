@@ -92,7 +92,9 @@ def test_write_without_a_matching_profile_uses_default_tone():
     settings = _settings(
         default_tone=ToneProfile(name="Default", prompt="Neutral."),
         tone_profiles=[
-            ToneProfile(name="Slack", prompt="Casual.", matches=[AppMatch(field="app", pattern="slack")])
+            ToneProfile(
+                name="Slack", prompt="Casual.", matches=[AppMatch(field="app", pattern="slack")]
+            )
         ],
     )
 
@@ -105,7 +107,9 @@ def test_write_uses_a_matching_app_rule():
     settings = _settings(
         default_tone=ToneProfile(name="Default", prompt="Neutral."),
         tone_profiles=[
-            ToneProfile(name="Slack", prompt="Casual.", matches=[AppMatch(field="app", pattern="slack")])
+            ToneProfile(
+                name="Slack", prompt="Casual.", matches=[AppMatch(field="app", pattern="slack")]
+            )
         ],
     )
 
@@ -119,7 +123,9 @@ def test_write_uses_a_matching_title_rule():
         default_tone=ToneProfile(name="Default", prompt="Neutral."),
         tone_profiles=[
             ToneProfile(
-                name="GitHub", prompt="Structured.", matches=[AppMatch(field="title", pattern="github")]
+                name="GitHub",
+                prompt="Structured.",
+                matches=[AppMatch(field="title", pattern="github")],
             )
         ],
     )
@@ -138,7 +144,9 @@ def test_first_matching_profile_in_list_order_wins():
                 name="First", prompt="First tone.", matches=[AppMatch(field="app", pattern="slack")]
             ),
             ToneProfile(
-                name="Second", prompt="Second tone.", matches=[AppMatch(field="app", pattern="slack")]
+                name="Second",
+                prompt="Second tone.",
+                matches=[AppMatch(field="app", pattern="slack")],
             ),
         ]
     )
@@ -162,7 +170,9 @@ def test_command_uses_command_prompt_without_tone():
         command_prompt="Carry out the instruction.",
         default_tone=ToneProfile(name="Default", prompt="Tone that must not appear."),
         tone_profiles=[
-            ToneProfile(name="Slack", prompt="Casual.", matches=[AppMatch(field="app", pattern="slack")])
+            ToneProfile(
+                name="Slack", prompt="Casual.", matches=[AppMatch(field="app", pattern="slack")]
+            )
         ],
     )
 

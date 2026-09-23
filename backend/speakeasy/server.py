@@ -1089,9 +1089,7 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
     try:
         new_settings = settings_service.update(**updates)
     except ValidationError as exc:
-        fields = ", ".join(
-            ".".join(str(part) for part in error["loc"]) for error in exc.errors()
-        )
+        fields = ", ".join(".".join(str(part) for part in error["loc"]) for error in exc.errors())
         raise HTTPException(status_code=400, detail=f"Invalid settings: {fields}") from exc
 
     # Check if model reload is required
@@ -1142,9 +1140,7 @@ async def _hide_key_validation_echo(request: Request, exc: RequestValidationErro
     response_model=ProviderKeyResponse,
 )
 @limiter.limit("20/minute")
-async def settings_provider_key_set(
-    request: Request, provider_id: str, body: ProviderKeyRequest
-):
+async def settings_provider_key_set(request: Request, provider_id: str, body: ProviderKeyRequest):
     """Store or clear the API key for a configured provider.
 
     An empty ``key`` clears the entry. The key value is never returned or logged.
