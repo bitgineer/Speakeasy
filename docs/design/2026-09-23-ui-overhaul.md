@@ -1,6 +1,6 @@
 # UI overhaul
 
-Status: framed, not started. Branch `feat/ui-overhaul`, stacked on `feat/ai-processing-modes` at `27f37e0`. The AI processing feature is code-complete and gate-verified there. Its PR is deferred until this overhaul lands.
+Status: direction decided (A, Refined dark), Phase 2 starting. Branch `feat/ui-overhaul`, stacked on `feat/ai-processing-modes` at `27f37e0`. The AI processing feature is code-complete and gate-verified there. Its PR is deferred until this overhaul lands.
 
 ## Problem
 
@@ -52,6 +52,16 @@ The direction is a product call. Each option is prototyped on the same two scree
 - **C. Ambient minimal.** Fewer chrome elements, generous space, one accent, larger type, the overlay and the transcript as the heroes. Closest to the marketing voice, hardest to execute well across dense settings screens.
 
 Recommendation: prototype A and B, choose one, then reduce the theme story to Light, Dark, and System plus two or three accent presets. The nine community themes can return later as color skins over the semantic layer.
+
+## Decision (2026-09-23)
+
+Direction A, Refined dark, chosen from renders. At the app's real window size (900x670) A shows three history records and most of the provider form; B shows two records and a sliver of the form. The app runs in short sessions and its settings pages carry a lot of fields, so density wins. Renders are committed under `docs/design/ui-prototypes/`.
+
+Adopted from B: the two-tier semantic token discipline, the measured-contrast table as a working method, and the warm light palette as the Light theme in the same semantic names. A's control calibration moves up slightly during Phase 2, with a minimum text size of 11px and controls raised from 32px where the layout allows.
+
+Theme story, settled: Light, Dark, and System plus two accent presets (A's violet, B's ink blue). The nine community themes are preserved unwired in `community-themes.css` and return later as skins over the semantic layer. A stored community theme maps to Dark until then.
+
+Baseline note: the pre-change state is committed at `1461218`. The Phase 0 capture harness is built in Phase 2, and the baseline images are captured from a worktree at that commit, so no before state is lost.
 
 ## Phases
 
