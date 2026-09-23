@@ -1,5 +1,5 @@
 /**
- * Global Styles - Tailwind CSS Directives
+ * Global styles - Tailwind CSS directives
  */
 
 @import './tokens.css';
@@ -9,350 +9,266 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    color-scheme: light;
-  }
-}
-
-@layer components {
-  .glass {
-    @apply bg-[var(--color-bg-secondary)]/80 backdrop-blur-md border border-[var(--color-border)];
-  }
-
-  .glass-hover {
-    @apply transition-all duration-300 hover:bg-[var(--color-bg-primary)] hover:scale-[1.02] hover:shadow-xl;
-  }
-
-  .subtle-glow {
-    @apply shadow-[0_0_20px_-8px_rgba(var(--color-primary-rgb),0.3)];
-  }
-
-  .card-elevated {
-    @apply shadow-[0_4px_16px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.15)];
-  }
-
-  .animate-pulse-slow {
-    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  @keyframes pulse-slow {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.8;
-    }
-  }
-
-  .recording-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #ef4444;
-    animation: recording-pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes recording-pulse {
-    0%, 100% {
-      transform: scale(1);
-      opacity: 1;
-      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-    }
-    50% {
-      transform: scale(1.1);
-      opacity: 0.8;
-      box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
-    }
-  }
-
-  .gradient-border {
-    position: relative;
-  }
-
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-bg-primary));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-  }
-}
-
-/* Geist Font */
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/geist-org/geist@latest/geist-variable.woff2') format('woff2');
-  font-display: swap;
-}
-
-/* Custom base styles */
-@layer base {
   html {
-    @apply scroll-smooth overflow-hidden;
-    /* Fluid type scale: 14px on small screens, 16px on large screens */
-    font-size: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+    @apply h-full overflow-hidden;
   }
 
   body {
-    @apply text-[var(--color-text-primary)] h-full overflow-hidden;
-    font-family: var(--font-family-geist);
-    font-optical-sizing: auto;
-    font-variant-settings: normal;
-    text-rendering: optimizeLegibility;
+    @apply h-full overflow-hidden;
+    font-family: var(--font-ui);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+    color: var(--text-primary);
+    background: var(--surface-canvas);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Heading styles - h1-h6 */
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: var(--font-weight-semibold);
-    line-height: var(--line-height-tight);
-    letter-spacing: -0.01em;
-    color: var(--color-text-primary);
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
   }
 
-  h1 { font-size: var(--font-size-5xl); }
-  h2 { font-size: var(--font-size-4xl); }
-  h3 { font-size: var(--font-size-3xl); }
-  h4 { font-size: var(--font-size-2xl); }
-  h5 { font-size: var(--font-size-xl); }
-  h6 { font-size: var(--font-size-lg); }
+  h1 { font-size: var(--text-page); }
+  h2 { font-size: var(--text-heading); }
+  h3 { font-size: var(--text-ui); }
+  h4 { font-size: var(--text-small); }
+  h5 { font-size: var(--text-caption); }
+  h6 { font-size: var(--text-label); }
 
-  /* Body text */
   p {
-    font-weight: var(--font-weight-regular);
-    line-height: var(--line-height-normal);
-    color: var(--color-text-secondary);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-body);
+    color: var(--text-secondary);
   }
-  
-  /* Scrollbar styling */
+
+  ::selection {
+    background: var(--accent-muted);
+    color: var(--text-primary);
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
     background-color: transparent;
   }
-  
+
   ::-webkit-scrollbar-track {
     background-color: transparent;
-    border-radius: 9999px;
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    background-color: var(--color-border-strong);
-    border-radius: 9999px;
-    border: 2px solid var(--color-bg-primary); /* Creates padding effect against track */
+    background-color: var(--border-strong);
+    border-radius: var(--radius-pill);
+    border: 2px solid var(--surface-canvas);
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-text-muted);
-  }
-  
-  /* Focus styles */
-  *:focus-visible {
-    @apply outline-none;
-    box-shadow: var(--shadow-focus);
+    background-color: var(--text-muted);
   }
 
-  /* Inner border for clarity on dark backgrounds */
-  *:focus-visible::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: inherit;
-  }
-
-  /* Focus-visible pseudo-class for specific elements */
-  button:focus-visible,
-  a:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible {
-    @apply ring-2 ring-[var(--color-accent)] ring-offset-2 ring-offset-[var(--color-bg-primary)];
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus);
+    outline-offset: var(--focus-ring-offset);
   }
 }
 
-/* Custom component classes */
+@media (forced-colors: active) {
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline-color: Highlight;
+  }
+}
+
 @layer components {
-  /* Button variants */
-  .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all-spring focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed;
+  /* Surfaces */
+
+  .card {
+    background: var(--surface-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+    color: var(--text-primary);
+  }
+
+  /* Labels and fields */
+
+  .label {
+    display: block;
+    margin-bottom: var(--space-1);
+    color: var(--text-secondary);
+    font-size: var(--text-label);
+    font-weight: var(--weight-semibold);
+  }
+
+  .input,
+  .select {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--control-height);
+    padding: 5px 9px;
+    background: var(--surface-input);
+    border: 1px solid var(--border-control);
+    border-radius: var(--radius-control);
+    color: var(--text-primary);
+    font-size: var(--text-ui);
+    line-height: var(--leading-ui);
+    transition-property: border-color;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+
+  .input::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
+  .input:hover:not(:disabled),
+  .select:hover:not(:disabled) {
+    border-color: var(--accent-solid);
+  }
+
+  .input:focus-visible,
+  .select:focus-visible {
+    border-color: var(--focus);
+  }
+
+  .input:disabled,
+  .select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .select {
+    appearance: none;
+    padding-inline-end: 32px;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 9px center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+  }
+
+  /* Buttons */
+
+  .btn-primary,
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    font-size: var(--text-ui);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-ui);
+    white-space: nowrap;
+    cursor: pointer;
+    transition-property: background-color, border-color, color, scale;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--ease-standard);
   }
 
   .btn-primary {
-    @apply btn bg-[var(--color-accent)] text-white hover-lift hover:bg-[var(--color-accent-hover)] active-press focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg-primary)];
+    background: var(--accent-solid);
+    border-color: var(--accent-solid);
+    color: var(--accent-on-solid);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-solid-hover);
+    border-color: var(--accent-solid-hover);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background: var(--accent-solid-active);
+    border-color: var(--accent-solid-active);
   }
 
   .btn-secondary {
-    @apply btn bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover-lift hover:bg-[var(--color-bg-tertiary)] active-press focus:ring-2 focus:ring-[var(--color-text-secondary)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg-primary)];
+    background: var(--surface-raised);
+    border-color: var(--border-control);
+    color: var(--text-primary);
   }
 
-  .btn-danger {
-    @apply btn bg-[var(--color-error)] text-white hover-lift hover:bg-[var(--color-error-hover)] active-press focus:ring-2 focus:ring-[var(--color-error)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg-primary)];
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-selected);
+    border-color: var(--accent-solid);
   }
 
-  .btn-ghost {
-    @apply btn bg-transparent text-[var(--color-text-secondary)] hover-lift hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] active-press focus:ring-2 focus:ring-[var(--color-text-secondary)] focus:ring-offset-2 focus:ring-offset-[var(--color-bg-primary)];
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active:not(:disabled) {
+    scale: 0.96;
   }
-  
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
   .btn-sm {
-    @apply px-3 py-1.5 text-sm;
-  }
-  
-  .btn-lg {
-    @apply px-6 py-3 text-lg;
-  }
-  
-  /* Input styles */
-  .input {
-    @apply w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] transition-all duration-200;
+    min-height: var(--control-height-sm);
+    padding-inline: var(--space-2);
+    font-size: var(--text-small);
   }
 
-  .input-error {
-    @apply input border-[var(--color-error)] focus:ring-[var(--color-error)];
+  /* Badges */
+
+  .badge-gray,
+  .badge-green,
+  .badge-blue,
+  .badge-yellow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 3px 8px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-label);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
-  /* Select styles */
-  .select {
-    @apply w-full px-3 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] appearance-none cursor-pointer transition-all duration-200;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
+  .badge-gray {
+    background: var(--surface-sunken);
+    border-color: var(--border-subtle);
+    color: var(--text-secondary);
   }
 
-  /* Card styles */
-  .card {
-    @apply bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover-elevated transition-all-spring;
-  }
-  
-  /* Label styles */
-  .label {
-    @apply text-sm font-medium text-[var(--color-text-primary)] mb-1.5 block;
+  .badge-green {
+    background: var(--success-muted);
+    border-color: var(--success-border);
+    color: var(--success-text);
   }
 
-  /* Modern utility classes */
-  .glass-effect {
-    @apply bg-opacity-80 backdrop-blur-md;
-    background: rgba(var(--color-bg-secondary-rgb), 0.8);
-    backdrop-filter: blur(12px);
+  .badge-blue {
+    background: var(--accent-muted);
+    border-color: var(--accent-border);
+    color: var(--accent-text);
   }
 
-  .hover-lift {
-    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
-  }
-
-  .interactive-card {
-    @apply transition-all duration-200 cursor-pointer hover:border-[var(--color-border-strong)] hover:shadow-md hover:-translate-y-px;
-  }
-
-  .smooth-scale {
-    @apply transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98];
+  .badge-yellow {
+    background: var(--warning-muted);
+    border-color: var(--warning-border);
+    color: var(--warning-text);
   }
 
   .subtle-glow {
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-  }
-  
-  /* Badge styles */
-  .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
-  }
-  
-  .badge-green {
-    @apply badge bg-[var(--color-success-muted)] text-[var(--color-success)];
-  }
-  
-  .badge-blue {
-    @apply badge bg-[var(--color-info-muted)] text-[var(--color-info)];
-  }
-  
-  .badge-yellow {
-    @apply badge bg-[var(--color-warning-muted)] text-[var(--color-warning)];
-  }
-  
-  .badge-red {
-    @apply badge bg-[var(--color-error-muted)] text-[var(--color-error)];
-  }
-  
-  .badge-gray {
-    @apply badge bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)];
+    box-shadow: 0 0 24px -8px var(--accent-muted);
   }
 }
 
-/* Custom utility classes */
-@layer utilities {
-  /* Smooth transitions with spring physics */
-  .transition-all-spring {
-    transition-property: all;
-    transition-duration: var(--transition-duration-default);
-    transition-timing-function: var(--transition-easing);
-  }
-
-  .transition-colors-spring {
-    transition-property: color, background-color, border-color;
-    transition-duration: var(--transition-duration-default);
-    transition-timing-function: var(--transition-easing);
-  }
-
-  .transition-opacity-spring {
-    transition-property: opacity;
-    transition-duration: var(--transition-duration-default);
-    transition-timing-function: var(--transition-easing);
-  }
-
-  .transition-transform-spring {
-    transition-property: transform;
-    transition-duration: var(--transition-duration-fast);
-    transition-timing-function: var(--transition-easing);
-  }
-
-  /* Hover state - scale up subtly */
-  .hover-lift:hover {
-    transform: scale(1.02);
-  }
-
-  /* Press state - scale down for tactile feedback */
-  .active-press:active {
-    transform: scale(0.98);
-  }
-
-  /* Shadow elevation on hover */
-  .hover-elevated:hover {
-    box-shadow: var(--shadow-md);
-  }
-
-  /* Animation utilities */
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  /* Recording indicator pulse */
-  .recording-pulse {
-    animation: recording-pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes recording-pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.7;
-      transform: scale(1.05);
-    }
-  }
-}
-
-/* Respect user's reduced motion preference */
+/* Respect the user's reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -361,16 +277,5 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .transition-all-spring,
-  .transition-colors-spring,
-  .transition-opacity-spring,
-  .transition-transform-spring,
-  .hover-lift,
-  .active-press,
-  .hover-elevated {
-    transform: none !important;
-    box-shadow: var(--shadow-sm) !important;
   }
 }

@@ -66,6 +66,7 @@
     "typecheck": "npm run typecheck:main && npm run typecheck:renderer",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "check:tokens": "node scripts/check-tokens.mjs",
     "gen:api": "openapi-typescript ../backend/openapi.json -o src/renderer/src/api/generated.ts"
   },
   "dependencies": {

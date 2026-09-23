@@ -16,6 +16,13 @@ import { ToastProvider } from './context/ToastProvider'
 import { useHotkeyRegistration, useToast } from './hooks'
 import type { HotkeyBinding, HotkeyRegistrationResult, TranscriptionRecord } from './api/types'
 import type { MessageBoxOptions, MessageBoxReturnValue } from 'electron'
+import {
+  applyAppearance,
+  readStoredAccent,
+  resolveTheme,
+  resolveThemeSetting,
+  useSystemPrefersDark
+} from './utils/theme'
 
 // Lazy load components
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -54,19 +61,19 @@ function NavigationListener(): null {
   return null
 }
 
-// Theme initializer - loads theme on startup
+// Theme initializer - applies Light, Dark, or the resolved System setting
 function ThemeInitializer(): null {
   const { settings, fetchSettings } = useSettingsStore()
+  const systemPrefersDark = useSystemPrefersDark()
   
   useEffect(() => {
     fetchSettings()
   }, [fetchSettings])
   
   useEffect(() => {
-    if (settings?.theme) {
-      document.documentElement.setAttribute('data-theme', settings.theme)
-    }
-  }, [settings?.theme])
+    const theme = resolveTheme(resolveThemeSetting(settings?.theme), systemPrefersDark)
+    applyAppearance(theme, readStoredAccent())
+  }, [settings?.theme, systemPrefersDark])
   
   return null
 }

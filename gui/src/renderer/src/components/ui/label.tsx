@@ -4,25 +4,28 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const labelVariants = cva(
-  // Base classes - consistent across all variants
   [
-    "text-sm",
-    "font-medium",
-    "leading-none",
+    "block",
+    "text-label",
+    "font-semibold",
+    "leading-ui",
+    "text-content-secondary",
     "peer-disabled:cursor-not-allowed",
     "peer-disabled:opacity-70"
   ],
   {
     variants: {
-      // Required field indicator
       required: {
         false: [],
         true: [
           "after:content-['*']",
           "after:ml-0.5",
-          "after:text-error-500"
+          "after:text-danger-text"
         ]
       }
+    },
+    defaultVariants: {
+      required: false
     }
   }
 )

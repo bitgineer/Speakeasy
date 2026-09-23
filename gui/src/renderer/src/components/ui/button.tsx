@@ -4,71 +4,63 @@ import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  // Base classes - consistent across all variants
   [
     "inline-flex",
     "items-center",
     "justify-center",
+    "gap-2",
     "whitespace-nowrap",
-    "rounded-lg",
-    "text-sm",
-    "font-medium",
-    "transition-all",
-    "duration-200",
-    "ease-out",
-    "focus-visible:outline-none",
-    "focus-visible:shadow-focus",
-    "disabled:pointer-events-none",
-    "disabled:opacity-50",
+    "select-none",
+    "rounded-control",
+    "border",
+    "text-ui",
+    "font-semibold",
+    "leading-ui",
     "cursor-pointer",
-    "select-none"
+    "transition-[background-color,border-color,color,scale]",
+    "duration-fast",
+    "ease-standard",
+    "active:scale-[0.96]",
+    "disabled:pointer-events-none",
+    "disabled:opacity-55"
   ],
   {
     variants: {
-      // Intent variants
       variant: {
         primary: [
-          "bg-[var(--color-accent)]",
-          "text-[var(--color-text-on-accent)]",
-          "hover:bg-[var(--color-accent-hover)]",
-          "hover:shadow-lg",
-          "hover:scale-[1.02]",
-          "active:scale-[0.98]",
-          "shadow-md"
+          "bg-accent-solid",
+          "border-accent-solid",
+          "text-accent-on-solid",
+          "hover:bg-accent-solid-hover",
+          "hover:border-accent-solid-hover",
+          "active:bg-accent-solid-active",
+          "active:border-accent-solid-active"
         ],
         secondary: [
-          "bg-[var(--color-bg-tertiary)]",
-          "text-[var(--color-text-primary)]",
-          "border",
-          "border-[var(--color-border)]",
-          "hover:bg-[var(--color-bg-elevated)]",
-          "hover:border-[var(--color-border-strong)]",
-          "hover:shadow-md",
-          "hover:scale-[1.01]",
-          "active:scale-[0.99]"
+          "bg-surface-raised",
+          "border-edge-control",
+          "text-content-primary",
+          "hover:bg-surface-selected",
+          "hover:border-accent-solid"
         ],
         ghost: [
           "bg-transparent",
-          "text-[var(--color-text-secondary)]",
-          "hover:bg-[var(--color-bg-tertiary)]",
-          "hover:text-[var(--color-text-primary)]",
-          "hover:scale-[1.01]",
-          "active:scale-[0.99]"
+          "border-transparent",
+          "text-content-secondary",
+          "hover:bg-surface-raised",
+          "hover:text-content-primary"
         ],
         danger: [
-          "bg-[var(--color-error)]",
-          "text-white",
-          "hover:bg-[var(--color-error-hover)]",
-          "hover:shadow-lg",
-          "hover:scale-[1.02]",
-          "active:scale-[0.98]"
+          "bg-transparent",
+          "border-transparent",
+          "text-danger-text",
+          "hover:bg-danger-muted"
         ]
       },
-      // Size variants
       size: {
-        sm: ["h-8", "px-3", "text-xs", "gap-1.5"],
-        md: ["h-10", "px-4", "gap-2"],
-        lg: ["h-12", "px-6", "text-base", "gap-2"]
+        sm: ["min-h-[var(--control-height-sm)]", "px-2", "text-small", "gap-1.5"],
+        md: ["min-h-[var(--control-height)]", "px-3"],
+        lg: ["min-h-[40px]", "px-4", "text-body", "gap-2"]
       }
     },
     defaultVariants: {

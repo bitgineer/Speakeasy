@@ -15,7 +15,7 @@ export function Icon({ icon: IconComponent, className, size = 24, color, strokeW
       size={size}
       color={color}
       strokeWidth={strokeWidth}
-      className={cn("inline-block", className)}
+      className={cn("inline-block shrink-0", className)}
       {...props}
     />
   )

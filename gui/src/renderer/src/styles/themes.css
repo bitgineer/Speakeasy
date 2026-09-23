@@ -1,543 +1,232 @@
 /**
- * Theme Definitions - CSS Custom Properties per Theme
+ * Theme definitions.
  *
- * Each theme defines a complete color palette following a semantic structure:
- * - Background layers (bg-primary, bg-secondary, bg-tertiary, bg-elevated)
- * - Text colors (text-primary, text-secondary, text-muted)
- * - Semantic colors (accent, success, warning, error, info)
- * - Border colors (border-subtle, border-default, border-strong)
+ * Tier 1 (primitives) names a value: hue ramps and warm paper neutrals. It never
+ * appears in a component. Tier 2 (semantic tokens) names a role and is the only
+ * tier components use.
  *
- * Themes sourced from popular color schemes:
- * - Default (dark)
- * - Tokyo Night
- * - Catppuccin Mocha
- * - Gruvbox Dark
- * - Everforest Dark
- * - Nord
- * - Kanagawa Wave
- * - Ayu Dark
- * - One Dark
+ * Switching uses one mechanism: data-theme on <html>, written by the renderer.
+ * :root carries the dark default so the first paint is correct before settings load.
+ * Each theme block carries the violet accent (A's identity, the app default); a
+ * data-accent="ink" block overrides only the accent role names.
  */
 
 /* ===========================================
-   DEFAULT THEME (Current dark theme)
+   TIER 1: PRIMITIVES
    =========================================== */
+
+:root {
+  /* Dark neutrals (direction A, Refined dark) */
+  --ink-50: #f4f1fa;
+  --ink-100: #c9c5d5;
+  --ink-200: #a5a1b6;
+  --ink-300: #7f7b90;
+  --ink-400: #74748c;
+  --ink-500: #57516d;
+  --ink-600: #3d3d4c;
+  --ink-650: #30303d;
+  --ink-700: #262633;
+  --ink-750: #20202b;
+  --ink-800: #181821;
+  --ink-850: #13131b;
+  --ink-875: #111119;
+  --ink-900: #101018;
+  --ink-950: #0e0e14;
+
+  /* Light neutrals (direction B, Calm light-first) */
+  --paper-0: #ffffff;
+  --paper-50: #faf9f6;
+  --paper-100: #f5f2ec;
+  --paper-150: #f3efe8;
+  --paper-200: #ece8e0;
+  --paper-300: #ded8cd;
+  --paper-400: #c4bcaf;
+  --paper-500: #938c82;
+  --paper-600: #8f8677;
+  --paper-700: #6e675e;
+  --paper-800: #57514a;
+  --paper-900: #23201b;
+
+  /* Violet accent ramp */
+  --violet-50: #f1edfc;
+  --violet-100: #d9ccf5;
+  --violet-200: #d3baff;
+  --violet-300: #aa90f4;
+  --violet-400: #9d82f1;
+  --violet-500: #9877ef;
+  --violet-600: #6c47c8;
+  --violet-650: #5f3eb8;
+  --violet-700: #5b3bb0;
+  --violet-800: #54339f;
+  --violet-900: #302743;
+  --violet-950: #171021;
+
+  /* Ink blue accent ramp */
+  --blue-50: #e8eff7;
+  --blue-200: #b9cfe3;
+  --blue-300: #9dc0df;
+  --blue-450: #7fadd8;
+  --blue-500: #6d9bc9;
+  --blue-550: #5c88b4;
+  --blue-600: #2f5e92;
+  --blue-700: #29527e;
+  --blue-750: #22456b;
+  --blue-800: #33506b;
+  --blue-900: #1c2b3a;
+  --blue-950: #0d1620;
+
+  /* Status ramps */
+  --green-50: #e7f0e9;
+  --green-200: #c5dccb;
+  --green-300: #88d9b3;
+  --green-600: #2f6b4a;
+  --green-700: #2a6141;
+  --green-800: #326650;
+  --green-950: #193329;
+
+  --amber-50: #f8efdd;
+  --amber-200: #e6d3ae;
+  --amber-300: #f4c983;
+  --amber-600: #8a5c12;
+  --amber-700: #7e5310;
+  --amber-800: #6b5527;
+  --amber-950: #3a2f1a;
+
+  --red-50: #f8e9e6;
+  --red-200: #ebc9c3;
+  --red-300: #ff9fa6;
+  --red-600: #a03b32;
+  --red-700: #97372f;
+  --red-800: #6e373e;
+  --red-950: #3b2126;
+
+  /* Accent picker previews. A color choice must show its own hue, which is the
+     one place a component may not derive its color from the active role. */
+  --accent-preview-violet: var(--violet-500);
+  --accent-preview-ink: var(--blue-600);
+}
+
+/* ===========================================
+   TIER 2: SEMANTIC TOKENS
+   =========================================== */
+
 :root,
-[data-theme="default"] {
-  /* Background Colors */
-  --color-bg-primary: #0a0a0a;
-  --color-bg-secondary: #121212;
-  --color-bg-tertiary: #1a1a1a;
-  --color-bg-elevated: #202020;
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-  /* Text Colors */
-  --color-text-primary: #fafafa;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
-  --color-text-disabled: #52525b;
-  --color-text-on-accent: #ffffff;
+  --surface-canvas: var(--ink-950);
+  --surface-sidebar: var(--ink-900);
+  --surface-panel: var(--ink-800);
+  --surface-raised: var(--ink-750);
+  --surface-sunken: var(--ink-850);
+  --surface-input: var(--ink-875);
+  --surface-hover: var(--ink-700);
+  --surface-selected: var(--accent-muted);
+  --surface-scrim: rgb(0 0 0 / 0.6);
 
-  /* Accent Color */
-  --color-accent: #6366f1;
-  --color-accent-hover: #5457e5;
-  --color-accent-muted: rgba(99, 102, 241, 0.2);
+  --text-primary: var(--ink-50);
+  --text-secondary: var(--ink-100);
+  --text-muted: var(--ink-200);
+  --text-faint: var(--ink-300);
 
-  /* Border Colors */
-  --color-border: rgba(255, 255, 255, 0.12);
-  --color-border-subtle: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --border-subtle: var(--ink-650);
+  --border-default: var(--ink-600);
+  --border-control: var(--ink-400);
+  --border-strong: var(--ink-500);
 
-  /* Semantic Colors */
-  --color-success: #22c55e;
-  --color-success-hover: #16a34a;
-  --color-success-muted: rgba(34, 197, 94, 0.2);
+  --accent-solid: var(--violet-500);
+  --accent-solid-hover: var(--violet-300);
+  --accent-solid-active: var(--violet-400);
+  --accent-on-solid: var(--violet-950);
+  --accent-text: var(--violet-200);
+  --accent-muted: var(--violet-900);
+  --accent-border: var(--violet-700);
+  --focus: var(--violet-200);
 
-  --color-warning: #eab308;
-  --color-warning-hover: #ca8a04;
-  --color-warning-muted: rgba(234, 179, 8, 0.2);
+  --success-text: var(--green-300);
+  --success-solid: var(--green-300);
+  --success-muted: var(--green-950);
+  --success-border: var(--green-800);
 
-  --color-error: #ef4444;
-  --color-error-hover: #dc2626;
-  --color-error-muted: rgba(239, 68, 68, 0.2);
+  --warning-text: var(--amber-300);
+  --warning-solid: var(--amber-300);
+  --warning-muted: var(--amber-950);
+  --warning-border: var(--amber-800);
 
-  --color-info: #3b82f6;
-  --color-info-hover: #2563eb;
-  --color-info-muted: rgba(59, 130, 246, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(99, 102, 241, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #0d0d0d;
-  --color-sidebar-hover: #1a1a1a;
-  --color-sidebar-active: #252525;
-  --color-sidebar-border: rgba(255, 255, 255, 0.06);
-
-  /* Recording indicator */
-  --color-recording: #ef4444;
-  --color-recording-pulse: rgba(239, 68, 68, 0.4);
+  --danger-text: var(--red-300);
+  --danger-solid: var(--red-300);
+  --danger-muted: var(--red-950);
+  --danger-border: var(--red-800);
 }
 
-/* ===========================================
-   TOKYO NIGHT THEME
-   =========================================== */
-[data-theme="tokyo-night"] {
-  /* Background Colors */
-  --color-bg-primary: #1a1b26;
-  --color-bg-secondary: #1f2335;
-  --color-bg-tertiary: #24283b;
-  --color-bg-elevated: #292e42;
+:root[data-theme="light"] {
+  color-scheme: light;
 
-  /* Text Colors */
-  --color-text-primary: #c0caf5;
-  --color-text-secondary: #a9b1d6;
-  --color-text-muted: #565f89;
-  --color-text-disabled: #414868;
-  --color-text-on-accent: #1a1b26;
+  --surface-canvas: var(--paper-50);
+  --surface-sidebar: var(--paper-100);
+  --surface-panel: var(--paper-0);
+  --surface-raised: var(--paper-0);
+  --surface-sunken: var(--paper-150);
+  --surface-input: var(--paper-0);
+  --surface-hover: var(--paper-150);
+  --surface-selected: var(--accent-muted);
+  --surface-scrim: rgb(35 32 27 / 0.35);
 
-  /* Accent Color */
-  --color-accent: #7aa2f7;
-  --color-accent-hover: #89b4fa;
-  --color-accent-muted: rgba(122, 162, 247, 0.2);
+  --text-primary: var(--paper-900);
+  --text-secondary: var(--paper-800);
+  --text-muted: var(--paper-700);
+  --text-faint: var(--paper-500);
 
-  /* Border Colors */
-  --color-border: #3b4261;
-  --color-border-subtle: rgba(59, 66, 97, 0.6);
-  --color-border-strong: #565f89;
+  --border-subtle: var(--paper-200);
+  --border-default: var(--paper-300);
+  --border-control: var(--paper-600);
+  --border-strong: var(--paper-400);
 
-  /* Semantic Colors */
-  --color-success: #9ece6a;
-  --color-success-hover: #a8d475;
-  --color-success-muted: rgba(158, 206, 106, 0.2);
+  --accent-solid: var(--violet-600);
+  --accent-solid-hover: var(--violet-650);
+  --accent-solid-active: var(--violet-800);
+  --accent-on-solid: var(--paper-0);
+  --accent-text: var(--violet-700);
+  --accent-muted: var(--violet-50);
+  --accent-border: var(--violet-100);
+  --focus: var(--violet-700);
 
-  --color-warning: #e0af68;
-  --color-warning-hover: #e5ba78;
-  --color-warning-muted: rgba(224, 175, 104, 0.2);
+  --success-text: var(--green-700);
+  --success-solid: var(--green-600);
+  --success-muted: var(--green-50);
+  --success-border: var(--green-200);
 
-  --color-error: #f7768e;
-  --color-error-hover: #f8879b;
-  --color-error-muted: rgba(247, 118, 142, 0.2);
+  --warning-text: var(--amber-700);
+  --warning-solid: var(--amber-600);
+  --warning-muted: var(--amber-50);
+  --warning-border: var(--amber-200);
 
-  --color-info: #7dcfff;
-  --color-info-hover: #8dd6ff;
-  --color-info-muted: rgba(125, 207, 255, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(122, 162, 247, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #16161e;
-  --color-sidebar-hover: #1f2335;
-  --color-sidebar-active: #292e42;
-  --color-sidebar-border: rgba(59, 66, 97, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #f7768e;
-  --color-recording-pulse: rgba(247, 118, 142, 0.4);
+  --danger-text: var(--red-700);
+  --danger-solid: var(--red-600);
+  --danger-muted: var(--red-50);
+  --danger-border: var(--red-200);
 }
 
-/* ===========================================
-   CATPPUCCIN MOCHA THEME
-   =========================================== */
-[data-theme="catppuccin"] {
-  /* Background Colors */
-  --color-bg-primary: #1e1e2e;
-  --color-bg-secondary: #181825;
-  --color-bg-tertiary: #313244;
-  --color-bg-elevated: #45475a;
+/* Accent role overrides. These blocks set nothing but accent role names. */
 
-  /* Text Colors */
-  --color-text-primary: #cdd6f4;
-  --color-text-secondary: #bac2de;
-  --color-text-muted: #6c7086;
-  --color-text-disabled: #585b70;
-  --color-text-on-accent: #1e1e2e;
-
-  /* Accent Color */
-  --color-accent: #89b4fa;
-  --color-accent-hover: #b4befe;
-  --color-accent-muted: rgba(137, 180, 250, 0.2);
-
-  /* Border Colors */
-  --color-border: #45475a;
-  --color-border-subtle: rgba(69, 71, 90, 0.6);
-  --color-border-strong: #585b70;
-
-  /* Semantic Colors */
-  --color-success: #a6e3a1;
-  --color-success-hover: #b8e9b3;
-  --color-success-muted: rgba(166, 227, 161, 0.2);
-
-  --color-warning: #f9e2af;
-  --color-warning-hover: #fae7bc;
-  --color-warning-muted: rgba(249, 226, 175, 0.2);
-
-  --color-error: #f38ba8;
-  --color-error-hover: #f5a0b8;
-  --color-error-muted: rgba(243, 139, 168, 0.2);
-
-  --color-info: #74c7ec;
-  --color-info-hover: #89d0ef;
-  --color-info-muted: rgba(116, 199, 236, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(137, 180, 250, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #11111b;
-  --color-sidebar-hover: #181825;
-  --color-sidebar-active: #313244;
-  --color-sidebar-border: rgba(49, 50, 68, 0.6);
-
-  /* Recording indicator */
-  --color-recording: #f38ba8;
-  --color-recording-pulse: rgba(243, 139, 168, 0.4);
+:root[data-theme="dark"][data-accent="ink"] {
+  --accent-solid: var(--blue-500);
+  --accent-solid-hover: var(--blue-450);
+  --accent-solid-active: var(--blue-550);
+  --accent-on-solid: var(--blue-950);
+  --accent-text: var(--blue-300);
+  --accent-muted: var(--blue-900);
+  --accent-border: var(--blue-800);
+  --focus: var(--blue-300);
 }
 
-/* ===========================================
-   GRUVBOX DARK THEME
-   =========================================== */
-[data-theme="gruvbox"] {
-  /* Background Colors */
-  --color-bg-primary: #282828;
-  --color-bg-secondary: #1d2021;
-  --color-bg-tertiary: #3c3836;
-  --color-bg-elevated: #504945;
-
-  /* Text Colors */
-  --color-text-primary: #ebdbb2;
-  --color-text-secondary: #d5c4a1;
-  --color-text-muted: #928374;
-  --color-text-disabled: #665c54;
-  --color-text-on-accent: #282828;
-
-  /* Accent Color */
-  --color-accent: #83a598;
-  --color-accent-hover: #8ec07c;
-  --color-accent-muted: rgba(131, 165, 152, 0.2);
-
-  /* Border Colors */
-  --color-border: #504945;
-  --color-border-subtle: rgba(80, 73, 69, 0.6);
-  --color-border-strong: #665c54;
-
-  /* Semantic Colors */
-  --color-success: #b8bb26;
-  --color-success-hover: #c5c836;
-  --color-success-muted: rgba(184, 187, 38, 0.2);
-
-  --color-warning: #fabd2f;
-  --color-warning-hover: #fbc73f;
-  --color-warning-muted: rgba(250, 189, 47, 0.2);
-
-  --color-error: #fb4934;
-  --color-error-hover: #fc5d4a;
-  --color-error-muted: rgba(251, 73, 52, 0.2);
-
-  --color-info: #83a598;
-  --color-info-hover: #93b5a8;
-  --color-info-muted: rgba(131, 165, 152, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(131, 165, 152, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #1d2021;
-  --color-sidebar-hover: #282828;
-  --color-sidebar-active: #3c3836;
-  --color-sidebar-border: rgba(80, 73, 69, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #fb4934;
-  --color-recording-pulse: rgba(251, 73, 52, 0.4);
-}
-
-/* ===========================================
-   EVERFOREST DARK THEME
-   =========================================== */
-[data-theme="everforest"] {
-  /* Background Colors */
-  --color-bg-primary: #2b3339;
-  --color-bg-secondary: #232a2e;
-  --color-bg-tertiary: #343f44;
-  --color-bg-elevated: #3d484d;
-
-  /* Text Colors */
-  --color-text-primary: #d3c6aa;
-  --color-text-secondary: #a7c080;
-  --color-text-muted: #859289;
-  --color-text-disabled: #5c6a72;
-  --color-text-on-accent: #2b3339;
-
-  /* Accent Color */
-  --color-accent: #a7c080;
-  --color-accent-hover: #b5cc93;
-  --color-accent-muted: rgba(167, 192, 128, 0.2);
-
-  /* Border Colors */
-  --color-border: #4f585e;
-  --color-border-subtle: rgba(79, 88, 94, 0.6);
-  --color-border-strong: #5c6a72;
-
-  /* Semantic Colors */
-  --color-success: #83c092;
-  --color-success-hover: #93caa2;
-  --color-success-muted: rgba(131, 192, 146, 0.2);
-
-  --color-warning: #dbbc7f;
-  --color-warning-hover: #e1c68f;
-  --color-warning-muted: rgba(219, 188, 127, 0.2);
-
-  --color-error: #e67e80;
-  --color-error-hover: #ea8f91;
-  --color-error-muted: rgba(230, 126, 128, 0.2);
-
-  --color-info: #7fbbb3;
-  --color-info-hover: #8fc5bd;
-  --color-info-muted: rgba(127, 187, 179, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(167, 192, 128, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #1e2326;
-  --color-sidebar-hover: #272e33;
-  --color-sidebar-active: #343f44;
-  --color-sidebar-border: rgba(79, 88, 94, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #e67e80;
-  --color-recording-pulse: rgba(230, 126, 128, 0.4);
-}
-
-/* ===========================================
-   NORD THEME
-   =========================================== */
-[data-theme="nord"] {
-  /* Background Colors */
-  --color-bg-primary: #2e3440;
-  --color-bg-secondary: #3b4252;
-  --color-bg-tertiary: #434c5e;
-  --color-bg-elevated: #4c566a;
-
-  /* Text Colors */
-  --color-text-primary: #eceff4;
-  --color-text-secondary: #e5e9f0;
-  --color-text-muted: #d8dee9;
-  --color-text-disabled: #4c566a;
-  --color-text-on-accent: #2e3440;
-
-  /* Accent Color */
-  --color-accent: #88c0d0;
-  --color-accent-hover: #8fbcbb;
-  --color-accent-muted: rgba(136, 192, 208, 0.2);
-
-  /* Border Colors */
-  --color-border: #4c566a;
-  --color-border-subtle: rgba(76, 86, 106, 0.6);
-  --color-border-strong: #5e6a83;
-
-  /* Semantic Colors */
-  --color-success: #a3be8c;
-  --color-success-hover: #b1c99c;
-  --color-success-muted: rgba(163, 190, 140, 0.2);
-
-  --color-warning: #ebcb8b;
-  --color-warning-hover: #eed49b;
-  --color-warning-muted: rgba(235, 203, 139, 0.2);
-
-  --color-error: #bf616a;
-  --color-error-hover: #c87982;
-  --color-error-muted: rgba(191, 97, 106, 0.2);
-
-  --color-info: #81a1c1;
-  --color-info-hover: #91b0cc;
-  --color-info-muted: rgba(129, 161, 193, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(136, 192, 208, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #242933;
-  --color-sidebar-hover: #2e3440;
-  --color-sidebar-active: #3b4252;
-  --color-sidebar-border: rgba(76, 86, 106, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #bf616a;
-  --color-recording-pulse: rgba(191, 97, 106, 0.4);
-}
-
-/* ===========================================
-   KANAGAWA WAVE THEME
-   =========================================== */
-[data-theme="kanagawa"] {
-  /* Background Colors */
-  --color-bg-primary: #1f1f28;
-  --color-bg-secondary: #2a2a37; /* Lightened from #16161d for elevation */
-  --color-bg-tertiary: #363646;
-  --color-bg-elevated: #16161d;
-
-  /* Text Colors */
-  --color-text-primary: #dcd7ba;
-  --color-text-secondary: #c8c093;
-  --color-text-muted: #727169;
-  --color-text-disabled: #54546d;
-  --color-text-on-accent: #1f1f28;
-
-  /* Accent Color */
-  --color-accent: #7e9cd8;
-  --color-accent-hover: #7fb4ca;
-  --color-accent-muted: rgba(126, 156, 216, 0.2);
-
-  /* Border Colors */
-  --color-border: #54546d;
-  --color-border-subtle: rgba(84, 84, 109, 0.6);
-  --color-border-strong: #727169;
-
-  /* Semantic Colors */
-  --color-success: #98bb6c;
-  --color-success-hover: #a8c57c;
-  --color-success-muted: rgba(152, 187, 108, 0.2);
-
-  --color-warning: #e6c384;
-  --color-warning-hover: #eacd94;
-  --color-warning-muted: rgba(230, 195, 132, 0.2);
-
-  --color-error: #e46876;
-  --color-error-hover: #e87986;
-  --color-error-muted: rgba(228, 104, 118, 0.2);
-
-  --color-info: #7fb4ca;
-  --color-info-hover: #8fbfd4;
-  --color-info-muted: rgba(127, 180, 202, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(126, 156, 216, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #16161d;
-  --color-sidebar-hover: #1f1f28;
-  --color-sidebar-active: #2a2a37;
-  --color-sidebar-border: rgba(84, 84, 109, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #e46876;
-  --color-recording-pulse: rgba(228, 104, 118, 0.4);
-}
-
-/* ===========================================
-   AYU DARK THEME
-   =========================================== */
-[data-theme="ayu"] {
-  /* Background Colors */
-  --color-bg-primary: #0b0e14;
-  --color-bg-secondary: #131721; /* Lightened from #0d1017 for better contrast */
-  --color-bg-tertiary: #1a1f29;
-  --color-bg-elevated: #242936;
-
-  /* Text Colors */
-  --color-text-primary: #bfbdb6;
-  --color-text-secondary: #acaaa3;
-  --color-text-muted: #6c7086;
-  --color-text-disabled: #4d5566;
-  --color-text-on-accent: #0b0e14;
-
-  /* Accent Color */
-  --color-accent: #e6b450;
-  --color-accent-hover: #ffb454;
-  --color-accent-muted: rgba(230, 180, 80, 0.2);
-
-  /* Border Colors */
-  --color-border: #2d3640;
-  --color-border-subtle: rgba(45, 54, 64, 0.6);
-  --color-border-strong: #3e4a59;
-
-  /* Semantic Colors */
-  --color-success: #7fd962;
-  --color-success-hover: #8fdf72;
-  --color-success-muted: rgba(127, 217, 98, 0.2);
-
-  --color-warning: #ffb454;
-  --color-warning-hover: #ffc064;
-  --color-warning-muted: rgba(255, 180, 84, 0.2);
-
-  --color-error: #d95757;
-  --color-error-hover: #e06969;
-  --color-error-muted: rgba(217, 87, 87, 0.2);
-
-  --color-info: #73b8ff;
-  --color-info-hover: #83c2ff;
-  --color-info-muted: rgba(115, 184, 255, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(230, 180, 80, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #080a0f;
-  --color-sidebar-hover: #0d1017;
-  --color-sidebar-active: #131721;
-  --color-sidebar-border: rgba(45, 54, 64, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #d95757;
-  --color-recording-pulse: rgba(217, 87, 87, 0.4);
-}
-
-/* ===========================================
-   ONE DARK THEME
-   =========================================== */
-[data-theme="one-dark"] {
-  /* Background Colors */
-  --color-bg-primary: #282c34;
-  --color-bg-secondary: #2c313a; /* Lightened from #21252b to match elevation */
-  --color-bg-tertiary: #3a3f4b;
-  --color-bg-elevated: #21252b;
-
-  /* Text Colors */
-  --color-text-primary: #abb2bf;
-  --color-text-secondary: #9da5b4;
-  --color-text-muted: #5c6370;
-  --color-text-disabled: #4b5263;
-  --color-text-on-accent: #282c34;
-
-  /* Accent Color */
-  --color-accent: #61afef;
-  --color-accent-hover: #71b9f9;
-  --color-accent-muted: rgba(97, 175, 239, 0.2);
-
-  /* Border Colors */
-  --color-border: #3e4452;
-  --color-border-subtle: rgba(62, 68, 82, 0.6);
-  --color-border-strong: #5c6370;
-
-  /* Semantic Colors */
-  --color-success: #98c379;
-  --color-success-hover: #a8cd89;
-  --color-success-muted: rgba(152, 195, 121, 0.2);
-
-  --color-warning: #e5c07b;
-  --color-warning-hover: #eaca8b;
-  --color-warning-muted: rgba(229, 192, 123, 0.2);
-
-  --color-error: #e06c75;
-  --color-error-hover: #e57c85;
-  --color-error-muted: rgba(224, 108, 117, 0.2);
-
-  --color-info: #56b6c2;
-  --color-info-hover: #66c0cc;
-  --color-info-muted: rgba(86, 182, 194, 0.2);
-
-  /* Shadow Focus */
-  --shadow-focus: 0 0 0 2px rgba(97, 175, 239, 0.5);
-
-  /* Sidebar specific */
-  --color-sidebar-bg: #1b1d23;
-  --color-sidebar-hover: #21252b;
-  --color-sidebar-active: #2c323c;
-  --color-sidebar-border: rgba(62, 68, 82, 0.5);
-
-  /* Recording indicator */
-  --color-recording: #e06c75;
-  --color-recording-pulse: rgba(224, 108, 117, 0.4);
+:root[data-theme="light"][data-accent="ink"] {
+  --accent-solid: var(--blue-600);
+  --accent-solid-hover: var(--blue-700);
+  --accent-solid-active: var(--blue-750);
+  --accent-on-solid: var(--paper-0);
+  --accent-text: var(--blue-700);
+  --accent-muted: var(--blue-50);
+  --accent-border: var(--blue-200);
+  --focus: var(--blue-700);
 }
