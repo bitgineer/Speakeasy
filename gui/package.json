@@ -65,7 +65,8 @@
     "typecheck:renderer": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:main && npm run typecheck:renderer",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "gen:api": "openapi-typescript ../backend/openapi.json -o src/renderer/src/api/generated.ts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
@@ -100,6 +101,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.33.2",
     "jsdom": "^24.1.3",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.4.33",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

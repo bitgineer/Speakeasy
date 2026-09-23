@@ -1,58 +1,78 @@
 /**
  * API Type Definitions
- * 
- * Matches the backend FastAPI schemas.
+ *
+ * Shapes the backend owns are aliased from the generated OpenAPI schema.
+ * Regenerate with `npm run gen:api`.
  */
 
-// Health response
-export interface HealthResponse {
-  status: string
-  state: string
-  model_loaded: boolean
-  model_name: string | null
-  gpu_available: boolean
-  gpu_name: string | null
-  gpu_vram_gb: number | null
+import type { components } from './generated'
+
+type Schemas = components['schemas']
+
+// Generated backend models
+
+export type HealthResponse = Schemas['HealthResponse']
+
+export type TranscribeStartResponse = Schemas['TranscribeStartResponse']
+export type TranscribeStopRequest = Schemas['TranscribeStopRequest']
+export type TranscribeStopResponse = Schemas['TranscribeStopResponse']
+
+export type TranscriptionRecord = Schemas['TranscriptionRecord']
+
+export type Settings = Schemas['AppSettings']
+export type SettingsUpdateRequest = Schemas['SettingsUpdateRequest']
+export type SettingsUpdateResponse = Schemas['SettingsUpdateResponse']
+
+export type ModelLoadRequest = Schemas['ModelLoadRequest']
+
+export type ExportFormat = Schemas['ExportFormat']
+export type ExportRequest = Schemas['ExportRequest']
+
+export type BatchCreateRequest = Schemas['BatchCreateRequest']
+export type BatchRetryRequest = Schemas['BatchRetryRequest']
+
+// WebSocket events: the schema models the payload, the wire message adds `type`.
+
+export type WebSocketEventType =
+  | 'connected'
+  | 'status'
+  | 'transcription'
+  | 'transcription_progress'
+  | 'download_progress'
+  | 'batch_progress'
+  | 'error'
+  | 'live_transcript'
+
+export interface WebSocketEvent {
+  type: WebSocketEventType
+  [key: string]: unknown
 }
 
-// Transcription
-export interface TranscribeStartResponse {
-  status: string
-}
+export type ConnectedEvent = Schemas['ConnectedEvent'] & { type: 'connected' }
+export type StatusEvent = Schemas['StatusEvent'] & { type: 'status' }
+export type TranscriptionEvent = Schemas['TranscriptionEvent'] & { type: 'transcription' }
+export type TranscriptionProgressEvent = Schemas['TranscriptionProgressEvent'] & { type: 'transcription_progress' }
+export type LiveTranscriptEvent = Schemas['LiveTranscriptEvent'] & { type: 'live_transcript' }
+export type ErrorEvent = Schemas['ErrorEvent'] & { type: 'error' }
+export type DownloadProgressEvent = Schemas['DownloadProgressEvent'] & { type: 'download_progress' }
+export type BatchProgressEvent = Schemas['BatchProgressEvent'] & { type: 'batch_progress' }
 
-export interface TranscribeStopRequest {
-  auto_paste?: boolean
-  language?: string | null
-}
+export type DownloadStatus = DownloadProgressEvent['status']
+export type BatchJobStatus = BatchProgressEvent['status']
+export type BatchFileStatus = NonNullable<BatchProgressEvent['file_status']>
 
-export interface TranscribeStopResponse {
-  id: string
-  text: string
-  duration_ms: number
-  model_used: string | null
-  language: string | null
-}
-
-// History
-export interface TranscriptionRecord {
-  id: string
-  text: string
-  duration_ms: number
-  model_used: string | null
-  language: string | null
-  created_at: string
-  original_text: string | null
-  is_ai_enhanced: boolean
-}
+// Not modeled by a backend response model yet; typed by hand so the client stays strict.
 
 export interface WordData {
   word: string
   probability: number
 }
 
+// The list endpoint supports field projection, so items stay loose in the schema; the record shape is pinned here.
 export interface HistoryListResponse {
   items: TranscriptionRecord[]
   total: number
+  next_cursor: string | null
 }
 
 export interface HistoryStats {
@@ -65,57 +85,6 @@ export interface HistoryStats {
   this_month_count: number
 }
 
-// Settings
-export interface Settings {
-  model_type: string
-  model_name: string
-  compute_type: string
-  device: string
-  language: string
-  device_name: string | null
-  hotkey: string
-  hotkey_mode: 'toggle' | 'push-to-talk'
-  auto_paste: boolean
-  show_recording_indicator: boolean
-  always_show_indicator: boolean
-  theme: string
-  enable_text_cleanup: boolean
-  custom_filler_words: string[] | null
-  server_port: number
-  live_transcription: boolean
-  live_chunk_seconds: number
-  live_auto_paste: boolean
-  debug_logging: boolean
-}
-
-export interface SettingsUpdateRequest {
-  model_type?: string
-  model_name?: string
-  compute_type?: string
-  device?: string
-  language?: string
-  device_name?: string | null
-  hotkey?: string
-  hotkey_mode?: 'toggle' | 'push-to-talk'
-  auto_paste?: boolean
-  show_recording_indicator?: boolean
-  always_show_indicator?: boolean
-  theme?: string
-  enable_text_cleanup?: boolean
-  custom_filler_words?: string[] | null
-  live_transcription?: boolean
-  live_chunk_seconds?: number
-  live_auto_paste?: boolean
-  debug_logging?: boolean
-}
-
-export interface SettingsUpdateResponse {
-  status: string
-  settings: Settings
-  reload_required: boolean
-}
-
-// Models
 export interface ModelInfo {
   name: string
   description: string
@@ -135,13 +104,6 @@ export interface ModelsResponse {
   } | null
 }
 
-export interface ModelLoadRequest {
-  model_type: string
-  model_name: string
-  device?: string
-  compute_type?: string | null
-}
-
 export interface ModelRecommendation {
   recommendation: {
     model_type: string
@@ -155,7 +117,6 @@ export interface ModelRecommendation {
   reason: string
 }
 
-// Audio Devices
 export interface AudioDevice {
   id: number
   name: string
@@ -167,62 +128,6 @@ export interface AudioDevice {
 export interface DevicesResponse {
   devices: AudioDevice[]
   current: string | null
-}
-
-// WebSocket Events
-export type WebSocketEventType = 
-  | 'connected'
-  | 'status'
-  | 'transcription'
-  | 'download_progress'
-  | 'batch_progress'
-  | 'error'
-  | 'live_transcript'
-
-export interface WebSocketEvent {
-  type: WebSocketEventType
-  [key: string]: unknown
-}
-
-export interface StatusEvent extends WebSocketEvent {
-  type: 'status'
-  state: string
-  recording: boolean
-}
-
-export interface TranscriptionEvent extends WebSocketEvent {
-  type: 'transcription'
-  id: string
-  text: string
-  duration_ms: number
-}
-
-export interface LiveTranscriptEvent extends WebSocketEvent {
-  type: 'live_transcript'
-  text: string
-}
-
-export interface ErrorEvent extends WebSocketEvent {
-  type: 'error'
-  message: string
-}
-
-// Download Progress Types
-export type DownloadStatus = 'pending' | 'downloading' | 'completed' | 'cancelled' | 'error'
-
-export interface DownloadProgressEvent extends WebSocketEvent {
-  type: 'download_progress'
-  download_id: string
-  model_name: string
-  model_type: string
-  downloaded_bytes: number
-  total_bytes: number
-  progress_percent: number
-  status: DownloadStatus
-  error_message: string | null
-  elapsed_seconds: number
-  bytes_per_second: number
-  estimated_remaining_seconds: number | null
 }
 
 export interface DownloadStatusResponse {
@@ -257,18 +162,6 @@ export interface CacheClearResponse {
   freed_human: string
 }
 
-// Export Types
-export type ExportFormat = 'txt' | 'json' | 'csv' | 'srt' | 'vtt'
-
-export interface ExportRequest {
-  format: ExportFormat
-  include_metadata?: boolean
-  start_date?: string
-  end_date?: string
-  search?: string
-  record_ids?: string[]
-}
-
 export interface ImportRequest {
   data: {
     transcriptions: TranscriptionRecord[]
@@ -282,10 +175,6 @@ export interface ImportResponse {
   imported: number
   skipped: number
 }
-
-// Batch Transcription Types
-export type BatchJobStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'failed'
-export type BatchFileStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'skipped'
 
 export interface BatchFile {
   id: string
@@ -310,10 +199,6 @@ export interface BatchJob {
   skipped_count: number
 }
 
-export interface BatchCreateRequest {
-  file_paths: string[]
-}
-
 export interface BatchCreateResponse {
   job_id: string
   status: string
@@ -322,16 +207,4 @@ export interface BatchCreateResponse {
 
 export interface BatchListResponse {
   jobs: BatchJob[]
-}
-
-export interface BatchProgressEvent extends WebSocketEvent {
-  type: 'batch_progress'
-  job_id: string
-  status: BatchJobStatus
-  current_file: string | null
-  current_index: number
-  total_files: number
-  completed: number
-  failed: number
-  file_status?: BatchFileStatus
 }

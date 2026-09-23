@@ -6,9 +6,6 @@
 
 import type {
   HealthResponse,
-  TranscribeStartResponse,
-  TranscribeStopRequest,
-  TranscribeStopResponse,
   HistoryListResponse,
   TranscriptionRecord,
   HistoryStats,
@@ -30,7 +27,8 @@ import type {
   BatchCreateRequest,
   BatchCreateResponse,
   BatchJob,
-  BatchListResponse
+  BatchListResponse,
+  BatchRetryRequest
 } from './types'
 import { createCache } from './cache'
 import { perfMonitor } from '../utils/performance'
@@ -211,28 +209,6 @@ class ApiClient {
   // Health
   async getHealth(): Promise<HealthResponse> {
     return this.request<HealthResponse>('/api/health')
-  }
-
-  // Transcription
-  async startTranscription(): Promise<TranscribeStartResponse> {
-    return this.request<TranscribeStartResponse>('/api/transcribe/start', {
-      method: 'POST'
-    })
-  }
-
-  async stopTranscription(
-    options: TranscribeStopRequest = {}
-  ): Promise<TranscribeStopResponse> {
-    return this.request<TranscribeStopResponse>('/api/transcribe/stop', {
-      method: 'POST',
-      body: JSON.stringify(options)
-    })
-  }
-
-  async cancelTranscription(): Promise<{ status: string }> {
-    return this.request<{ status: string }>('/api/transcribe/cancel', {
-      method: 'POST'
-    })
   }
 
    // History
@@ -432,11 +408,12 @@ class ApiClient {
     jobId: string,
     fileIds?: string[]
   ): Promise<{ status: string; job: BatchJob }> {
+    const body: BatchRetryRequest = { file_ids: fileIds ?? null }
     return this.request<{ status: string; job: BatchJob }>(
       `/api/transcribe/batch/${jobId}/retry`,
       {
         method: 'POST',
-        body: JSON.stringify({ file_ids: fileIds })
+        body: JSON.stringify(body)
       }
     )
   }

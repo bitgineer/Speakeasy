@@ -13,6 +13,14 @@ import ModelDownloadDialog from '../../components/ModelDownloadDialog'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 
+type ModelDraft = {
+  model_type: string
+  model_name: string
+  device: 'cuda' | 'cpu'
+  compute_type: string
+  language: string
+}
+
 export default function ModelSettings(): JSX.Element {
   const {
     settings,
@@ -43,7 +51,7 @@ export default function ModelSettings(): JSX.Element {
   const [showDownloadDialog, setShowDownloadDialog] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
-  const [localSettings, setLocalSettings] = useState({
+  const [localSettings, setLocalSettings] = useState<ModelDraft>({
     model_type: '',
     model_name: '',
     device: 'cpu',
@@ -224,7 +232,7 @@ export default function ModelSettings(): JSX.Element {
             <label className="label">Compute Device</label>
             <select
               value={localSettings.device}
-              onChange={(e) => setLocalSettings(prev => ({ ...prev, device: e.target.value }))}
+              onChange={(e) => setLocalSettings(prev => ({ ...prev, device: e.target.value as 'cuda' | 'cpu' }))}
               disabled={isSaving}
               className="select"
             >

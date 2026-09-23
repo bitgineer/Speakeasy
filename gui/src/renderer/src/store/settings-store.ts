@@ -85,7 +85,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       const response = await apiClient.updateSettings(updates)
       set({ 
-        settings: response.settings,
+        settings: response.settings ?? null,
         needsModelReload: response.reload_required,
         isSaving: false
       })
