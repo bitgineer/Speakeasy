@@ -1,4 +1,4 @@
-# Phase 4 report (branch feat/ui-overhaul, HEAD f5e8a45)
+# Phase 4 report (committed 1ecc6b8; branch feat/ui-overhaul)
 
 ## Files changed
 - `gui/src/renderer/src/pages/BatchTranscription.tsx` rebuilt on semantic tokens: page head, dropzone, queue panel, progress panel, file list. All handlers, WebSocket wiring, and API calls unchanged.
@@ -19,7 +19,7 @@ legacy 407 -> 283 (baseline 407 -> 283). arbitrary unchanged 17 -> 17 (both page
 
 ## Captures
 After: blocked (0 files). Before (4) copied from `%TEMP%\opencode\ui-captures\baseline-1461218`:
-`batch-before-1461218-{dark,light}.png`, `stats-before-1461218-{dark,light}.png`.
+`batch-before-1461218-{dark,light}.png`, `stats-before-1461218-{dark,light}.png`. The dark and light before pairs are byte-identical because no light theme existed at `1461218`; the `-light` copies are kept so the after set pairs name-for-name.
 
 Blocker: a live SpeakEasy app is running, launched from `start.bat` (cmd 35680 <- explorer.exe). Its GUI (PID 47700, user data `%APPDATA%\speakeasy`) holds the Electron single-instance lock, and its backend (PIDs 3192/47008) holds port 8765. The harness preflights the port and refuses; verify-speakeasy documents the same lock and says to close the app. I did not stop it, per the no-backend constraint. Close the app, then rerun the command to produce `batch-after-phase4-*` and `stats-after-phase4-*`.
 
@@ -27,4 +27,5 @@ Blocker: a live SpeakEasy app is running, launched from `start.bat` (cmd 35680 <
 - Cancel/delete preserved as the original page had them: `clearAll` ("Start new batch") and `removeFile`. The original made no `cancelBatchJob`/`deleteBatchJob` call, so none was added, to keep data flow identical.
 - Batch error banner gained a dismiss button and the progress track gained `role="progressbar"`; both match the Dashboard error-banner pattern and change no data flow.
 - Added `JOB_STATE`/`FILE_TONE` lookup tables and a typed `StatTone` in place of nested ternaries and the untyped `color` prop.
+- The queue panel gained a visible total-files counter ("N total"); the old page showed the count only in the heading text.
 - Live functional pass via verify-speakeasy: not run, same live-instance block.
