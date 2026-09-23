@@ -79,7 +79,8 @@ module.exports = {
           text: 'var(--danger-text)',
           solid: 'var(--danger-solid)',
           muted: 'var(--danger-muted)',
-          border: 'var(--danger-border)'
+          border: 'var(--danger-border)',
+          'on-solid': 'var(--danger-on-solid)'
         },
         focus: 'var(--focus)'
       }

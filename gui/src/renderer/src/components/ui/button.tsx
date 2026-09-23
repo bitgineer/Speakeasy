@@ -51,16 +51,16 @@ const buttonVariants = cva(
           "hover:text-content-primary"
         ],
         danger: [
-          "bg-transparent",
-          "border-transparent",
-          "text-danger-text",
-          "hover:bg-danger-muted"
+          "bg-danger-solid",
+          "border-danger-solid",
+          "text-danger-on-solid",
+          "hover:opacity-90"
         ]
       },
       size: {
         sm: ["min-h-[var(--control-height-sm)]", "px-2", "text-small", "gap-1.5"],
         md: ["min-h-[var(--control-height)]", "px-3"],
-        lg: ["min-h-[40px]", "px-4", "text-body", "gap-2"]
+        lg: ["min-h-[var(--control-height-lg)]", "px-4", "text-body", "gap-2"]
       }
     },
     defaultVariants: {

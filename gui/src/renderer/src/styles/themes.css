@@ -155,6 +155,7 @@
 
   --danger-text: var(--red-300);
   --danger-solid: var(--red-300);
+  --danger-on-solid: var(--red-950);
   --danger-muted: var(--red-950);
   --danger-border: var(--red-800);
 }
@@ -203,6 +204,7 @@
 
   --danger-text: var(--red-700);
   --danger-solid: var(--red-600);
+  --danger-on-solid: #ffffff;
   --danger-muted: var(--red-50);
   --danger-border: var(--red-200);
 }

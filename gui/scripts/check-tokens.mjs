@@ -115,6 +115,8 @@ const defined = declaredNames(allRules)
 
 const tsxFiles = walk(srcRoot, '.tsx')
 let legacyUsages = 0
+const arbitraryViolations = []
+const ARBITRARY_BASELINE = 19
 
 for (const file of tsxFiles) {
   const text = read(file)
@@ -134,7 +136,22 @@ for (const file of tsxFiles) {
     fail(`${label}:${lineAt(text, hexIndex)} has raw hex ${match[0]}; use a semantic token or extend HEX_ALLOWLIST`)
   }
 
+  for (const arbitrary of text.match(/\[[^\]\n]*(?:px|#[0-9a-fA-F]{3,8})[^\]\n]*\]/g) ?? []) {
+    arbitraryViolations.push(`${label} has arbitrary value ${arbitrary}; use a token-backed utility`)
+  }
+  for (const fn of text.match(/\b(?:rgba?|hsla?)\(/g) ?? []) {
+    arbitraryViolations.push(`${label} uses raw ${fn.slice(0, -1)}() color; use a semantic token`)
+  }
+
   legacyUsages += refsIn(text).filter((ref) => ref.name.startsWith('--color-')).length
+}
+
+console.log(`  arbitrary or raw-color values in tsx: ${arbitraryViolations.length} (baseline ${ARBITRARY_BASELINE})`)
+if (arbitraryViolations.length > ARBITRARY_BASELINE) {
+  for (const message of arbitraryViolations) fail(message)
+}
+if (arbitraryViolations.length < ARBITRARY_BASELINE) {
+  console.log(`  lower ARBITRARY_BASELINE to ${arbitraryViolations.length} in scripts/check-tokens.mjs`)
 }
 
 // ---- 3 and 4: theme parity and accent-only overrides ----

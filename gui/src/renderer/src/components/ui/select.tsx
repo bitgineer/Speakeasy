@@ -28,7 +28,7 @@ const selectVariants = cva(
       size: {
         sm: ["min-h-[var(--control-height-sm)]", "text-small"],
         md: ["min-h-[var(--control-height)]"],
-        lg: ["min-h-[40px]", "text-body"]
+        lg: ["min-h-[var(--control-height-lg)]", "text-body"]
       }
     },
     defaultVariants: {
