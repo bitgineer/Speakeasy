@@ -397,7 +397,7 @@ Live captions stay regex-cleanup only. Batch stays unchanged. Both stated as non
 ### Settings schema and update semantics
 
 - New nested models become named OpenAPI components; the GUI type aliases extend `types.ts`.
-  Regenerate with `cd backend && uv run python scripts/export_openapi.py` and
+  Regenerate with `cd backend && .venv\Scripts\python.exe scripts/export_openapi.py` and
   `cd gui && npm run gen:api`; CI checks both.
 - `SettingsUpdateRequest` mirrors the new top-level fields (`| None = None`) and reuses the nested
   models, so there is no duplicate shape. The endpoint catches `ValidationError` and returns 400.
