@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Capture the main-window routes of an isolated SpeakEasy instance to PNG.
+ * Capture the main-window routes of an isolated SpeakEasy instance to PNG,
+ * plus the export dialog (opened and closed over the dashboard) and the
+ * recording-indicator overlay, which is a second BrowserWindow and CDP target.
  *
  * Isolation follows the verify-speakeasy recipe: a scratch home holds the
  * history database, and the backend runs on the port the app reads from
@@ -8,6 +10,8 @@
  * Windows shell, not USERPROFILE, so the GUI itself always targets that port;
  * the preflight below refuses to run while a real app or backend holds it.
  * Nothing under ~/.speakeasy is read or written except that one port number.
+ * The scratch settings keep the indicator visible so its window stays
+ * paintable; it is a separate window, so it never enters a main-window shot.
  *
  * Usage:
  *   npm run capture:ui -- --out <dir> [--theme dark,light] [--accent violet]
@@ -263,8 +267,35 @@ async function findPageTarget(debugPort) {
   )
 }
 
+async function findOverlayTarget(debugPort) {
+  const targets = await httpJson(`http://127.0.0.1:${debugPort}/json/list`)
+  return (
+    targets.find(
+      (target) =>
+        target.type === 'page' &&
+        target.webSocketDebuggerUrl &&
+        (target.url || '').includes('recording-indicator')
+    ) || null
+  )
+}
+
 function pngSize(buffer) {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) }
+}
+
+async function applyTheme(cdp, theme, accent) {
+  const override =
+    theme === 'default'
+      ? "delete root.dataset.theme; delete root.dataset.accent;"
+      : `root.dataset.theme = ${JSON.stringify(theme)}; root.dataset.accent = ${JSON.stringify(accent)};`
+  await cdp.evaluate(`(() => { const root = document.documentElement; ${override} return true })()`)
+  await cdp.evaluate('new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))')
+}
+
+async function capturePng(cdp) {
+  const shot = await cdp.call('Page.captureScreenshot', { format: 'png' })
+  const buffer = Buffer.from(shot.data, 'base64')
+  return { buffer, ...pngSize(buffer) }
 }
 
 async function main() {
@@ -299,8 +330,8 @@ async function main() {
         device: 'cpu',
         server_port: backendPort,
         custom_filler_words: [`capture-${Date.now()}`],
-        show_recording_indicator: false,
-        always_show_indicator: false
+        show_recording_indicator: true,
+        always_show_indicator: true
       },
       null,
       2
@@ -409,17 +440,8 @@ async function main() {
         if (uncaught.length) routeFailures.push(`${route.path} threw: ${uncaught.join('; ')}`)
 
         for (const theme of args.themes) {
-          const override =
-            theme === 'default'
-              ? "delete root.dataset.theme; delete root.dataset.accent;"
-              : `root.dataset.theme = ${JSON.stringify(theme)}; root.dataset.accent = ${JSON.stringify(args.accent)};`
-          await cdp.evaluate(`(() => { const root = document.documentElement; ${override} return true })()`)
-          await cdp.evaluate(
-            'new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))'
-          )
-          const shot = await cdp.call('Page.captureScreenshot', { format: 'png' })
-          const buffer = Buffer.from(shot.data, 'base64')
-          const { width, height } = pngSize(buffer)
+          await applyTheme(cdp, theme, args.accent)
+          const { buffer, width, height } = await capturePng(cdp)
           const suffix = theme === 'default' ? '' : `-${theme}`
           const file = join(
             args.out,
@@ -436,6 +458,114 @@ async function main() {
         }
 
         if (routeFailures.length) failures.push(...routeFailures)
+      }
+
+      // Export dialog: a portal in the main page, so the same CDP client can
+      // open it over the dashboard, capture it, and close it via Cancel.
+      try {
+        await cdp.evaluate(`location.hash = '#/'; true`)
+        await waitFor(
+          'dashboard for the export dialog',
+          async () => {
+            const state = await cdp.evaluate(`(() => ({
+              ready: [...document.querySelectorAll('button')].some((button) =>
+                /export history/i.test(button.textContent || '')
+              ),
+              broken: /System Malfunction|Something went wrong|Failed to load/i.test(
+                document.querySelector('main')?.innerText || ''
+              )
+            }))()`)
+            return state.ready && !state.broken
+          },
+          ROUTE_TIMEOUT_MS,
+          400
+        )
+        const opened = await cdp.evaluate(`(() => {
+          const button = [...document.querySelectorAll('button')].find((candidate) =>
+            /export history/i.test(candidate.textContent || '')
+          );
+          if (!button) return false;
+          button.click();
+          return true;
+        })()`)
+        if (!opened) throw new Error('Export history button not found')
+        await waitFor(
+          'export dialog',
+          () => cdp.evaluate(`!!document.querySelector('[role="dialog"]')`),
+          ROUTE_TIMEOUT_MS,
+          200
+        )
+        for (const theme of args.themes) {
+          await applyTheme(cdp, theme, args.accent)
+          const { buffer, width, height } = await capturePng(cdp)
+          const suffix = theme === 'default' ? '' : `-${theme}`
+          const file = join(args.out, `12-export-dialog${suffix}.png`)
+          writeFileSync(file, buffer)
+          if (width !== VIEWPORT.width || height !== VIEWPORT.height) {
+            failures.push(
+              `export dialog${suffix} captured ${width}x${height}, expected ${VIEWPORT.width}x${VIEWPORT.height}`
+            )
+          }
+          captured.push({ route: 'export-dialog', theme, file })
+          console.log(`captured ${file.split(/[\\/]/).pop()} (${width}x${height}, ${buffer.length} bytes)`)
+        }
+        const closed = await cdp.evaluate(`(() => {
+          const button = [...document.querySelectorAll('[role="dialog"] button')].find((candidate) =>
+            /^cancel$/i.test((candidate.textContent || '').trim())
+          );
+          if (!button) return false;
+          button.click();
+          return true;
+        })()`)
+        if (!closed) throw new Error('Cancel button not found in the export dialog')
+        await waitFor(
+          'export dialog closed',
+          () => cdp.evaluate(`!document.querySelector('[role="dialog"]')`),
+          ROUTE_TIMEOUT_MS,
+          200
+        )
+      } catch (error) {
+        failures.push(`export dialog capture: ${error.message}`)
+      }
+
+      // Overlay: the recording indicator is a second BrowserWindow with its own
+      // CDP target. The scratch settings keep it shown, so the idle pill paints.
+      try {
+        const overlayTarget = await waitFor(
+          'recording indicator target',
+          () => findOverlayTarget(debugPort),
+          GUI_TIMEOUT_MS,
+          1000
+        )
+        const overlay = await connectCdp(overlayTarget.webSocketDebuggerUrl)
+        try {
+          await overlay.call('Runtime.enable')
+          await overlay.call('Page.enable')
+          await waitFor(
+            'overlay idle pill',
+            () =>
+              overlay.evaluate(
+                "document.readyState === 'complete' && !!document.querySelector('button[title]')"
+              ),
+            ROUTE_TIMEOUT_MS,
+            400
+          )
+          await overlay.evaluate(`window.api?.showIndicator?.(); true`)
+          await sleep(250)
+          for (const theme of args.themes) {
+            await applyTheme(overlay, theme, args.accent)
+            const { buffer, width, height } = await capturePng(overlay)
+            const suffix = theme === 'default' ? '' : `-${theme}`
+            const file = join(args.out, `13-overlay-idle${suffix}.png`)
+            writeFileSync(file, buffer)
+            captured.push({ route: 'recording-indicator', theme, file })
+            console.log(`captured ${file.split(/[\\/]/).pop()} (${width}x${height}, ${buffer.length} bytes)`)
+          }
+        } finally {
+          overlay.close()
+        }
+      } catch (error) {
+        failures.push(`overlay capture: ${error.message}`)
       }
     } finally {
       cdp.close()

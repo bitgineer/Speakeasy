@@ -9,10 +9,11 @@
  *   4. a data-accent block declares anything but accent role tokens;
  *   5. tailwind.config.js maps a color to a variable that does not exist;
  *   6. a loaded stylesheet references a variable that is not declared;
- *   7. the legacy --color-* usage count grew past the ratchet baseline.
+ *   7. any legacy --color-* usage remains (the alias block is gone).
  *
- * The legacy count is the migration ratchet. Lower LEGACY_BASELINE as pages
- * migrate; the count prints on every run.
+ * The legacy count is the migration ratchet, pinned at zero since phase 6
+ * deleted the alias block. The arbitrary count is pinned at zero too; the
+ * counts print on every run.
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -25,7 +26,7 @@ const stylesRoot = join(srcRoot, 'styles')
 const loadedStyles = ['tokens.css', 'themes.css', 'globals.css'].map((f) => join(stylesRoot, f))
 const tailwindConfig = join(guiRoot, 'tailwind.config.js')
 
-const LEGACY_BASELINE = 40
+const LEGACY_BASELINE = 0
 const HEX_ALLOWLIST = []
 const ACCENT_ROLE_TOKENS = new Set([
   '--accent-solid',
@@ -116,7 +117,7 @@ const defined = declaredNames(allRules)
 const tsxFiles = walk(srcRoot, '.tsx')
 let legacyUsages = 0
 const arbitraryViolations = []
-const ARBITRARY_BASELINE = 5
+const ARBITRARY_BASELINE = 0
 
 for (const file of tsxFiles) {
   const text = read(file)

@@ -27,54 +27,52 @@ export function RecordingPill({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="flex items-center gap-4 bg-black/90 text-white px-4 py-2.5 rounded-full backdrop-blur-md shadow-2xl outline-none ring-0 border-0"
+      className="overlay-pill"
     >
-      <div className="relative flex items-center justify-center w-3 h-3">
-        <motion.div
+      <span className="overlay-recording-dot" aria-hidden="true">
+        <motion.span
           animate={{ scale: [1, 2.5, 1], opacity: [0.5, 0, 0.5] }}
           transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute w-full h-full bg-red-500 rounded-full"
+          className="overlay-recording-ring"
         />
-        <div className="relative w-2.5 h-2.5 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-      </div>
+        <span className="overlay-recording-core" />
+      </span>
 
       {isLocked && (
-        <motion.div
+        <motion.span
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
           className="-ml-1"
         >
-          <Lock className="w-4 h-4 text-red-400" />
-        </motion.div>
+          <Lock size={14} className="text-danger-text" aria-hidden="true" />
+        </motion.span>
       )}
 
-      {mode && (
-        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
-          {mode}
-        </span>
-      )}
+      {mode && <span className="overlay-mode">{mode}</span>}
 
-      <span className="font-mono text-lg font-medium tracking-wide min-w-[60px] text-center">
-        {time}
-      </span>
+      <span className="overlay-timer">{time}</span>
 
-      <div className="h-5 w-px bg-white/10" />
+      <span className="overlay-divider" aria-hidden="true" />
 
       <button
+        type="button"
         onClick={onStop}
         title="Stop and transcribe"
-        className="p-1.5 hover:bg-white/10 rounded-full transition-colors group"
+        aria-label="Stop and transcribe"
+        className="overlay-action overlay-action--stop"
       >
-        <Square className="w-4 h-4 fill-zinc-400 text-zinc-400 group-hover:fill-white group-hover:text-white transition-colors" />
+        <Square size={14} aria-hidden="true" />
       </button>
 
       <button
+        type="button"
         onClick={onCancel}
         title="Cancel recording"
-        className="p-1.5 hover:bg-white/10 rounded-full transition-colors group"
+        aria-label="Cancel recording"
+        className="overlay-action"
       >
-        <X className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+        <X size={14} aria-hidden="true" />
       </button>
     </motion.div>
   )

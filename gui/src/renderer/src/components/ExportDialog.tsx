@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { Download, Loader2 } from 'lucide-react'
 import { apiClient } from '../api/client'
+import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import type { ExportFormat } from '../api/types'
 
 interface ExportDialogProps {
@@ -79,34 +82,34 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
   if (!isOpen) return null
 
   const showMetadataOption = format === 'json' || format === 'csv'
+  const selectedFormat = FORMAT_OPTIONS.find((option) => option.value === format)
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="export-dialog-title"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
     >
-      <div className="w-full max-w-md transform overflow-hidden rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-6 text-left align-middle shadow-xl transition-all">
-        <h3
-          id="export-dialog-title"
-          className="text-lg font-medium leading-6 text-[var(--color-text-primary)] mb-4 flex items-center gap-2"
-        >
-          <svg className="w-6 h-6 text-[var(--color-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-          {singleRecordId ? 'Export Transcription' : 'Export History'}
-        </h3>
+      {/* Radix warns without a Description; the dialog carries its title only. */}
+      <DialogContent className="max-w-md" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Download size={18} className="text-accent-text" aria-hidden="true" />
+            {singleRecordId ? 'Export Transcription' : 'Export History'}
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+          <div className="field">
+            <label className="label" htmlFor="export-format">
               Format
             </label>
             <select
+              id="export-format"
               value={format}
               onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              className="w-full px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              className="select"
             >
               {FORMAT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -114,86 +117,72 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              {FORMAT_OPTIONS.find((o) => o.value === format)?.description}
-            </p>
+            <p className="field-hint">{selectedFormat?.description}</p>
           </div>
 
           {showMetadataOption && (
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="check-row">
               <input
                 type="checkbox"
                 checked={includeMetadata}
                 onChange={(e) => setIncludeMetadata(e.target.checked)}
-                className="w-4 h-4 text-[var(--color-accent)] bg-[var(--color-bg-tertiary)] border-[var(--color-border)] rounded focus:ring-[var(--color-accent)]"
+                className="checkbox"
               />
-              <span className="text-sm text-[var(--color-text-secondary)]">Include metadata (duration, model, language)</span>
+              <span>Include metadata (duration, model, language)</span>
             </label>
           )}
 
           {!singleRecordId && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  Date Range (optional)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                    placeholder="From"
-                  />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                    placeholder="To"
-                  />
-                </div>
+            <div className="field">
+              <span className="label">Date Range (optional)</span>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="input flex-1"
+                  aria-label="Start date"
+                  placeholder="From"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="input flex-1"
+                  aria-label="End date"
+                  placeholder="To"
+                />
               </div>
-            </>
+            </div>
           )}
 
           {error && (
-            <div className="bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg p-3">
-              <p className="text-sm text-[var(--color-error)]">{error}</p>
+            <div
+              className="rounded-control border border-danger-border bg-danger-muted p-3"
+              role="alert"
+            >
+              <p className="text-small text-danger-text">{error}</p>
             </div>
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            className="inline-flex justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] transition-colors"
-            onClick={onClose}
-            disabled={isLoading}
-          >
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="inline-flex justify-center rounded-lg border border-transparent bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-text-on-accent)] hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleExport}
-            disabled={isLoading}
-          >
+          </Button>
+          <Button type="button" onClick={handleExport} disabled={isLoading}>
             {isLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+              <>
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                 Exporting...
-              </span>
+              </>
             ) : (
               'Export'
             )}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
