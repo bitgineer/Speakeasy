@@ -13,8 +13,8 @@ develop-eggs/
 dist/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 *.egg-info/
@@ -126,6 +126,10 @@ Thumbs.db
 # =============================================================================
 # GSD planning
 .planning/
+
+# Verification runs and evidence (see .opencode/skills/verify-speakeasy)
+.verify/
+.opencode/
 
 # Temporary files
 tmp/
