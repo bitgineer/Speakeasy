@@ -72,7 +72,7 @@ export default function AboutSettings(): JSX.Element {
           </div>
           <div className="settings-table">
             {TECH_STACK.map((row) => (
-              <div className="table-row" key={row.label}>
+              <div className="fact-row" key={row.label}>
                 <span className="table-key">{row.label}</span>
                 <span className="table-value">{row.value}</span>
               </div>

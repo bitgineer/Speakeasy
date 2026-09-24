@@ -69,7 +69,7 @@ function ModelSelector({
       {/* Model Type */}
       <div className="field">
         <label htmlFor="model-type-select" className="label">
-          Model Type
+          Model type
         </label>
         <select
           id="model-type-select"
@@ -105,7 +105,7 @@ function ModelSelector({
       {/* Model Variant */}
       <div className="field">
         <label htmlFor="model-variant-select" className="label">
-          Model Variant
+          Model variant
         </label>
         <select
           id="model-variant-select"
@@ -145,7 +145,7 @@ function ModelSelector({
             ) : (
               <span className="pill">
                 <Download size={12} aria-hidden="true" />
-                Not downloaded - click to download
+                Not downloaded
               </span>
             )}
             <span className="pill">Speed: {modelDetails.speed}</span>

@@ -29,7 +29,7 @@ export default function DataSettings(): JSX.Element {
       const data = JSON.parse(text)
 
       if (!data.transcriptions || !Array.isArray(data.transcriptions)) {
-        throw new Error('Invalid file format: missing "transcriptions" array')
+        throw new Error('This file is not a SpeakEasy export. Choose a JSON file exported from SpeakEasy.')
       }
 
       const result = await apiClient.importHistory({
@@ -38,7 +38,7 @@ export default function DataSettings(): JSX.Element {
       })
 
       setImportStatus({
-        message: `Successfully imported ${result.imported} records (skipped ${result.skipped})`,
+        message: `Imported ${result.imported} transcription${result.imported === 1 ? '' : 's'} (skipped ${result.skipped})`,
         type: 'success'
       })
       
@@ -48,7 +48,7 @@ export default function DataSettings(): JSX.Element {
       }
     } catch (err) {
       setImportStatus({
-        message: err instanceof Error ? err.message : 'Import failed',
+        message: err instanceof Error ? err.message : 'Unable to import the file. Try again.',
         type: 'error'
       })
     } finally {
@@ -61,7 +61,7 @@ export default function DataSettings(): JSX.Element {
       <header className="page-head">
         <div>
           <p className="eyebrow">Settings / data</p>
-          <h1>Data Management</h1>
+          <h1>Data management</h1>
           <p className="page-subtitle">Import and export your transcription history.</p>
         </div>
       </header>

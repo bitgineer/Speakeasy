@@ -51,7 +51,7 @@ export default function AudioSettings(): JSX.Element {
       <header className="page-head">
         <div>
           <p className="eyebrow">Settings / audio</p>
-          <h1>Audio Settings</h1>
+          <h1>Audio settings</h1>
           <p className="page-subtitle">Configure the audio input device.</p>
         </div>
       </header>

@@ -70,21 +70,21 @@ const ModelDownloadDialog: React.FC<ModelDownloadDialogProps> = ({
   const heading = isCompleted
     ? {
         icon: <CheckCircle2 size={18} className="text-success-text" aria-hidden="true" />,
-        title: 'Download Complete'
+        title: 'Download complete'
       }
     : isError
       ? {
           icon: <XCircle size={18} className="text-danger-text" aria-hidden="true" />,
-          title: 'Download Failed'
+          title: 'Download failed'
         }
       : isCancelled
         ? {
             icon: <AlertTriangle size={18} className="text-warning-text" aria-hidden="true" />,
-            title: 'Download Cancelled'
+            title: 'Download cancelled'
           }
         : {
             icon: <Download size={18} className="animate-pulse text-accent-text" aria-hidden="true" />,
-            title: 'Downloading Model'
+            title: 'Downloading model'
           }
 
   return (
@@ -113,8 +113,8 @@ const ModelDownloadDialog: React.FC<ModelDownloadDialogProps> = ({
               className="rounded-control border border-danger-border bg-danger-muted p-3"
               role="alert"
             >
-              <p className="text-small text-danger-text">
-                {errorMessage || 'An unknown error occurred during download.'}
+              <p className="text-small text-danger-text wrap-anywhere">
+                {errorMessage || 'The download failed. Close this dialog and try again.'}
               </p>
             </div>
           )}
@@ -148,7 +148,7 @@ const ModelDownloadDialog: React.FC<ModelDownloadDialogProps> = ({
               className="text-danger-text hover:bg-danger-muted hover:text-danger-text"
               onClick={handleCancel}
             >
-              Cancel Download
+              Cancel download
             </Button>
           ) : (
             <>

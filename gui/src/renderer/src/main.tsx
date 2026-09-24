@@ -4,6 +4,7 @@
 
 import React from 'react'
 import { createRoot } from 'react-dom/client'
+import { MotionConfig } from 'motion/react'
 import App from './App'
 import { configureBackendPort } from './api/backend-port'
 import './styles/globals.css'
@@ -22,6 +23,8 @@ configureBackendPort()
 const root = createRoot(container)
 root.render(
   <React.StrictMode>
-    <App />
+    <MotionConfig reducedMotion="user">
+      <App />
+    </MotionConfig>
   </React.StrictMode>
 )

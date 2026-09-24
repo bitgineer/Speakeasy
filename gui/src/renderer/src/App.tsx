@@ -137,7 +137,7 @@ function MainLayout(): JSX.Element {
   useHotkeyRegistration(settings?.hotkeys, (failed) => {
     const accelerators = failed.map((failure) => failure.accelerator).join(', ')
     toast.error(
-      `Could not register hotkey${failed.length === 1 ? '' : 's'}: ${accelerators}`
+      `Could not register hotkey${failed.length === 1 ? '' : 's'}: ${accelerators}. Choose a different combination in Hotkey settings.`
     )
   })
    
@@ -173,7 +173,7 @@ function MainLayout(): JSX.Element {
       }
       if (response?.processing_error) {
         toast.warning(
-          `AI processing failed (${response.processing_error}). The fallback text was inserted.`
+          `AI processing failed (${response.processing_error}). The original transcription was used instead.`
         )
       }
     })

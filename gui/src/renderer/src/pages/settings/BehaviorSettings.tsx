@@ -263,8 +263,8 @@ export default function BehaviorSettings(): JSX.Element {
           </div>
           <div className="settings-rows">
             <SwitchRow
-              label="Enable Live Transcription"
-              hint="Transcribe audio in real-time while recording (updates every few seconds)"
+              label="Show live text"
+              hint="Transcribe audio in real time while recording (updates every few seconds)"
               checked={localSettings.live_transcription}
               disabled={isSaving}
               onChange={(checked) =>
@@ -299,7 +299,7 @@ export default function BehaviorSettings(): JSX.Element {
                   </div>
                 </div>
                 <SwitchRow
-                  label="Auto-paste Live Text"
+                  label="Auto-paste live text"
                   hint="Automatically paste live transcripts into the active window"
                   checked={localSettings.live_auto_paste}
                   disabled={isSaving}
@@ -320,7 +320,7 @@ export default function BehaviorSettings(): JSX.Element {
 
           <SwitchRow
             label="Verbose debug logging"
-            hint="Log each live transcription pass and paste action. Applies after an app restart."
+            hint="Log every live transcription update and paste action. Applies after an app restart."
             checked={localSettings.debug_logging}
             disabled={isSaving}
             onChange={(checked) => setLocalSettings(prev => ({ ...prev, debug_logging: checked }))}

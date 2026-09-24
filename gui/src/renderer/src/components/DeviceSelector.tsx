@@ -31,7 +31,7 @@ function DeviceSelector({
     <div className="field">
       <div className="field-label-row">
         <label className="label" htmlFor="audio-input-device">
-          Audio Input Device
+          Audio input device
         </label>
         {isConnecting && (
           <span className="field-status">
@@ -61,7 +61,8 @@ function DeviceSelector({
       {error && <p className="field-error">{error}</p>}
       {selectedDevice && (
         <p className="field-hint">
-          {selected?.channels ?? 0} channel(s), {(selected?.sample_rate ?? 0) / 1000}kHz
+          {selected?.channels ?? 0} {selected?.channels === 1 ? 'channel' : 'channels'},{' '}
+          {(selected?.sample_rate ?? 0) / 1000}kHz
         </p>
       )}
     </div>

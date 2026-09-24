@@ -57,7 +57,7 @@ describe('export dialog flows', () => {
 
   it('drops the date range for a single-record export', () => {
     render(<ExportDialog isOpen onClose={() => {}} singleRecordId="abc" />)
-    expect(screen.getByText('Export Transcription')).toBeTruthy()
+    expect(screen.getByText('Export transcription')).toBeTruthy()
     expect(screen.queryByText('Date Range (optional)')).toBeNull()
   })
 })
@@ -67,7 +67,7 @@ describe('download dialog flows', () => {
     useDownloadStore.setState({ status: 'error', errorMessage: 'disk full' })
     const onRetry = vi.fn()
     render(<ModelDownloadDialog isOpen onClose={() => {}} onRetry={onRetry} />)
-    expect(screen.getByText('Download Failed')).toBeTruthy()
+    expect(screen.getByText('Download failed')).toBeTruthy()
     expect(screen.getByText('disk full')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
@@ -83,7 +83,7 @@ describe('download dialog flows', () => {
     cancelDownloadRequest.mockResolvedValue({ status: 'cancelled' })
     render(<ModelDownloadDialog isOpen onClose={() => {}} />)
     expect(screen.getByText('Model: whisper-base')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel Download' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel download' }))
     await waitFor(() => expect(cancelDownloadRequest).toHaveBeenCalledTimes(1))
   })
 })

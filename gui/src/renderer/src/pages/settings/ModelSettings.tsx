@@ -160,7 +160,7 @@ export default function ModelSettings(): JSX.Element {
       <header className="page-head">
         <div>
           <p className="eyebrow">Settings / model</p>
-          <h1>Model Settings</h1>
+          <h1>Model settings</h1>
           <p className="page-subtitle">Configure the transcription model and performance.</p>
         </div>
         <div className="page-actions">
@@ -190,9 +190,9 @@ export default function ModelSettings(): JSX.Element {
 
       {needsModelReload && (
         <div className="warning-banner" role="status">
-          <span>Model settings changed. Click &quot;Load Model&quot; to apply.</span>
+          <span>Model settings changed. Select &quot;Load model&quot; to apply.</span>
           <Button size="sm" onClick={handleLoadModel} disabled={isSaving || isDownloading}>
-            {isDownloading ? 'Downloading...' : 'Load Model'}
+            {isDownloading ? 'Downloading...' : 'Load model'}
           </Button>
         </div>
       )}
@@ -234,7 +234,7 @@ export default function ModelSettings(): JSX.Element {
           <div className="field-grid">
             <div className="field field-wide">
               <label className="label" htmlFor="compute-device">
-                Compute Device
+                Compute device
               </label>
               <select
                 id="compute-device"
@@ -257,7 +257,7 @@ export default function ModelSettings(): JSX.Element {
 
             <div className="field">
               <label className="label" htmlFor="compute-precision">
-                Compute Precision
+                Compute precision
               </label>
               <select
                 id="compute-precision"
@@ -338,7 +338,9 @@ export default function ModelSettings(): JSX.Element {
             </div>
 
             {cachedModels.length === 0 ? (
-              <p className="empty-panel">No models downloaded yet.</p>
+              <p className="empty-panel">
+                No models downloaded yet. Models download when you load them.
+              </p>
             ) : (
               <ul className="file-list">
                 {cachedModels.map((model) => (
@@ -352,7 +354,7 @@ export default function ModelSettings(): JSX.Element {
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm(`Are you sure you want to delete ${model.model_name}?`)) {
+                        if (confirm(`Delete ${model.model_name}? This cannot be undone.`)) {
                           clearCache(model.model_name)
                         }
                       }}
@@ -377,7 +379,7 @@ export default function ModelSettings(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm('Are you sure you want to delete ALL downloaded models? This cannot be undone.')) {
+                    if (confirm('Delete all downloaded models? This cannot be undone.')) {
                       clearCache()
                     }
                   }}
@@ -385,7 +387,7 @@ export default function ModelSettings(): JSX.Element {
                   className="text-button"
                   data-tone="danger"
                 >
-                  {isClearingCache ? 'Clearing...' : 'Clear all cache'}
+                  {isClearingCache ? 'Clearing...' : 'Clear all cached models'}
                 </button>
               )}
             </div>

@@ -179,7 +179,7 @@ export default function Stats(): JSX.Element {
           icon={<Languages size={18} strokeWidth={1.75} />}
         />
         <StatCard
-          title="Avg. duration"
+          title="Average duration"
           value={formatDuration(extendedStats.avgDuration)}
           subtitle="Per transcription"
           tone="warning"

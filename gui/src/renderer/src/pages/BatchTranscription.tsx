@@ -149,7 +149,7 @@ export default function BatchTranscription(): JSX.Element {
       setJob(newJob)
       setSelectedFiles([]) // Clear selection as they are now in the job
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start batch job')
+      setError(err instanceof Error ? err.message : 'Unable to start the batch. Try again.')
     } finally {
       setIsLoading(false)
     }
@@ -163,7 +163,7 @@ export default function BatchTranscription(): JSX.Element {
       const response = await apiClient.retryBatchJob(job.id)
       setJob(response.job)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to retry job')
+      setError(err instanceof Error ? err.message : 'Unable to retry the batch. Try again.')
     } finally {
       setIsLoading(false)
     }

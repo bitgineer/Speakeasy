@@ -78,8 +78,8 @@ export default function HotkeyInput({
   value,
   onChange,
   disabled = false,
-  label = 'Recording Hotkey',
-  hint = 'Click the input and press your desired key combination (e.g., F8, Ctrl+Shift+R)'
+  label = 'Recording hotkey',
+  hint = 'Select the field and press a key combination (for example, F8 or Ctrl+Shift+R)'
 }: HotkeyInputProps): JSX.Element {
   const [isCapturing, setIsCapturing] = useState(false)
   const [capturedKeys, setCapturedKeys] = useState<Set<string>>(new Set())
@@ -172,7 +172,7 @@ export default function HotkeyInput({
       : 'Press keys...'
     : value
       ? formatHotkeyForDisplay(value)
-      : 'Click to set hotkey'
+      : 'Press a key combination'
   
   return (
     <div className="hotkey-input">
@@ -196,7 +196,7 @@ export default function HotkeyInput({
           className="input"
         />
         <div className="hotkey-actions">
-          {isCapturing && <span className="muted text-caption">Recording...</span>}
+          {isCapturing && <span className="muted text-caption">Listening for keys...</span>}
           {value && !isCapturing && (
             <button
               type="button"

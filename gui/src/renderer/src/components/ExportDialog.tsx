@@ -73,7 +73,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
 
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed')
+      setError(err instanceof Error ? err.message : 'Unable to export. Try again.')
     } finally {
       setIsLoading(false)
     }
@@ -96,7 +96,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download size={18} className="text-accent-text" aria-hidden="true" />
-            {singleRecordId ? 'Export Transcription' : 'Export History'}
+            {singleRecordId ? 'Export transcription' : 'Export history'}
           </DialogTitle>
         </DialogHeader>
 
@@ -134,7 +134,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
 
           {!singleRecordId && (
             <div className="field">
-              <span className="label">Date Range (optional)</span>
+              <span className="label">Date range (optional)</span>
               <div className="flex gap-2">
                 <input
                   type="date"
@@ -161,7 +161,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({ isOpen, onClose, singleReco
               className="rounded-control border border-danger-border bg-danger-muted p-3"
               role="alert"
             >
-              <p className="text-small text-danger-text">{error}</p>
+              <p className="text-small text-danger-text wrap-anywhere">{error}</p>
             </div>
           )}
         </div>

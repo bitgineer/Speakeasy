@@ -12,7 +12,7 @@ export const useToast = () => {
 
   const toast = {
     success: (message: string, duration?: number) => addToast('success', message, duration),
-    error: (message: string, duration?: number) => addToast('error', message, duration),
+    error: (message: string, duration = 0) => addToast('error', message, duration),
     warning: (message: string, duration?: number) => addToast('warning', message, duration),
   };
 

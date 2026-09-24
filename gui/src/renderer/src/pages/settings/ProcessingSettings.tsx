@@ -352,7 +352,7 @@ export default function ProcessingSettings(): JSX.Element {
 
           {draft.providers.length === 0 ? (
             <p className="empty-panel">
-              No providers configured. Write and Command modes degrade to dictation until one is
+              No providers configured. Write and Command modes fall back to dictation until one is
               ready.
             </p>
           ) : (
@@ -456,7 +456,7 @@ export default function ProcessingSettings(): JSX.Element {
                           onChange={(e) => updateProvider(provider.id, { base_url: e.target.value })}
                           disabled={isSaving}
                           placeholder={
-                            provider.kind === 'custom' ? 'https://host/v1' : 'empty uses the kind default'
+                            provider.kind === 'custom' ? 'https://host/v1' : 'Leave empty to use the default URL'
                           }
                           className="input"
                         />
@@ -548,7 +548,7 @@ export default function ProcessingSettings(): JSX.Element {
               <div>
                 <h2 id="tones-title">Tone profiles</h2>
                 <p className="panel-subtitle">
-                  Write mode appends the first profile whose match fires, else the default tone.
+                  Write mode uses the first profile whose match applies, or the default tone.
                 </p>
               </div>
               <Button
@@ -664,7 +664,7 @@ export default function ProcessingSettings(): JSX.Element {
                                 })
                               }
                               disabled={isSaving}
-                              placeholder="match pattern (case-insensitive substring)"
+                              placeholder="text to match (case-insensitive)"
                               aria-label={`Tone profile ${index + 1} match pattern ${matchIndex + 1}`}
                               className="input"
                             />

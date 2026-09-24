@@ -151,7 +151,7 @@ export default function Dashboard(): JSX.Element {
         <div>
           <p className="eyebrow">Capture / review</p>
           <h1>Transcription history</h1>
-          <p className="page-subtitle">Your recent voice work, ready to search and reuse.</p>
+          <p className="page-subtitle">Search, copy, and export your recent transcriptions.</p>
         </div>
         <div className="page-actions">
           {total > 0 && (
@@ -215,7 +215,7 @@ export default function Dashboard(): JSX.Element {
 
       <section aria-labelledby="history-title">
         <div className="section-bar">
-          <h2 id="history-title">Recent records</h2>
+          <h2 id="history-title">Recent transcriptions</h2>
           <span>{items.length > 0 ? `Showing ${items.length} of ${total}` : ""}</span>
         </div>
 
@@ -230,11 +230,11 @@ export default function Dashboard(): JSX.Element {
           ) : items.length === 0 ? (
             // Empty state
             <div className="empty-state">
-              <h3>{searchQuery ? "No results found" : "No transcriptions yet"}</h3>
+              <h3>{searchQuery ? `No results for "${searchQuery}"` : "No transcriptions yet"}</h3>
               <p>
                 {searchQuery
-                  ? "No transcriptions match your search. Try a different word."
-                  : "Press your hotkey to start recording. Transcriptions land here, ready to copy and export."}
+                  ? "No transcriptions match your search. Try a different word or clear the search."
+                  : "Press your hotkey to start recording. Transcriptions appear here, ready to copy and export."}
               </p>
             </div>
           ) : (

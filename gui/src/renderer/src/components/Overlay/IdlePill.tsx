@@ -8,7 +8,7 @@ interface IdlePillProps {
 
 export function IdlePill({ onClick, mode }: IdlePillProps): JSX.Element {
   const modeLabel = mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : null
-  const label = modeLabel ? `${modeLabel} · Start Recording` : 'Start Recording'
+  const label = modeLabel ? `${modeLabel} · Start recording` : 'Start recording'
 
   return (
     <motion.button

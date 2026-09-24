@@ -128,9 +128,9 @@ export default function HotkeySettings(): JSX.Element {
       <header className="page-head">
         <div>
           <p className="eyebrow">Settings / hotkey</p>
-          <h1>Hotkey Settings</h1>
+          <h1>Hotkey settings</h1>
           <p className="page-subtitle">
-            Global shortcuts for recording. Each binding can dedicate a processing mode.
+            Global shortcuts for recording. Each binding can set its own processing mode.
           </p>
         </div>
         <div className="page-actions">
@@ -138,7 +138,7 @@ export default function HotkeySettings(): JSX.Element {
           <Button
             onClick={handleSave}
             disabled={isSaving || invalid || saveStatus === 'idle' || saveStatus === 'saved'}
-            title={invalid ? 'Every binding needs a unique, non-empty accelerator' : undefined}
+            title={invalid ? 'Each binding needs a unique key combination' : undefined}
           >
             {isSaving ? 'Saving...' : 'Save changes'}
           </Button>
@@ -208,6 +208,9 @@ export default function HotkeySettings(): JSX.Element {
                       <Trash2 size={15} aria-hidden="true" />
                     </button>
                   </div>
+                  {binding.accelerator.trim() === '' && (
+                    <p className="field-error">Press a key combination for this binding.</p>
+                  )}
                   <div className="field-grid">
                     <div className="field">
                       <label className="label" htmlFor={`hotkey-trigger-${index}`}>
@@ -255,7 +258,7 @@ export default function HotkeySettings(): JSX.Element {
                     </div>
                   </div>
                   {duplicateAccelerator(index) && (
-                    <p className="field-error">This accelerator is used by another binding.</p>
+                    <p className="field-error">This key combination is already in use.</p>
                   )}
                 </div>
               ))}
