@@ -1,4 +1,4 @@
-# Phase 6 report (uncommitted working tree on HEAD 5241f3f; branch feat/ui-overhaul)
+# Phase 6 report (committed 2d7ffc8; branch feat/ui-overhaul)
 
 ## Files changed
 - `gui/src/renderer/src/components/Overlay/IdlePill.tsx` rebuilt: solid `--surface-panel` pill, accent glyph, hover/focus label reveal; title, mode label, and hover-scale motion unchanged.
