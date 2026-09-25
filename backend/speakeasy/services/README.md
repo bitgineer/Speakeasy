@@ -22,7 +22,7 @@ CREATE TABLE transcriptions (
   model_used TEXT,
   language TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  original_text TEXT  -- For AI enhancement comparison
+  original_text TEXT  -- Raw ASR text before processing
 );
 
 -- FTS5 virtual table for full-text search
@@ -37,7 +37,6 @@ API:
 - `delete(id)` - Delete record
 - `clear()` - Delete all records
 - `get_stats()` - Get statistics
-- `update_text(id, new_text, original_text)` - Update after AI enhancement
 - `initialize()` - Create tables and run migrations
 - `close()` - Close database connection
 

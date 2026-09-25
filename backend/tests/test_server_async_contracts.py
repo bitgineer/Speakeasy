@@ -10,6 +10,7 @@ import pytest
 
 from speakeasy import server
 from speakeasy.services.history import HistoryService
+from speakeasy.services.settings import AppSettings
 
 
 @pytest.fixture
@@ -49,10 +50,11 @@ async def test_stop_transcribes_off_the_event_loop(client, monkeypatch, recorded
         async def add(self, **kwargs):
             return SimpleNamespace(id="rec-1")
 
-    settings = SimpleNamespace(language="en", enable_text_cleanup=False, custom_filler_words=None)
+    settings = AppSettings(language="en", enable_text_cleanup=False)
     monkeypatch.setattr(server, "transcriber", FakeTranscriber())
     monkeypatch.setattr(server, "history", FakeHistory())
     monkeypatch.setattr(server, "settings_service", SimpleNamespace(get=lambda: settings))
+    monkeypatch.setattr(server, "detect_focused_app", lambda: None)
 
     response = await client.post("/api/transcribe/stop", json={"auto_paste": False})
 

@@ -12,7 +12,14 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from speakeasy.services.settings import AppSettings, SettingsService
+from speakeasy.services.settings import (
+    DEFAULT_COMMAND_PROMPT,
+    AppSettings,
+    HotkeyBinding,
+    ProcessingMode,
+    SettingsService,
+    ToneProfile,
+)
 
 
 class TestSettingsServiceLoad:
@@ -138,6 +145,72 @@ class TestSettingsServiceLoad:
                 assert isinstance(settings, AppSettings)
             finally:
                 os.chmod(temp_settings_path, 0o644)
+
+    def test_load_migrates_legacy_hotkey_into_binding(self, temp_settings_path):
+        """A legacy file yields one mode-less binding and drops the legacy fields."""
+        legacy = {"hotkey": "ctrl+alt+r", "hotkey_mode": "push-to-talk"}
+        temp_settings_path.write_text(json.dumps(legacy))
+
+        settings = SettingsService(settings_path=temp_settings_path).load()
+
+        assert settings.hotkeys == [
+            HotkeyBinding(accelerator="ctrl+alt+r", trigger="push-to-talk", mode=None)
+        ]
+        assert "hotkey" not in settings.model_dump()
+        assert "hotkey_mode" not in settings.model_dump()
+
+    def test_load_migrates_legacy_hotkey_mode_alone(self, temp_settings_path):
+        temp_settings_path.write_text(json.dumps({"hotkey_mode": "push-to-talk"}))
+
+        settings = SettingsService(settings_path=temp_settings_path).load()
+
+        assert settings.hotkeys == [
+            HotkeyBinding(accelerator="ctrl+shift+space", trigger="push-to-talk", mode=None)
+        ]
+
+    def test_load_migrated_hotkey_survives_a_save_and_reload(self, temp_settings_path):
+        """The upgrade path keeps one binding after the migrated file is written back."""
+        temp_settings_path.write_text(json.dumps({"hotkey": "ctrl+alt+r"}))
+        service = SettingsService(settings_path=temp_settings_path)
+        service.load()
+
+        service.save()
+        reloaded = SettingsService(settings_path=temp_settings_path).load()
+
+        assert reloaded.hotkeys == [
+            HotkeyBinding(accelerator="ctrl+alt+r", trigger="toggle", mode=None)
+        ]
+
+    def test_load_defaults_hotkeys_when_absent(self, temp_settings_path):
+        settings = SettingsService(settings_path=temp_settings_path).load()
+
+        assert settings.hotkeys == [HotkeyBinding(accelerator="ctrl+shift+space")]
+
+    def test_load_defaults_processing_settings(self, temp_settings_path):
+        settings = SettingsService(settings_path=temp_settings_path).load()
+
+        assert settings.active_mode is ProcessingMode.DICTATE
+        assert settings.active_provider_id == ""
+        assert settings.default_tone == ToneProfile(name="Default")
+        assert settings.tone_profiles == []
+        assert settings.command_prompt == DEFAULT_COMMAND_PROMPT
+        assert settings.providers == []
+
+    def test_load_duplicate_hotkeys_falls_back_to_defaults(self, temp_settings_path):
+        """The all-or-nothing reset still protects a file with duplicate bindings."""
+        hand_edited = {
+            "model_type": "whisper",
+            "hotkeys": [
+                {"accelerator": "ctrl+shift+space"},
+                {"accelerator": "ctrl+shift+space"},
+            ],
+        }
+        temp_settings_path.write_text(json.dumps(hand_edited))
+
+        settings = SettingsService(settings_path=temp_settings_path).load()
+
+        assert settings.model_type == "parakeet"
+        assert settings.hotkeys == [HotkeyBinding(accelerator="ctrl+shift+space")]
 
 
 if __name__ == "__main__":

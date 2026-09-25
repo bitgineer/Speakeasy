@@ -6,6 +6,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { HotkeyBinding } from '../main/hotkey-bindings'
 
 // Custom API exposed to renderer
 const api = {
@@ -27,10 +28,9 @@ const api = {
   getBackendPort: () => ipcRenderer.invoke('backend:port'),
   
   // Hotkey
-  registerHotkey: (hotkey: string, mode: 'toggle' | 'push-to-talk' = 'toggle') => 
-    ipcRenderer.invoke('hotkey:register', hotkey, mode),
-  unregisterHotkey: () => ipcRenderer.invoke('hotkey:unregister'),
-  getCurrentHotkey: () => ipcRenderer.invoke('hotkey:current'),
+  registerHotkeys: (bindings: HotkeyBinding[]) =>
+    ipcRenderer.invoke('hotkey:register', { bindings }),
+  getCurrentHotkeys: () => ipcRenderer.invoke('hotkey:current'),
   
   // App
   getVersion: () => ipcRenderer.invoke('app:version'),
@@ -49,8 +49,8 @@ const api = {
     return () => ipcRenderer.removeListener('navigate', handler)
   },
   
-  onRecordingStart: (callback: () => void) => {
-    const handler = () => callback()
+  onRecordingStart: (callback: (payload: { mode: string | null }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: { mode: string | null }) => callback(payload)
     ipcRenderer.on('recording:start', handler)
     return () => ipcRenderer.removeListener('recording:start', handler)
   },

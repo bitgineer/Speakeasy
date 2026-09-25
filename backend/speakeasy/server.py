@@ -7,15 +7,17 @@ Provides HTTP and WebSocket APIs for the Electron frontend.
 import asyncio
 import logging
 import os
-import re
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, ValidationError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -37,6 +39,15 @@ from .core.config import (
     get_languages_for_model,
 )
 from .core.models import TranscriptionResult, get_gpu_info, recommend_model
+from .core.processing import (
+    ProviderError,
+    begin_processing,
+    cancel_processing,
+    describe_readiness,
+    execute_plan,
+    resolve_processing,
+)
+from .core.providers import build_provider_client, fetch_provider_models
 from .core.text_cleanup import (
     clear_cached_processor,
     safe_cleanup,
@@ -51,12 +62,18 @@ from .services.download_state import (
 )
 from .services.export import ExportFormat, export_service
 from .services.history import HistoryService
+from .services.secrets import get_key, set_key
 from .services.settings import (
     AppSettings,
+    HotkeyBinding,
+    LlmProvider,
+    ProcessingMode,
     SettingsService,
+    ToneProfile,
     get_default_db_path,
     get_default_settings_path,
 )
+from .utils.focused_app import detect_focused_app
 from .utils.paste import insert_text
 
 logger = logging.getLogger(__name__)
@@ -82,6 +99,7 @@ class TranscribeStopRequest(BaseModel):
     auto_paste: bool | None = None
     language: str | None = Field(None, max_length=10)
     instruction: str | None = Field(None, max_length=1000)
+    mode: ProcessingMode | None = None
 
 
 class TranscribeStopResponse(BaseModel):
@@ -90,6 +108,9 @@ class TranscribeStopResponse(BaseModel):
     duration_ms: int
     model_used: str | None
     language: str | None
+    mode: ProcessingMode
+    original_text: str | None = None
+    processing_error: str | None = None
 
 
 class HistoryListResponse(BaseModel):
@@ -105,8 +126,6 @@ class SettingsUpdateRequest(BaseModel):
     device: Literal["cuda", "cpu"] | None = None
     language: str | None = Field(None, max_length=10)
     device_name: str | None = Field(None, max_length=200)
-    hotkey: str | None = Field(None, max_length=50)
-    hotkey_mode: Literal["toggle", "push-to-talk"] | None = None
     auto_paste: bool | None = None
     show_recording_indicator: bool | None = None
     always_show_indicator: bool | None = None
@@ -118,21 +137,53 @@ class SettingsUpdateRequest(BaseModel):
     live_auto_paste: bool | None = None
     server_port: int | None = Field(None, ge=1024, le=65535)
     debug_logging: bool | None = None
-
-    @field_validator("hotkey")
-    @classmethod
-    def validate_hotkey_format(cls, v: str | None) -> str | None:
-        if v is None:
-            return v
-        if not re.match(r"^[a-zA-Z0-9+]+$", v):
-            raise ValueError("Hotkey must contain only alphanumeric characters and +")
-        return v
+    active_mode: ProcessingMode | None = None
+    active_provider_id: str | None = Field(None, max_length=50)
+    default_tone: ToneProfile | None = None
+    tone_profiles: list[ToneProfile] | None = None
+    command_prompt: str | None = Field(None, max_length=4000)
+    providers: list[LlmProvider] | None = None
+    hotkeys: list[HotkeyBinding] | None = None
 
 
 class SettingsUpdateResponse(BaseModel):
     status: str
     settings: AppSettings | None = None
     reload_required: bool
+
+
+class ProviderKeyRequest(BaseModel):
+    key: str = Field(..., max_length=500)
+
+
+class ProviderKeyResponse(BaseModel):
+    provider_id: str
+    has_key: bool
+
+
+class ProviderModelResponse(BaseModel):
+    id: str
+    name: str | None = None
+
+
+class ProviderModelsResponse(BaseModel):
+    models: list[ProviderModelResponse]
+
+
+class ModeStatusResponse(BaseModel):
+    mode: ProcessingMode
+    ready: bool
+    reason: str | None
+
+
+class ProcessingStatusResponse(BaseModel):
+    modes: list[ModeStatusResponse]
+    provider_id: str
+
+
+class FocusedAppResponse(BaseModel):
+    key: str
+    title: str
 
 
 class ModelLoadRequest(BaseModel):
@@ -195,6 +246,11 @@ def _resolve_auto_paste(requested: bool | None) -> bool:
     if settings_service:
         return settings_service.get().auto_paste
     return True
+
+
+def _keyed_provider_ids(settings: AppSettings) -> frozenset[str]:
+    """Provider ids with a stored key, the readiness input the plan and status share."""
+    return frozenset(provider.id for provider in settings.providers if get_key(provider.id))
 
 
 def _setup_live_transcription(loop: asyncio.AbstractEventLoop | None = None) -> None:
@@ -515,6 +571,7 @@ async def transcribe_start():
         )
 
     try:
+        cancel_processing()
         transcriber.start_recording()
         return TranscribeStartResponse(status="started")
     except RuntimeError as e:
@@ -532,13 +589,16 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
     if not transcriber:
         raise HTTPException(status_code=503, detail="Transcriber not initialized")
 
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
     if not transcriber.is_recording:
         raise HTTPException(status_code=400, detail="Not recording")
 
     try:
         # Get language from request or settings
-        settings = settings_service.get() if settings_service else None
-        language = body.language or (settings.language if settings else "auto")
+        settings = settings_service.get()
+        language = body.language or settings.language
 
         # Construct instruction if provided
         instruction = body.instruction
@@ -569,22 +629,34 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
             instruction=instruction,
         )
 
-        # Apply text cleanup if enabled
-        cleaned_text = result.text
-        if settings and settings.enable_text_cleanup:
-            cleaned_text = safe_cleanup(
-                result.text, custom_fillers=settings.custom_filler_words, use_cache=True
-            )
+        # Plan and run the AI processing step. The response, WebSocket event,
+        # history, and clipboard all read the same outcome.
+        keyed = _keyed_provider_ids(settings)
+        run = begin_processing()
+        app = await asyncio.to_thread(detect_focused_app)
+        plan = resolve_processing(settings, body.mode, app, keyed)
+
+        complete = None
+        if plan.rewrite is not None:
+            provider = plan.rewrite.provider
+            complete = build_provider_client(provider, get_key(provider.id))
+
+        outcome = await execute_plan(plan, result.text, complete=complete, run=run)
+
+        original_text = result.text if outcome.text != result.text else None
 
         # Log transcription to console for CLI visibility
-        logger.info(f"Transcribed ({result.duration_ms}ms): {cleaned_text}")
+        logger.info(f"Transcribed ({result.duration_ms}ms): {outcome.text}")
+        if outcome.error:
+            logger.warning(f"{plan.mode.value} processing degraded: {outcome.error}")
 
         # Save to history
         record = await history.add(
-            text=result.text,
+            text=outcome.text,
             duration_ms=result.duration_ms,
             model_used=result.model_used,
             language=result.language,
+            original_text=original_text,
         )
 
         # Broadcast transcription event
@@ -592,21 +664,27 @@ async def transcribe_stop(request: Request, body: TranscribeStopRequest):
             "transcription",
             TranscriptionEvent(
                 id=record.id,
-                text=cleaned_text,
+                text=outcome.text,
                 duration_ms=result.duration_ms,
+                original_text=original_text,
+                processing_error=outcome.error,
             ).model_dump(),
         )
 
-        # Auto-paste unless the caller overrides the persisted setting
-        if _resolve_auto_paste(body.auto_paste):
-            insert_text(cleaned_text)
+        # Auto-paste unless the caller overrides the persisted setting. A superseded
+        # run records history but never pastes.
+        if _resolve_auto_paste(body.auto_paste) and outcome.insertable:
+            insert_text(outcome.text)
 
         return TranscribeStopResponse(
             id=record.id,
-            text=cleaned_text,
+            text=outcome.text,
             duration_ms=result.duration_ms,
             model_used=result.model_used,
             language=result.language,
+            mode=plan.mode,
+            original_text=original_text,
+            processing_error=outcome.error,
         )
 
     except Exception as e:
@@ -1046,7 +1124,12 @@ async def settings_get():
 @app.put("/api/settings", response_model=SettingsUpdateResponse)
 @limiter.limit("20/minute")
 async def settings_update(request: Request, body: SettingsUpdateRequest):
-    """Update settings."""
+    """Update settings.
+
+    Top-level fields replace. ``None`` is filtered out. Nested groups
+    (``default_tone``, ``providers``, ``hotkeys``) replace wholesale, ``[]`` clears a
+    list, and ``""`` clears ``active_provider_id``.
+    """
     if not settings_service:
         raise HTTPException(status_code=503, detail="Settings not initialized")
 
@@ -1057,7 +1140,11 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
         return {"status": "ok", "reload_required": False}
 
     old_settings = settings_service.get()
-    new_settings = settings_service.update(**updates)
+    try:
+        new_settings = settings_service.update(**updates)
+    except ValidationError as exc:
+        fields = ", ".join(".".join(str(part) for part in error["loc"]) for error in exc.errors())
+        raise HTTPException(status_code=400, detail=f"Invalid settings: {fields}") from exc
 
     # Check if model reload is required
     reload_required = (
@@ -1089,6 +1176,105 @@ async def settings_update(request: Request, body: SettingsUpdateRequest):
         "settings": new_settings.model_dump(),
         "reload_required": reload_required,
     }
+
+
+@app.exception_handler(RequestValidationError)
+async def _hide_key_validation_echo(request: Request, exc: RequestValidationError):
+    """Answer key-route validation failures without echoing the submitted value."""
+    is_key_route = request.url.path.startswith(
+        "/api/settings/providers/"
+    ) and request.url.path.endswith("/key")
+    if is_key_route:
+        return JSONResponse(status_code=422, content={"detail": "Invalid key request"})
+    return await request_validation_exception_handler(request, exc)
+
+
+@app.put(
+    "/api/settings/providers/{provider_id}/key",
+    response_model=ProviderKeyResponse,
+)
+@limiter.limit("20/minute")
+async def settings_provider_key_set(request: Request, provider_id: str, body: ProviderKeyRequest):
+    """Store or clear the API key for a configured provider.
+
+    An empty ``key`` clears the entry. The key value is never returned or logged.
+    """
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    known_ids = {provider.id for provider in settings_service.get().providers}
+    if provider_id not in known_ids:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {provider_id}")
+
+    set_key(provider_id, body.key)
+    return {"provider_id": provider_id, "has_key": bool(body.key)}
+
+
+@app.get("/api/settings/provider-keys")
+async def settings_provider_keys():
+    """Report which configured providers have a stored key, without the key values."""
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    return {
+        provider.id: get_key(provider.id) is not None
+        for provider in settings_service.get().providers
+    }
+
+
+@app.get(
+    "/api/settings/providers/{provider_id}/models",
+    response_model=ProviderModelsResponse,
+)
+@limiter.limit("10/minute")
+async def settings_provider_models(request: Request, provider_id: str):
+    """List the models a configured provider advertises. 502 when the fetch fails."""
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    provider = next(
+        (entry for entry in settings_service.get().providers if entry.id == provider_id), None
+    )
+    if provider is None:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {provider_id}")
+
+    try:
+        models = await fetch_provider_models(provider, get_key(provider_id))
+    except ProviderError as exc:
+        logger.warning(f"Provider {provider_id} model list failed: {exc.detail}")
+        raise HTTPException(status_code=502, detail=exc.detail) from exc
+    return ProviderModelsResponse(
+        models=[ProviderModelResponse(id=model.id, name=model.name) for model in models]
+    )
+
+
+# --- Processing ---
+
+
+@app.get("/api/processing/status", response_model=ProcessingStatusResponse)
+async def processing_status():
+    """What each mode will do: readiness per mode plus the active provider id."""
+    if not settings_service:
+        raise HTTPException(status_code=503, detail="Settings not initialized")
+
+    settings = settings_service.get()
+    keyed = _keyed_provider_ids(settings)
+    return ProcessingStatusResponse(
+        modes=[
+            ModeStatusResponse(mode=status.mode, ready=status.ready, reason=status.reason)
+            for status in describe_readiness(settings, keyed)
+        ],
+        provider_id=settings.active_provider_id,
+    )
+
+
+@app.get("/api/focused-app", response_model=FocusedAppResponse | None)
+async def focused_app():
+    """The app that currently has focus, for tone match discovery. Null when unknown."""
+    app = await asyncio.to_thread(detect_focused_app)
+    if app is None:
+        return None
+    return FocusedAppResponse(key=app.key, title=app.title)
 
 
 # --- Models ---

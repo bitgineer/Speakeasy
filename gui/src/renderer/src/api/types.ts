@@ -23,6 +23,32 @@ export type Settings = Schemas['AppSettings']
 export type SettingsUpdateRequest = Schemas['SettingsUpdateRequest']
 export type SettingsUpdateResponse = Schemas['SettingsUpdateResponse']
 
+export type HotkeyBinding = Schemas['HotkeyBinding']
+export type ProcessingMode = Schemas['ProcessingMode']
+export type ProviderKind = Schemas['ProviderKind']
+export type LlmProvider = Schemas['LlmProvider']
+export type ToneProfile = Schemas['ToneProfile']
+export type AppMatch = Schemas['AppMatch']
+export type ModeStatusResponse = Schemas['ModeStatusResponse']
+export type ProcessingStatusResponse = Schemas['ProcessingStatusResponse']
+export type ProviderKeyResponse = Schemas['ProviderKeyResponse']
+export type ProviderModel = Schemas['ProviderModelResponse']
+export type ProviderModelsResponse = Schemas['ProviderModelsResponse']
+export type FocusedAppResponse = Schemas['FocusedAppResponse']
+
+/** `GET /api/settings/provider-keys` is a bare map in the schema, so it is typed here. */
+export type ProviderKeysResponse = Record<string, boolean>
+
+/** Result of the `hotkey:register` IPC call handled in the Electron main process. */
+export interface HotkeyRegistrationFailure {
+  accelerator: string
+  error: string
+}
+
+export type HotkeyRegistrationResult =
+  | { ok: true }
+  | { ok: false; failed: HotkeyRegistrationFailure[] }
+
 export type ModelLoadRequest = Schemas['ModelLoadRequest']
 
 export type ExportFormat = Schemas['ExportFormat']

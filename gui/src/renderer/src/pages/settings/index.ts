@@ -5,6 +5,7 @@
 export { default as ModelSettings } from './ModelSettings'
 export { default as AudioSettings } from './AudioSettings'
 export { default as HotkeySettings } from './HotkeySettings'
+export { default as ProcessingSettings } from './ProcessingSettings'
 export { default as BehaviorSettings } from './BehaviorSettings'
 export { default as AppearanceSettings } from './AppearanceSettings'
 export { default as DataSettings } from './DataSettings'

@@ -7,7 +7,8 @@
 import { ipcMain, dialog, app } from 'electron'
 import { showMainWindow, hideMainWindow, showRecordingIndicator, hideRecordingIndicator, resizeRecordingIndicator, getRecordingIndicator } from './windows'
 import { isBackendRunning, getBackendPort } from './backend'
-import { registerGlobalHotkey, unregisterGlobalHotkey, getCurrentHotkey, getHotkeyMode, cancelRecording, isRecording, startRecording, stopRecording } from './hotkey'
+import { registerHotkeys, getCurrentBindings, cancelRecording, isRecording, startRecording, stopRecording } from './hotkey'
+import type { HotkeyBinding } from './hotkey-bindings'
 
 /**
  * Setup all IPC handlers
@@ -80,22 +81,12 @@ export function setupIpcHandlers(): void {
   })
 
   // Hotkey management
-  ipcMain.handle('hotkey:register', async (_, hotkey: string, mode: 'toggle' | 'push-to-talk' = 'toggle') => {
-    try {
-      registerGlobalHotkey(hotkey, mode)
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('hotkey:unregister', () => {
-    unregisterGlobalHotkey()
-    return { success: true }
+  ipcMain.handle('hotkey:register', (_, payload: { bindings: HotkeyBinding[] }) => {
+    return registerHotkeys(payload.bindings)
   })
 
   ipcMain.handle('hotkey:current', () => {
-    return { hotkey: getCurrentHotkey(), mode: getHotkeyMode() }
+    return { bindings: getCurrentBindings() }
   })
 
   // App info

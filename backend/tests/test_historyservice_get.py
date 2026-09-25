@@ -129,24 +129,6 @@ class TestHistoryServiceGet:
         assert result is None or result.id == original.id
 
     @pytest.mark.asyncio
-    async def test_get_after_update(self, initialized_service_with_record):
-        """Test that get returns updated text after update."""
-        service, original = initialized_service_with_record
-
-        # Update the record
-        await service.update_text(
-            record_id=original.id,
-            new_text="Updated text",
-            original_text="Test transcription",
-        )
-
-        # Get and verify
-        retrieved = await service.get(original.id)
-
-        assert retrieved.text == "Updated text"
-        assert retrieved.original_text == "Test transcription"
-
-    @pytest.mark.asyncio
     async def test_get_after_delete(self, initialized_service_with_record):
         """Test that get returns None after record is deleted."""
         service, original = initialized_service_with_record
