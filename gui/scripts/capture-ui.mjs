@@ -14,9 +14,9 @@
  * paintable; it is a separate window, so it never enters a main-window shot.
  *
  * Usage:
- *   npm run capture:ui -- --out <dir> [--theme dark,light] [--accent violet]
- *                                  [--app-root <checkout>] [--seed <fixture>]
- *                                  [--no-seed] [--keep]
+  *   npm run capture:ui -- --out <dir> [--theme dark,light] [--accent violet]
+  *                                  [--scale 1..8] [--app-root <checkout>]
+  *                                  [--seed <fixture>] [--no-seed] [--keep]
  */
 
 import { spawn, spawnSync } from 'node:child_process'
@@ -55,6 +55,7 @@ function usage() {
     '  --out <dir>        output directory (default: <tmp>/opencode/ui-captures/<timestamp>)',
     '  --theme <list>     "default" or comma list of dark,light (default: default)',
     '  --accent <name>    violet or ink (default: violet)',
+    '  --scale <n>        device pixel ratio for captures: integer 1..8 (default: 1)',
     '  --app-root <dir>   checkout to launch (default: this repo)',
     '  --seed <file>      history fixture to import before capture',
     '  --no-seed          skip seeding; captures the empty states',
@@ -67,6 +68,7 @@ function parseArgs(argv) {
     out: null,
     themes: ['default'],
     accent: 'violet',
+    scale: 1,
     appRoot: DEFAULT_APP_ROOT,
     seed: DEFAULT_SEED,
     keep: false
@@ -86,6 +88,9 @@ function parseArgs(argv) {
         break
       case '--accent':
         args.accent = value()
+        break
+      case '--scale':
+        args.scale = Number(value())
         break
       case '--app-root':
         args.appRoot = value()
@@ -112,6 +117,9 @@ function parseArgs(argv) {
     if (!['default', 'dark', 'light'].includes(theme)) throw new Error(`unknown theme ${theme}`)
   }
   if (!['violet', 'ink'].includes(args.accent)) throw new Error(`unknown accent ${args.accent}`)
+  if (!Number.isInteger(args.scale) || args.scale < 1 || args.scale > 8) {
+    throw new Error('--scale must be an integer from 1 to 8')
+  }
   if (!args.out) {
     const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, '').replace('T', '-')
     args.out = join(tmpdir(), 'opencode', 'ui-captures', stamp)
@@ -400,9 +408,11 @@ async function main() {
       await cdp.call('Emulation.setDeviceMetricsOverride', {
         width: VIEWPORT.width,
         height: VIEWPORT.height,
-        deviceScaleFactor: 1,
+        deviceScaleFactor: args.scale,
         mobile: false
       })
+      const expectedWidth = VIEWPORT.width * args.scale
+      const expectedHeight = VIEWPORT.height * args.scale
 
       for (const [routeIndex, route] of ROUTES.entries()) {
         const eventStart = cdp.events.length
@@ -448,9 +458,9 @@ async function main() {
             `${String(routeIndex + 1).padStart(2, '0')}-${route.name}${suffix}.png`
           )
           writeFileSync(file, buffer)
-          if (width !== VIEWPORT.width || height !== VIEWPORT.height) {
+          if (width !== expectedWidth || height !== expectedHeight) {
             routeFailures.push(
-              `${route.name}${suffix} captured ${width}x${height}, expected ${VIEWPORT.width}x${VIEWPORT.height}`
+              `${route.name}${suffix} captured ${width}x${height}, expected ${expectedWidth}x${expectedHeight}`
             )
           }
           captured.push({ route: route.path, theme, file })
@@ -501,9 +511,9 @@ async function main() {
           const suffix = theme === 'default' ? '' : `-${theme}`
           const file = join(args.out, `12-export-dialog${suffix}.png`)
           writeFileSync(file, buffer)
-          if (width !== VIEWPORT.width || height !== VIEWPORT.height) {
+          if (width !== expectedWidth || height !== expectedHeight) {
             failures.push(
-              `export dialog${suffix} captured ${width}x${height}, expected ${VIEWPORT.width}x${VIEWPORT.height}`
+              `export dialog${suffix} captured ${width}x${height}, expected ${expectedWidth}x${expectedHeight}`
             )
           }
           captured.push({ route: 'export-dialog', theme, file })
@@ -595,6 +605,7 @@ async function main() {
     debugPort,
     themes: args.themes,
     accent: args.accent,
+    scale: args.scale,
     seeded: Boolean(args.seed),
     viewport: VIEWPORT,
     captured,

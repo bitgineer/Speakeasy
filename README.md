@@ -28,6 +28,14 @@ batch transcription of audio files.
 
 Nothing is sent to a cloud service. The only network call is the one-time model download.
 
+## Screenshots
+
+![SpeakEasy dashboard](docs/images/showcase/dashboard.png)
+
+| Batch transcription | Statistics |
+|:---:|:---:|
+| ![SpeakEasy batch transcription](docs/images/showcase/batch.png) | ![SpeakEasy statistics](docs/images/showcase/statistics.png) |
+
 ## Requirements
 
 | Requirement | Notes |
@@ -158,6 +166,10 @@ npm test
 ```
 
 CI runs the backend suite and the frontend lint, typecheck and tests on every push to `main`.
+
+To refresh the screenshots above, close the app and run `npm run showcase` from `gui/`
+(capture at DPR 4, composite to 3840px wide; see
+`.opencode/skills/showcase-screenshots/SKILL.md`).
 
 ## Troubleshooting
 
