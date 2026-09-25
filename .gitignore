@@ -114,6 +114,7 @@ models--*/
 *.db-journal
 .docs/
 docs/plans/
+docs/design/
 
 # =============================================================================
 # OS Generated
