@@ -33,7 +33,7 @@ export default function ModeChips(): JSX.Element {
   const activeMode = settings?.active_mode
 
   return (
-    <div className="flex items-center gap-0.5 p-0.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg">
+    <div className="segmented" role="group" aria-label="Processing mode">
       {CHIPS.map(({ mode, label }) => {
         const status = statuses.find((entry) => entry.mode === mode)
         const notReady = mode !== 'dictate' && status !== undefined && !status.ready
@@ -43,21 +43,13 @@ export default function ModeChips(): JSX.Element {
           <button
             key={mode}
             type="button"
+            aria-pressed={active}
             onClick={() => void updateSettings({ active_mode: mode })}
             disabled={isSaving}
             title={notReady ? status.reason ?? `${label} is not ready` : `Use ${label} mode`}
-            className={`
-              flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 cursor-pointer
-              ${active
-                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)] shadow-sm'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}
-              disabled:opacity-50 disabled:cursor-not-allowed
-            `}
           >
             {label}
-            {notReady && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-warning)]" aria-hidden />
-            )}
+            {notReady && <span className="chip-warning" aria-hidden="true" />}
           </button>
         )
       })}

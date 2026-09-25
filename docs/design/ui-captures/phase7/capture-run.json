@@ -1,0 +1,149 @@
+{
+  "appRoot": "C:\\Users\\Jack\\Coding-Projects\\Speakeasy",
+  "backendPort": 8765,
+  "debugPort": 61817,
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "accent": "violet",
+  "seeded": true,
+  "viewport": {
+    "width": 900,
+    "height": 670
+  },
+  "captured": [
+    {
+      "route": "/",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\01-dashboard-dark.png"
+    },
+    {
+      "route": "/",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\01-dashboard-light.png"
+    },
+    {
+      "route": "/batch",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\02-batch-dark.png"
+    },
+    {
+      "route": "/batch",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\02-batch-light.png"
+    },
+    {
+      "route": "/stats",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\03-stats-dark.png"
+    },
+    {
+      "route": "/stats",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\03-stats-light.png"
+    },
+    {
+      "route": "/settings/model",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\04-settings-model-dark.png"
+    },
+    {
+      "route": "/settings/model",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\04-settings-model-light.png"
+    },
+    {
+      "route": "/settings/behavior",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\05-settings-behavior-dark.png"
+    },
+    {
+      "route": "/settings/behavior",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\05-settings-behavior-light.png"
+    },
+    {
+      "route": "/settings/hotkey",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\06-settings-hotkey-dark.png"
+    },
+    {
+      "route": "/settings/hotkey",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\06-settings-hotkey-light.png"
+    },
+    {
+      "route": "/settings/audio",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\07-settings-audio-dark.png"
+    },
+    {
+      "route": "/settings/audio",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\07-settings-audio-light.png"
+    },
+    {
+      "route": "/settings/appearance",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\08-settings-appearance-dark.png"
+    },
+    {
+      "route": "/settings/appearance",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\08-settings-appearance-light.png"
+    },
+    {
+      "route": "/settings/data",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\09-settings-data-dark.png"
+    },
+    {
+      "route": "/settings/data",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\09-settings-data-light.png"
+    },
+    {
+      "route": "/settings/processing",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\10-settings-processing-dark.png"
+    },
+    {
+      "route": "/settings/processing",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\10-settings-processing-light.png"
+    },
+    {
+      "route": "/settings/about",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\11-settings-about-dark.png"
+    },
+    {
+      "route": "/settings/about",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\11-settings-about-light.png"
+    },
+    {
+      "route": "export-dialog",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\12-export-dialog-dark.png"
+    },
+    {
+      "route": "export-dialog",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\12-export-dialog-light.png"
+    },
+    {
+      "route": "recording-indicator",
+      "theme": "dark",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\13-overlay-idle-dark.png"
+    },
+    {
+      "route": "recording-indicator",
+      "theme": "light",
+      "file": "C:\\Users\\Jack\\AppData\\Local\\Temp\\opencode\\phase7-final\\13-overlay-idle-light.png"
+    }
+  ],
+  "failures": [],
+  "finishedAt": "2026-09-24T04:31:49.414Z"
+}

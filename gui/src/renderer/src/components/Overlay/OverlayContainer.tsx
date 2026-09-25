@@ -23,7 +23,7 @@ export const OverlayContainer = forwardRef<HTMLDivElement, OverlayContainerProps
     return (
       <div
         ref={ref}
-        className={cn('p-2 transition-all duration-200', className)}
+        className={cn('p-2 transition-all duration-base ease-standard', className)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >

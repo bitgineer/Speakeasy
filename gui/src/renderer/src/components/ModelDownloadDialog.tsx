@@ -1,4 +1,7 @@
 import React, { useEffect } from 'react'
+import { AlertTriangle, CheckCircle2, Download, XCircle } from 'lucide-react'
+import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import useDownloadStore from '../store/download-store'
 
 interface ModelDownloadDialogProps {
@@ -64,79 +67,72 @@ const ModelDownloadDialog: React.FC<ModelDownloadDialogProps> = ({
     await cancelDownload()
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="download-dialog-title"
-    >
-      <div className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
-        
-        {/* Header */}
-        <h3
-          id="download-dialog-title"
-          className="text-lg font-medium leading-6 text-white mb-4 flex items-center gap-2"
-        >
-          {isCompleted ? (
-            <>
-              <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Download Complete
-            </>
-          ) : isError ? (
-            <>
-              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Download Failed
-            </>
-          ) : isCancelled ? (
-            <>
-              <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              Download Cancelled
-            </>
-          ) : (
-            <>
-              <svg className="w-6 h-6 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Downloading Model
-            </>
-          )}
-        </h3>
+  const heading = isCompleted
+    ? {
+        icon: <CheckCircle2 size={18} className="text-success-text" aria-hidden="true" />,
+        title: 'Download complete'
+      }
+    : isError
+      ? {
+          icon: <XCircle size={18} className="text-danger-text" aria-hidden="true" />,
+          title: 'Download failed'
+        }
+      : isCancelled
+        ? {
+            icon: <AlertTriangle size={18} className="text-warning-text" aria-hidden="true" />,
+            title: 'Download cancelled'
+          }
+        : {
+            icon: <Download size={18} className="animate-pulse text-accent-text" aria-hidden="true" />,
+            title: 'Downloading model'
+          }
 
-        {/* Content */}
-        <div className="mt-2">
-          <p className="text-sm text-gray-300 mb-4">
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      {/* Radix warns without a Description; the dialog carries its title only. */}
+      <DialogContent className="max-w-md" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {heading.icon}
+            {heading.title}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <p className="text-small text-content-secondary">
             {modelName ? `Model: ${modelName}` : 'Preparing download...'}
           </p>
 
           {isError && (
-            <div className="bg-red-900/20 border border-red-900/50 rounded-lg p-3 mb-4">
-              <p className="text-sm text-red-400">
-                {errorMessage || 'An unknown error occurred during download.'}
+            <div
+              className="rounded-control border border-danger-border bg-danger-muted p-3"
+              role="alert"
+            >
+              <p className="text-small text-danger-text wrap-anywhere">
+                {errorMessage || 'The download failed. Close this dialog and try again.'}
               </p>
             </div>
           )}
 
-          {/* Progress Bar */}
           {!isCompleted && !isError && !isCancelled && (
             <div className="space-y-2">
-              <div className="flex justify-between text-xs text-gray-400">
+              <div className="flex justify-between text-caption text-content-muted">
                 <span>{formatBytes(downloadedBytes)} / {formatBytes(totalBytes)}</span>
                 <span>{Math.round(downloadProgress)}%</span>
               </div>
-              <div className="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+              <div className="progress-track">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300 ease-out"
+                  className="progress-fill"
+                  data-tone="accent"
                   style={{ width: `${downloadProgress}%` }}
                 />
               </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="flex justify-between text-caption text-content-muted">
                 <span>{formatBytes(bytesPerSecond)}/s</span>
                 <span>ETA: {formatTime(estimatedRemainingSeconds)}</span>
               </div>
@@ -144,39 +140,31 @@ const ModelDownloadDialog: React.FC<ModelDownloadDialogProps> = ({
           )}
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex justify-end gap-3">
+        <DialogFooter>
           {isDownloading ? (
-            <button
+            <Button
               type="button"
-              className="inline-flex justify-center rounded-lg border border-transparent bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 transition-colors"
+              variant="ghost"
+              className="text-danger-text hover:bg-danger-muted hover:text-danger-text"
               onClick={handleCancel}
             >
-              Cancel Download
-            </button>
+              Cancel download
+            </Button>
           ) : (
             <>
               {(isError || isCancelled) && onRetry && (
-                <button
-                  type="button"
-                  className="inline-flex justify-center rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 transition-colors"
-                  onClick={onRetry}
-                >
+                <Button type="button" onClick={onRetry}>
                   Retry
-                </button>
+                </Button>
               )}
-              <button
-                type="button"
-                className="inline-flex justify-center rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-sm font-medium text-white hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 transition-colors"
-                onClick={onClose}
-              >
+              <Button type="button" variant="secondary" onClick={onClose}>
                 {isCompleted ? 'Done' : 'Close'}
-              </button>
+              </Button>
             </>
           )}
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

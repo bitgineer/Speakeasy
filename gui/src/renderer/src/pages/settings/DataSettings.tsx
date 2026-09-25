@@ -5,7 +5,9 @@
  */
 
 import { useRef, useState } from 'react'
+import { ShieldCheck } from 'lucide-react'
 import ExportDialog from '../../components/ExportDialog'
+import { Button } from '../../components/ui/button'
 import { apiClient } from '../../api/client'
 
 export default function DataSettings(): JSX.Element {
@@ -27,7 +29,7 @@ export default function DataSettings(): JSX.Element {
       const data = JSON.parse(text)
 
       if (!data.transcriptions || !Array.isArray(data.transcriptions)) {
-        throw new Error('Invalid file format: missing "transcriptions" array')
+        throw new Error('This file is not a SpeakEasy export. Choose a JSON file exported from SpeakEasy.')
       }
 
       const result = await apiClient.importHistory({
@@ -36,7 +38,7 @@ export default function DataSettings(): JSX.Element {
       })
 
       setImportStatus({
-        message: `Successfully imported ${result.imported} records (skipped ${result.skipped})`,
+        message: `Imported ${result.imported} transcription${result.imported === 1 ? '' : 's'} (skipped ${result.skipped})`,
         type: 'success'
       })
       
@@ -46,7 +48,7 @@ export default function DataSettings(): JSX.Element {
       }
     } catch (err) {
       setImportStatus({
-        message: err instanceof Error ? err.message : 'Import failed',
+        message: err instanceof Error ? err.message : 'Unable to import the file. Try again.',
         type: 'error'
       })
     } finally {
@@ -55,34 +57,40 @@ export default function DataSettings(): JSX.Element {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Data Management</h1>
-        <p className="text-sm text-[var(--color-text-muted)] mt-1">Import and export your transcription history</p>
-      </div>
+    <div className="workspace">
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Settings / data</p>
+          <h1>Data management</h1>
+          <p className="page-subtitle">Import and export your transcription history.</p>
+        </div>
+      </header>
 
-      <div className="space-y-6">
+      <div className="settings-stack">
         {/* Import */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Import History</h2>
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            Import transcription history from a JSON file exported from SpeakEasy.
-          </p>
+        <section className="card settings-panel" aria-labelledby="import-title">
+          <div className="settings-head">
+            <div>
+              <h2 id="import-title">Import history</h2>
+              <p className="panel-subtitle">
+                Import transcription history from a JSON file exported from SpeakEasy.
+              </p>
+            </div>
+          </div>
           
-          <div className="flex flex-col gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
+          <div className="settings-rows">
+            <label className="check-row">
               <input
                 type="checkbox"
                 checked={mergeImport}
                 onChange={(e) => setMergeImport(e.target.checked)}
                 disabled={isImporting}
-                className="w-4 h-4 text-[var(--color-accent)] bg-[var(--color-bg-secondary)] border-[var(--color-border)] rounded focus:ring-[var(--color-accent)]"
+                className="checkbox"
               />
-              <span className="text-sm text-[var(--color-text-secondary)]">Merge with existing history</span>
+              <span>Merge with existing history</span>
             </label>
             
-            <div className="flex items-center gap-3">
+            <div className="input-row">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -91,15 +99,22 @@ export default function DataSettings(): JSX.Element {
                 className="hidden"
                 disabled={isImporting}
               />
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isImporting}
-                className="btn-secondary text-sm"
               >
-                {isImporting ? 'Importing...' : 'Select JSON File'}
-              </button>
+                {isImporting ? 'Importing...' : 'Select JSON file'}
+              </Button>
               {importStatus && (
-                <span className={`text-sm ${importStatus.type === 'success' ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}`}>
+                <span
+                  className={
+                    importStatus.type === 'success'
+                      ? 'text-success-text text-small'
+                      : 'text-danger-text text-small'
+                  }
+                  role="status"
+                >
                   {importStatus.message}
                 </span>
               )}
@@ -108,32 +123,32 @@ export default function DataSettings(): JSX.Element {
         </section>
 
         {/* Export */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Export History</h2>
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            Export your transcription history to a JSON file for backup or transfer.
-          </p>
-          <button
-            onClick={() => setShowExportDialog(true)}
-            className="btn-secondary text-sm"
-          >
-            Export All History
-          </button>
+        <section className="card settings-panel" aria-labelledby="export-title">
+          <div className="settings-head">
+            <div>
+              <h2 id="export-title">Export history</h2>
+              <p className="panel-subtitle">
+                Export your transcription history to a JSON file for backup or transfer.
+              </p>
+            </div>
+          </div>
+          <Button variant="secondary" onClick={() => setShowExportDialog(true)}>
+            Export all history
+          </Button>
         </section>
 
         {/* Data Privacy Notice */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Privacy</h2>
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-[var(--color-info)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <div>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                All transcription data is stored locally on your device. Your data never leaves your computer
-                and is not sent to any external servers. Exported files contain your transcription text and metadata.
-              </p>
-            </div>
+        <section className="card settings-panel" aria-labelledby="privacy-title">
+          <div className="settings-head">
+            <h2 id="privacy-title">Privacy</h2>
+          </div>
+          <div className="privacy-note">
+            <ShieldCheck size={18} strokeWidth={1.75} aria-hidden="true" />
+            <p>
+              All transcription data is stored locally on your device. Your data never leaves your
+              computer and is not sent to any external servers. Exported files contain your
+              transcription text and metadata.
+            </p>
           </div>
         </section>
       </div>

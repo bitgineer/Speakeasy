@@ -1,71 +1,45 @@
 /**
  * Appearance Settings Page
- * 
- * Configuration for theme and visual settings.
+ *
+ * Theme (Light, Dark, System) and accent (Violet, Ink) selection.
  */
 
-import { useEffect, useState, useRef } from 'react'
-import { Palette } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Monitor, Moon, Sun } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useSettingsStore } from '../../store'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import {
+  type AccentSetting,
+  type ThemeSetting,
+  applyAppearance,
+  readStoredAccent,
+  resolveTheme,
+  resolveThemeSetting,
+  storeAccent,
+  useSystemPrefersDark
+} from '../../utils/theme'
 
-// Theme definitions with preview colors
-const themes = [
-  { 
-    id: 'default', 
-    name: 'Default', 
-    description: 'Clean dark theme with indigo accent',
-    colors: { bg: '#0a0a0a', accent: '#6366f1', text: '#fafafa' }
-  },
-  { 
-    id: 'tokyo-night', 
-    name: 'Tokyo Night', 
-    description: 'Storm variant of the popular Tokyo Night theme',
-    colors: { bg: '#1a1b26', accent: '#7aa2f7', text: '#c0caf5' }
-  },
-  { 
-    id: 'catppuccin', 
-    name: 'Catppuccin Mocha', 
-    description: 'Soothing pastel theme with warm colors',
-    colors: { bg: '#1e1e2e', accent: '#89b4fa', text: '#cdd6f4' }
-  },
-  { 
-    id: 'gruvbox', 
-    name: 'Gruvbox Dark', 
-    description: 'Retro groove colors with warm tones',
-    colors: { bg: '#282828', accent: '#83a598', text: '#ebdbb2' }
-  },
-  { 
-    id: 'everforest', 
-    name: 'Everforest', 
-    description: 'Green forest-inspired comfortable colors',
-    colors: { bg: '#2b3339', accent: '#a7c080', text: '#d3c6aa' }
-  },
-  { 
-    id: 'nord', 
-    name: 'Nord', 
-    description: 'Arctic, north-bluish color palette',
-    colors: { bg: '#2e3440', accent: '#88c0d0', text: '#eceff4' }
-  },
-  { 
-    id: 'kanagawa', 
-    name: 'Kanagawa Wave', 
-    description: 'Inspired by the great wave off Kanagawa',
-    colors: { bg: '#1f1f28', accent: '#7e9cd8', text: '#dcd7ba' }
-  },
-  { 
-    id: 'ayu', 
-    name: 'Ayu Dark', 
-    description: 'Simple, bright colors with warm accent',
-    colors: { bg: '#0b0e14', accent: '#e6b450', text: '#bfbdb6' }
-  },
-  { 
-    id: 'one-dark', 
-    name: 'One Dark', 
-    description: 'Atom One Dark theme colors',
-    colors: { bg: '#282c34', accent: '#61afef', text: '#abb2bf' }
-  }
+const themeOptions: {
+  id: ThemeSetting
+  name: string
+  description: string
+  icon: LucideIcon
+}[] = [
+  { id: 'light', name: 'Light', description: 'Warm paper surfaces for daylight', icon: Sun },
+  { id: 'dark', name: 'Dark', description: 'Near-black surfaces with a violet accent', icon: Moon },
+  { id: 'system', name: 'System', description: 'Follow the system light or dark setting', icon: Monitor }
+]
+
+const accentOptions: {
+  id: AccentSetting
+  name: string
+  description: string
+  preview: string
+}[] = [
+  { id: 'violet', name: 'Violet', description: 'The app\u2019s original accent', preview: 'var(--accent-preview-violet)' },
+  { id: 'ink', name: 'Ink', description: 'Quiet blue for light-first use', preview: 'var(--accent-preview-ink)' }
 ]
 
 export default function AppearanceSettings(): JSX.Element {
@@ -77,10 +51,12 @@ export default function AppearanceSettings(): JSX.Element {
     updateSettings
   } = useSettingsStore()
 
-  // Initialize from settings if available, otherwise null (not 'default')
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
+  const [selectedTheme, setSelectedTheme] = useState<ThemeSetting | null>(null)
+  const [selectedAccent, setSelectedAccent] = useState<AccentSetting>(() => readStoredAccent())
   const [saveStatus, setSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle')
-  const originalTheme = useRef<string | null>(null)
+  const originalTheme = useRef<ThemeSetting | null>(null)
+  const originalAccent = useRef<AccentSetting>(selectedAccent)
+  const systemPrefersDark = useSystemPrefersDark()
 
   useKeyboardShortcuts({
     onSave: () => handleSave(),
@@ -88,125 +64,152 @@ export default function AppearanceSettings(): JSX.Element {
   })
 
   useEffect(() => {
-    // Don't track dirty state until settings are loaded
     if (selectedTheme === null) return
-    
-    const isDirty = selectedTheme !== originalTheme.current
+
+    const isDirty =
+      selectedTheme !== originalTheme.current || selectedAccent !== originalAccent.current
     if (isDirty && saveStatus !== 'saving') {
       setSaveStatus('unsaved')
     } else if (!isDirty && saveStatus === 'unsaved') {
       setSaveStatus('idle')
     }
-  }, [selectedTheme, saveStatus])
+  }, [selectedTheme, selectedAccent, saveStatus])
 
   useEffect(() => {
     fetchSettings()
   }, [fetchSettings])
 
   useEffect(() => {
-    if (settings?.theme) {
-      setSelectedTheme(settings.theme)
-      originalTheme.current = settings.theme
-    }
+    if (!settings?.theme) return
+
+    const resolved = resolveThemeSetting(settings.theme)
+    setSelectedTheme(resolved)
+    originalTheme.current = resolved
   }, [settings])
 
-  // Apply theme immediately for preview - but only after initial load
+  // Apply both choices immediately for preview
   useEffect(() => {
-    if (selectedTheme) {
-      document.documentElement.setAttribute('data-theme', selectedTheme)
-    }
-  }, [selectedTheme])
+    if (selectedTheme === null) return
+
+    applyAppearance(resolveTheme(selectedTheme, systemPrefersDark), selectedAccent)
+  }, [selectedTheme, selectedAccent, systemPrefersDark])
 
   const handleSave = async (): Promise<void> => {
     if (!selectedTheme) return
-    
+
     setSaveStatus('saving')
     const success = await updateSettings({
       theme: selectedTheme
     })
-    
+
     if (success) {
-      setSaveStatus('saved')
+      storeAccent(selectedAccent)
       originalTheme.current = selectedTheme
+      originalAccent.current = selectedAccent
+      setSaveStatus('saved')
     } else {
       setSaveStatus('unsaved')
     }
   }
 
-  const handleThemeChange = (themeId: string) => {
-    setSelectedTheme(themeId)
-    // Apply immediately for preview
-    document.documentElement.setAttribute('data-theme', themeId)
-  }
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
+      <div className="workspace settings-loading">
+        <span className="spinner animate-spin" role="status" aria-label="Loading appearance settings" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Palette className="w-6 h-6 text-[var(--color-accent-primary)]" />
-          <h1 className="text-2xl font-bold">Appearance</h1>
+    <div className="workspace">
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Settings / appearance</p>
+          <h1>Appearance</h1>
+          <p className="page-subtitle">Theme and accent color for the interface.</p>
         </div>
-        <SaveStatusIndicator status={saveStatus} onSave={handleSave} />
-      </div>
+        <div className="page-actions">
+          <SaveStatusIndicator status={saveStatus} onSave={handleSave} />
+        </div>
+      </header>
 
-      <div className="space-y-6">
-        <section className="card p-4">
-          <h2 className="text-lg font-semibold mb-4">Theme</h2>
-          <div className="grid grid-cols-1 gap-3">
-            {themes.map((theme) => (
-              <label
-                key={theme.id}
-                className={`
-                  flex items-center gap-4 p-3 rounded-lg border cursor-pointer
-                  transition-all duration-150 ease-out
-                  ${selectedTheme === theme.id 
-                    ? 'border-[var(--color-accent)] bg-[var(--color-accent-muted)]' 
-                    : 'border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)]'
-                  }
-                `}
-              >
-                <input
-                  type="radio"
-                  name="theme"
-                  value={theme.id}
-                  checked={selectedTheme === theme.id}
-                  onChange={() => handleThemeChange(theme.id)}
-                  disabled={isSaving || selectedTheme === null}
-                  className="sr-only"
-                />
-                
-                {/* Color preview */}
-                <div 
-                  className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border border-white/10"
-                  style={{ backgroundColor: theme.colors.bg }}
-                >
-                  <div 
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: theme.colors.accent }}
+      <div className="settings-stack">
+        <section className="card settings-panel" aria-labelledby="theme-title">
+          <div className="settings-head">
+            <h2 id="theme-title">Theme</h2>
+          </div>
+          <div className="option-list">
+            {themeOptions.map((option) => {
+              const ThemeIcon = option.icon
+              const selected = selectedTheme === option.id
+              return (
+                <label key={option.id} className="option" data-selected={selected}>
+                  <input
+                    type="radio"
+                    name="theme"
+                    value={option.id}
+                    checked={selected}
+                    onChange={() => setSelectedTheme(option.id)}
+                    disabled={isSaving || selectedTheme === null}
+                    className="sr-only"
                   />
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--color-text-primary)]">{theme.name}</span>
-                    {selectedTheme === theme.id && (
-                      <svg className="w-4 h-4 text-[var(--color-accent)]" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5 truncate">{theme.description}</p>
-                </div>
-              </label>
-            ))}
+
+                  <span className="option-icon">
+                    <ThemeIcon size={18} strokeWidth={1.75} aria-hidden="true" />
+                  </span>
+
+                  <span className="option-body">
+                    <span className="option-title">
+                      {option.name}
+                      {selected && (
+                        <Check className="text-accent-text" size={14} aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="option-meta">{option.description}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="card settings-panel" aria-labelledby="accent-title">
+          <div className="settings-head">
+            <h2 id="accent-title">Accent</h2>
+          </div>
+          <div className="option-list">
+            {accentOptions.map((option) => {
+              const selected = selectedAccent === option.id
+              return (
+                <label key={option.id} className="option" data-selected={selected}>
+                  <input
+                    type="radio"
+                    name="accent"
+                    value={option.id}
+                    checked={selected}
+                    onChange={() => setSelectedAccent(option.id)}
+                    disabled={isSaving}
+                    className="sr-only"
+                  />
+
+                  <span
+                    className="option-swatch"
+                    style={{ backgroundColor: option.preview }}
+                    aria-hidden="true"
+                  />
+
+                  <span className="option-body">
+                    <span className="option-title">
+                      {option.name}
+                      {selected && (
+                        <Check className="text-accent-text" size={14} aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="option-meta">{option.description}</span>
+                  </span>
+                </label>
+              )
+            })}
           </div>
         </section>
       </div>

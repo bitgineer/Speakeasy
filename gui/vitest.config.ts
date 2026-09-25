@@ -23,11 +23,13 @@ export default defineConfig({
     },
     alias: {
       '@renderer': resolve(__dirname, './src/renderer/src'),
+      '@': resolve(__dirname, './src/renderer/src'),
     },
   },
   resolve: {
     alias: {
       '@renderer': resolve(__dirname, './src/renderer/src'),
+      '@': resolve(__dirname, './src/renderer/src'),
     },
   },
 })

@@ -12,10 +12,18 @@ import { configureBackendPort } from './api/backend-port'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSpinner from './components/LoadingSpinner'
 import Sidebar from './components/Sidebar'
+import { resolveRoute } from './utils/navigation'
 import { ToastProvider } from './context/ToastProvider'
 import { useHotkeyRegistration, useToast } from './hooks'
 import type { HotkeyBinding, HotkeyRegistrationResult, TranscriptionRecord } from './api/types'
 import type { MessageBoxOptions, MessageBoxReturnValue } from 'electron'
+import {
+  applyAppearance,
+  readStoredAccent,
+  resolveTheme,
+  resolveThemeSetting,
+  useSystemPrefersDark
+} from './utils/theme'
 
 // Lazy load components
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -54,21 +62,54 @@ function NavigationListener(): null {
   return null
 }
 
-// Theme initializer - loads theme on startup
+// Theme initializer - applies Light, Dark, or the resolved System setting
 function ThemeInitializer(): null {
   const { settings, fetchSettings } = useSettingsStore()
+  const systemPrefersDark = useSystemPrefersDark()
   
   useEffect(() => {
     fetchSettings()
   }, [fetchSettings])
   
   useEffect(() => {
-    if (settings?.theme) {
-      document.documentElement.setAttribute('data-theme', settings.theme)
-    }
-  }, [settings?.theme])
+    const theme = resolveTheme(resolveThemeSetting(settings?.theme), systemPrefersDark)
+    applyAppearance(theme, readStoredAccent())
+  }, [settings?.theme, systemPrefersDark])
   
   return null
+}
+
+// Topbar shown above every main-window page: breadcrumb on the left, the live
+// recording and model status on the right.
+function Topbar(): JSX.Element {
+  const { pathname } = useLocation()
+  const { isRecording, modelLoaded, modelLoading, modelName } = useAppStore()
+  const { group, title } = resolveRoute(pathname)
+
+  const status = isRecording
+    ? { tone: 'danger', label: 'Recording' }
+    : modelLoading
+      ? { tone: 'warning', label: 'Loading model...' }
+      : modelLoaded
+        ? { tone: 'success', label: 'Ready' }
+        : { tone: 'warning', label: 'No model loaded' }
+
+  return (
+    <div className="topbar">
+      <span className="breadcrumb">
+        {group} / <strong>{title}</strong>
+      </span>
+      <span className="topbar-status">
+        <span className="status-dot" data-tone={status.tone} aria-hidden="true" />
+        {status.label}
+        {modelLoaded && modelName && (
+          <span className="model-name" title={modelName}>
+            {modelName}
+          </span>
+        )}
+      </span>
+    </div>
+  )
 }
 
 // Main app layout for regular windows
@@ -96,7 +137,7 @@ function MainLayout(): JSX.Element {
   useHotkeyRegistration(settings?.hotkeys, (failed) => {
     const accelerators = failed.map((failure) => failure.accelerator).join(', ')
     toast.error(
-      `Could not register hotkey${failed.length === 1 ? '' : 's'}: ${accelerators}`
+      `Could not register hotkey${failed.length === 1 ? '' : 's'}: ${accelerators}. Choose a different combination in Hotkey settings.`
     )
   })
    
@@ -132,7 +173,7 @@ function MainLayout(): JSX.Element {
       }
       if (response?.processing_error) {
         toast.warning(
-          `AI processing failed (${response.processing_error}). The fallback text was inserted.`
+          `AI processing failed (${response.processing_error}). The original transcription was used instead.`
         )
       }
     })
@@ -150,32 +191,43 @@ function MainLayout(): JSX.Element {
   }, [startRecording, setAppState, upsertItem])
   
   return (
-    <div className="h-screen flex bg-[var(--color-bg-primary)]">
-      {/* Sidebar Navigation */}
-      <Sidebar />
-      
-      {/* Main content */}
-      <main className="flex-1 min-h-0 overflow-auto">
-        <Suspense fallback={<LoadingSpinner />}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/batch" element={<BatchTranscription />} />
-            <Route path="/stats" element={<Stats />} />
-            
-            {/* Settings routes - redirect /settings to /settings/model */}
-            <Route path="/settings" element={<Navigate to="/settings/model" replace />} />
-            <Route path="/settings/model" element={<ModelSettings />} />
-            <Route path="/settings/audio" element={<AudioSettings />} />
-            <Route path="/settings/hotkey" element={<HotkeySettings />} />
-            <Route path="/settings/processing" element={<ProcessingSettings />} />
-            <Route path="/settings/behavior" element={<BehaviorSettings />} />
-            <Route path="/settings/appearance" element={<AppearanceSettings />} />
-            <Route path="/settings/data" element={<DataSettings />} />
-            <Route path="/settings/about" element={<AboutSettings />} />
-          </Routes>
-        </Suspense>
-      </main>
-    </div>
+    <>
+      <a
+        className="skip-link"
+        href="#content"
+        onClick={(event) => {
+          event.preventDefault()
+          document.getElementById('content')?.focus()
+        }}
+      >
+        Skip to content
+      </a>
+      <div className="shell">
+        <Sidebar />
+
+        <main className="main" id="content" tabIndex={-1}>
+          <Topbar />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/batch" element={<BatchTranscription />} />
+              <Route path="/stats" element={<Stats />} />
+              
+              {/* Settings routes - redirect /settings to /settings/model */}
+              <Route path="/settings" element={<Navigate to="/settings/model" replace />} />
+              <Route path="/settings/model" element={<ModelSettings />} />
+              <Route path="/settings/audio" element={<AudioSettings />} />
+              <Route path="/settings/hotkey" element={<HotkeySettings />} />
+              <Route path="/settings/processing" element={<ProcessingSettings />} />
+              <Route path="/settings/behavior" element={<BehaviorSettings />} />
+              <Route path="/settings/appearance" element={<AppearanceSettings />} />
+              <Route path="/settings/data" element={<DataSettings />} />
+              <Route path="/settings/about" element={<AboutSettings />} />
+            </Routes>
+          </Suspense>
+        </main>
+      </div>
+    </>
   )
 }
 

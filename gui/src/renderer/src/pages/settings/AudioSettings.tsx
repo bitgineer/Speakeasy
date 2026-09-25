@@ -5,8 +5,16 @@
  */
 
 import { useEffect } from 'react'
+import { Check, X } from 'lucide-react'
 import { useSettingsStore } from '../../store'
 import DeviceSelector from '../../components/DeviceSelector'
+
+const AUDIO_TIPS = [
+  'Use a dedicated microphone for best audio quality',
+  'Keep the microphone close to reduce background noise',
+  'Speak clearly and at a moderate pace',
+  'Minimize background noise when recording'
+]
 
 export default function AudioSettings(): JSX.Element {
   const {
@@ -32,76 +40,64 @@ export default function AudioSettings(): JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
+      <div className="workspace settings-loading">
+        <span className="spinner animate-spin" role="status" aria-label="Loading audio settings" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Audio Settings</h1>
-        <p className="text-sm text-[var(--color-text-muted)] mt-1">Configure audio input device</p>
-      </div>
+    <div className="workspace">
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Settings / audio</p>
+          <h1>Audio settings</h1>
+          <p className="page-subtitle">Configure the audio input device.</p>
+        </div>
+      </header>
 
-      {/* Error message */}
       {error && (
-        <div className="mb-6 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-error)] text-sm">{error}</span>
-          <button onClick={clearError} className="text-[var(--color-error)] hover:opacity-80">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <div className="error-banner" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={clearError}
+            title="Dismiss error"
+            aria-label="Dismiss error"
+          >
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}
 
-      <div className="space-y-6">
-        {/* Audio Device Selection */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Input Device</h2>
+      <div className="settings-stack">
+        <section className="card settings-panel" aria-labelledby="input-device-title">
+          <div className="settings-head">
+            <h2 id="input-device-title">Input device</h2>
+          </div>
           <DeviceSelector
             devices={availableDevices}
             selectedDevice={settings?.device_name || null}
             onChange={handleDeviceChange}
             disabled={isSaving}
           />
-          <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-            Select the microphone or audio input device to use for transcription.
-            Changes take effect immediately.
+          <p className="settings-note">
+            Select the microphone or audio input device to use for transcription. Changes take
+            effect immediately.
           </p>
         </section>
 
-        {/* Audio Tips */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Tips for Best Results</h2>
-          <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-[var(--color-success)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Use a dedicated microphone for best audio quality</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-[var(--color-success)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Keep the microphone close to reduce background noise</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-[var(--color-success)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Speak clearly and at a moderate pace</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-[var(--color-success)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Minimize background noise when recording</span>
-            </li>
+        <section className="card settings-panel" aria-labelledby="audio-tips-title">
+          <div className="settings-head">
+            <h2 id="audio-tips-title">Tips for best results</h2>
+          </div>
+          <ul className="check-list">
+            {AUDIO_TIPS.map((tip) => (
+              <li key={tip}>
+                <Check size={15} strokeWidth={2.25} aria-hidden="true" />
+                <span>{tip}</span>
+              </li>
+            ))}
           </ul>
         </section>
       </div>

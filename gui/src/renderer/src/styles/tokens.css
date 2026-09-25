@@ -1,109 +1,96 @@
 /**
- * Design Tokens - CSS Custom Properties
+ * Design tokens.
  *
- * Single source of truth for all visual values.
- * Enables theming support and consistent styling across the application.
- *
- * Theme colors are defined in themes.css and applied via data-theme attribute.
- * This file contains non-themeable tokens (spacing, typography, etc.)
+ * Semantic non-color tokens live here. Color tokens live in themes.css, which
+ * this file imports. Components use the semantic names in both files and never
+ * a primitive.
  */
 
 @import './themes.css';
 
 /* ===========================================
-   SPACING TOKENS
+   TYPE
    =========================================== */
 
 :root {
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 64px;
+  --font-ui: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Code', ui-monospace, Consolas, monospace;
+
+  --text-page: 21px;
+  --text-heading: 15px;
+  --text-body: 14px;
+  --text-ui: 13px;
+  --text-small: 12px;
+  --text-caption: 11px;
+  --text-label: 11px;
+
+  --leading-tight: 1.22;
+  --leading-ui: 1.45;
+  --leading-body: 1.6;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --tracking-tight: -0.02em;
+  --tracking-label: 0.09em;
 }
 
 /* ===========================================
-   TYPOGRAPHY TOKENS
-   =========================================== */
-
- :root {
-   /* Font Family - System UI Stack */
-   --font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-   --font-family-geist: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-   --font-family-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-
-   /* Font Weights */
-   --font-weight-regular: 400;
-   --font-weight-medium: 500;
-   --font-weight-semibold: 600;
-
-  /* Font Sizes */
-  --font-size-xs: 12px;
-  --font-size-sm: 14px;
-  --font-size-base: 16px;
-  --font-size-lg: 18px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 24px;
-  --font-size-3xl: 30px;
-  --font-size-4xl: 36px;
-  --font-size-5xl: 48px;
-
-  /* Line Heights */
-  --line-height-tight: 1.2;
-  --line-height-normal: 1.6;
-  --line-height-label: 1.4;
-}
-
-/* ===========================================
-   SHADOW TOKENS
-   =========================================== */
-
- :root {
-   /* Shadow tokens - layered elevation */
-   /* Ambient: soft, diffused light from environment */
-   /* Direct: directional light creating sharper edges */
-   /* White-based for dark backgrounds */
-
-   --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
-
-   --shadow-md:
-     0 4px 6px -1px rgba(255, 255, 255, 0.1),  /* ambient */
-     0 2px 4px -1px rgba(255, 255, 255, 0.06);  /* direct */
-
-   --shadow-lg:
-     0 10px 15px -3px rgba(255, 255, 255, 0.1),  /* ambient */
-     0 4px 6px -2px rgba(255, 255, 255, 0.05);  /* direct */
-
-   /* Inner shadow for subtle borders */
-   --shadow-inner: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-
-   /* Focus ring for keyboard navigation */
-   --shadow-focus: 0 0 0 2px rgba(99, 102, 241, 0.5);
- }
-
-/* ===========================================
-   BORDER RADIUS TOKENS
+   SPACE
    =========================================== */
 
 :root {
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
 }
 
 /* ===========================================
-   TRANSITION TOKENS
+   RADIUS AND ELEVATION
    =========================================== */
 
 :root {
-  /* Transition Durations */
-  --transition-duration-fast: 150ms;
-  --transition-duration-default: 200ms;
-  --transition-duration-slow: 300ms;
+  --radius-xs: 4px;
+  --radius-control: 6px;
+  --radius-panel: 9px;
+  --radius-pill: 999px;
 
-  /* Transition Easing - Spring Physics */
-  --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-panel: 0 10px 32px rgb(0 0 0 / 0.18);
+}
+
+/* ===========================================
+   FOCUS AND CONTROL CALIBRATION
+   =========================================== */
+
+:root {
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --control-height: 34px;
+  --control-height-sm: 30px;
+  --control-height-lg: 40px;
+}
+
+/* ===========================================
+   MOTION
+   =========================================== */
+
+:root {
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+  }
 }

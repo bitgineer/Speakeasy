@@ -6,12 +6,14 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { RefreshCw, Trash2, X } from 'lucide-react'
 import { useSettingsStore, useAppStore } from '../../store'
 import useDownloadStore from '../../store/download-store'
 import ModelSelector from '../../components/ModelSelector'
 import ModelDownloadDialog from '../../components/ModelDownloadDialog'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import { Button } from '../../components/ui/button'
 
 type ModelDraft = {
   model_type: string
@@ -147,69 +149,69 @@ export default function ModelSettings(): JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
+      <div className="workspace settings-loading">
+        <span className="spinner animate-spin" role="status" aria-label="Loading model settings" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="workspace">
+      <header className="page-head">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Model Settings</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">Configure transcription model and performance</p>
+          <p className="eyebrow">Settings / model</p>
+          <h1>Model settings</h1>
+          <p className="page-subtitle">Configure the transcription model and performance.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="page-actions">
           <SaveStatusIndicator status={saveStatus} />
-          <button
+          <Button
             onClick={handleSave}
             disabled={isSaving || saveStatus === 'idle' || saveStatus === 'saved'}
-            className="btn-primary"
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+            {isSaving ? 'Saving...' : 'Save changes'}
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Error message */}
       {error && (
-        <div className="mb-6 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-error)] text-sm">{error}</span>
-          <button onClick={clearError} className="text-[var(--color-error)] hover:opacity-80">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Model reload warning */}
-      {needsModelReload && (
-        <div className="mb-6 p-3 bg-[var(--color-warning-muted)] border border-[var(--color-warning)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-warning)] text-sm">
-            Model settings changed. Click &quot;Load Model&quot; to apply.
-          </span>
+        <div className="error-banner" role="alert">
+          <span>{error}</span>
           <button
-            onClick={handleLoadModel}
-            disabled={isSaving || isDownloading}
-            className="btn-sm bg-[var(--color-warning)] text-[var(--color-bg-primary)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={clearError}
+            title="Dismiss error"
+            aria-label="Dismiss error"
           >
-            {isDownloading ? 'Downloading...' : 'Load Model'}
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}
 
-      <div className="space-y-6">
+      {needsModelReload && (
+        <div className="warning-banner" role="status">
+          <span>Model settings changed. Select &quot;Load model&quot; to apply.</span>
+          <Button size="sm" onClick={handleLoadModel} disabled={isSaving || isDownloading}>
+            {isDownloading ? 'Downloading...' : 'Load model'}
+          </Button>
+        </div>
+      )}
+
+      <div className="settings-stack">
         {/* Model Selection */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Model Selection</h2>
+        <section className="card settings-panel" aria-labelledby="model-selection-title">
+          <div className="settings-head">
+            <h2 id="model-selection-title">Model selection</h2>
+          </div>
           
           {Object.keys(availableModels).length === 0 ? (
-            <div className="text-center py-8 text-[var(--color-text-muted)]">
-              <div className="w-6 h-6 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-sm">Loading available models...</p>
+            <div className="settings-loading">
+              <span
+                className="spinner animate-spin"
+                role="status"
+                aria-label="Loading available models"
+              />
+              <p className="panel-subtitle">Loading available models...</p>
             </div>
           ) : (
             <ModelSelector
@@ -224,160 +226,168 @@ export default function ModelSettings(): JSX.Element {
         </section>
 
         {/* Compute Settings */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Compute Settings</h2>
+        <section className="card settings-panel" aria-labelledby="compute-settings-title">
+          <div className="settings-head">
+            <h2 id="compute-settings-title">Compute settings</h2>
+          </div>
           
-          {/* Device selection */}
-          <div className="mb-4">
-            <label className="label">Compute Device</label>
-            <select
-              value={localSettings.device}
-              onChange={(e) => setLocalSettings(prev => ({ ...prev, device: e.target.value as 'cuda' | 'cpu' }))}
-              disabled={isSaving}
-              className="select"
-            >
-              <option value="cpu">CPU</option>
-              <option value="cuda" disabled={!gpuAvailable}>
-                GPU (CUDA){gpuAvailable ? ` - ${gpuName}` : ' - Not available'}
-              </option>
-            </select>
-            {gpuAvailable && gpuVramGb && (
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                GPU has {gpuVramGb.toFixed(1)}GB VRAM available
-              </p>
-            )}
-          </div>
+          <div className="field-grid">
+            <div className="field field-wide">
+              <label className="label" htmlFor="compute-device">
+                Compute device
+              </label>
+              <select
+                id="compute-device"
+                value={localSettings.device}
+                onChange={(e) =>
+                  setLocalSettings(prev => ({ ...prev, device: e.target.value as 'cuda' | 'cpu' }))
+                }
+                disabled={isSaving}
+                className="select"
+              >
+                <option value="cpu">CPU</option>
+                <option value="cuda" disabled={!gpuAvailable}>
+                  GPU (CUDA){gpuAvailable ? ` - ${gpuName}` : ' - Not available'}
+                </option>
+              </select>
+              {gpuAvailable && gpuVramGb && (
+                <p className="field-hint">GPU has {gpuVramGb.toFixed(1)}GB VRAM available</p>
+              )}
+            </div>
 
-          {/* Compute type */}
-          <div className="mb-4">
-            <label className="label">Compute Precision</label>
-            <select
-              value={localSettings.compute_type}
-              onChange={(e) => setLocalSettings(prev => ({ ...prev, compute_type: e.target.value }))}
-              disabled={isSaving}
-              className="select"
-            >
-              <option value="float32">Float32 (Most accurate, slowest)</option>
-              <option value="float16">Float16 (Balanced)</option>
-              <option value="int8">Int8 (Fastest, less accurate)</option>
-            </select>
-          </div>
+            <div className="field">
+              <label className="label" htmlFor="compute-precision">
+                Compute precision
+              </label>
+              <select
+                id="compute-precision"
+                value={localSettings.compute_type}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, compute_type: e.target.value }))}
+                disabled={isSaving}
+                className="select"
+              >
+                <option value="float32">Float32 (Most accurate, slowest)</option>
+                <option value="float16">Float16 (Balanced)</option>
+                <option value="int8">Int8 (Fastest, less accurate)</option>
+              </select>
+            </div>
 
-          {/* Language */}
-          <div>
-            <label className="label">Language</label>
-            <select
-              value={localSettings.language}
-              onChange={(e) => setLocalSettings(prev => ({ ...prev, language: e.target.value }))}
-              disabled={isSaving}
-              className="select"
-            >
-              <option value="auto">Auto-detect</option>
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="it">Italian</option>
-              <option value="pt">Portuguese</option>
-              <option value="nl">Dutch</option>
-              <option value="ja">Japanese</option>
-              <option value="ko">Korean</option>
-              <option value="zh">Chinese</option>
-              <option value="ru">Russian</option>
-              <option value="ar">Arabic</option>
-              <option value="hi">Hindi</option>
-            </select>
+            <div className="field">
+              <label className="label" htmlFor="compute-language">
+                Language
+              </label>
+              <select
+                id="compute-language"
+                value={localSettings.language}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, language: e.target.value }))}
+                disabled={isSaving}
+                className="select"
+              >
+                <option value="auto">Auto-detect</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
+                <option value="nl">Dutch</option>
+                <option value="ja">Japanese</option>
+                <option value="ko">Korean</option>
+                <option value="zh">Chinese</option>
+                <option value="ru">Russian</option>
+                <option value="ar">Arabic</option>
+                <option value="hi">Hindi</option>
+              </select>
+            </div>
           </div>
         </section>
 
         {/* Downloaded Models */}
-        <section className="card p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-medium text-[var(--color-text-primary)]">Downloaded Models</h2>
-            <div className="flex items-center gap-3">
+        <section className="card settings-panel" aria-labelledby="downloaded-models-title">
+          <div className="settings-head">
+            <h2 id="downloaded-models-title">Downloaded models</h2>
+            <div className="input-row">
               {lastSyncTime && (
-                <span className="text-xs text-[var(--color-text-muted)]">
+                <span className="muted text-caption">
                   Last synced: {lastSyncTime.toLocaleTimeString()}
                 </span>
               )}
-              <button
-                onClick={handleSyncModels}
-                disabled={isSyncing}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors border border-[var(--color-border)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg 
-                  className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+              <Button variant="secondary" size="sm" onClick={handleSyncModels} disabled={isSyncing}>
+                <RefreshCw
+                  size={14}
+                  className={isSyncing ? 'animate-spin' : undefined}
+                  aria-hidden="true"
+                />
                 {isSyncing ? 'Syncing...' : 'Refresh'}
-              </button>
+              </Button>
             </div>
           </div>
           
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] p-3 rounded-lg border border-[var(--color-border)]">
-              <div className="flex flex-col">
-                <span className="text-[var(--color-text-secondary)] font-medium">Local Cache Storage</span>
-                <span className="text-xs text-[var(--color-text-muted)] mt-1 font-mono break-all">{cacheDir || 'Loading...'}</span>
-              </div>
-              <div className="text-right">
-                <div className="text-lg font-semibold text-[var(--color-text-primary)]">{totalCacheSizeHuman || '0 B'}</div>
-                <div className="text-xs text-[var(--color-text-muted)]">Total Usage</div>
-              </div>
-            </div>
-
-            <div className="bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
-              {cachedModels.length === 0 ? (
-                <div className="p-4 text-center text-[var(--color-text-muted)] text-sm">
-                  No models downloaded yet.
+          <div className="settings-rows">
+            <div className="subpanel">
+              <div className="cache-meta">
+                <div>
+                  <span className="switch-label">Local cache storage</span>
+                  <div className="cache-path">{cacheDir || 'Loading...'}</div>
                 </div>
-              ) : (
-                <ul className="divide-y divide-[var(--color-border)]">
-                  {cachedModels.map((model) => (
-                    <li key={model.model_name} className="p-3 flex items-center justify-between hover:bg-[var(--color-bg-elevated)] transition-colors">
-                      <div>
-                        <div className="font-medium text-[var(--color-text-secondary)]">{model.model_name}</div>
-                        <div className="text-xs text-[var(--color-text-muted)]">{model.size_human} • {model.source}</div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete ${model.model_name}?`)) {
-                            clearCache(model.model_name)
-                          }
-                        }}
-                        disabled={isClearingCache}
-                        className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error-muted)] rounded-lg transition-colors"
-                        title="Delete model"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                <div>
+                  <div className="cache-size">{totalCacheSizeHuman || '0 B'}</div>
+                  <div className="cache-size-label">Total usage</div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-[var(--color-text-muted)]">
+            {cachedModels.length === 0 ? (
+              <p className="empty-panel">
+                No models downloaded yet. Models download when you load them.
+              </p>
+            ) : (
+              <ul className="file-list">
+                {cachedModels.map((model) => (
+                  <li key={model.model_name} className="file-row model-row">
+                    <span className="file-text">
+                      <span className="file-name">{model.model_name}</span>
+                      <span className="queue-size">
+                        {model.size_human} · {model.source}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Delete ${model.model_name}? This cannot be undone.`)) {
+                          clearCache(model.model_name)
+                        }
+                      }}
+                      disabled={isClearingCache}
+                      className="icon-button"
+                      data-tone="danger"
+                      title="Delete model"
+                      aria-label={`Delete ${model.model_name}`}
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="settings-foot">
+              <p className="panel-subtitle">
                 Models are cached locally to enable offline use and faster loading.
               </p>
               {cachedModels.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => {
-                    if (confirm('Are you sure you want to delete ALL downloaded models? This cannot be undone.')) {
+                    if (confirm('Delete all downloaded models? This cannot be undone.')) {
                       clearCache()
                     }
                   }}
                   disabled={isClearingCache}
-                  className="text-xs text-[var(--color-error)] hover:opacity-80 disabled:opacity-50"
+                  className="text-button"
+                  data-tone="danger"
                 >
-                  {isClearingCache ? 'Clearing...' : 'Clear All Cache'}
+                  {isClearingCache ? 'Clearing...' : 'Clear all cached models'}
                 </button>
               )}
             </div>

@@ -58,7 +58,7 @@ function buildContextMenu(): Menu {
     },
     { type: 'separator' },
     {
-      label: 'Open Dashboard',
+      label: 'Dashboard',
       click: () => showMainWindow()
     },
     {

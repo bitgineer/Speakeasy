@@ -5,6 +5,7 @@
  */
 
 import { useMemo, memo } from 'react'
+import { Check, Download, Loader2 } from 'lucide-react'
 import type { ModelInfo } from '../api/types'
 import useDownloadStore from '../store/download-store'
 
@@ -52,21 +53,24 @@ function ModelSelector({
   }, [currentModelInfo])
   
   const isComponentDisabled = disabled || isLoadingModels || isLoadingModel || isDownloading
+  const modelDetails = currentModelInfo?.models[selectedName]
 
   return (
-    <div className="space-y-4 relative">
+    <div className="model-selector">
       {isLoadingModels && (
-        <div className="absolute inset-0 z-10 bg-gray-900/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium text-white">Loading models...</span>
+        <div className="model-overlay">
+          <div className="model-overlay-body">
+            <span className="spinner animate-spin" role="status" aria-label="Loading models" />
+            <span className="muted text-small">Loading models...</span>
           </div>
         </div>
       )}
 
       {/* Model Type */}
-      <div className={isLoadingModels ? 'opacity-50 pointer-events-none' : ''}>
-        <label htmlFor="model-type-select" className="label">Model Type</label>
+      <div className="field">
+        <label htmlFor="model-type-select" className="label">
+          Model type
+        </label>
         <select
           id="model-type-select"
           value={selectedType}
@@ -82,7 +86,7 @@ function ModelSelector({
             }
           }}
           disabled={isComponentDisabled}
-          className={`select ${isComponentDisabled ? 'cursor-not-allowed opacity-70' : ''}`}
+          className="select"
         >
           {Object.entries(availableModels).map(([type, info]) => (
             <option key={type} value={type}>
@@ -91,7 +95,7 @@ function ModelSelector({
           ))}
         </select>
         {currentModelInfo && (
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="field-hint">
             Languages: {currentModelInfo.languages.slice(0, 5).join(', ')}
             {currentModelInfo.languages.length > 5 && ` +${currentModelInfo.languages.length - 5} more`}
           </p>
@@ -99,55 +103,55 @@ function ModelSelector({
       </div>
       
       {/* Model Variant */}
-      <div className={isLoadingModels ? 'opacity-50 pointer-events-none' : ''}>
-        <label htmlFor="model-variant-select" className="label">Model Variant</label>
+      <div className="field">
+        <label htmlFor="model-variant-select" className="label">
+          Model variant
+        </label>
         <select
           id="model-variant-select"
           value={selectedName}
           onChange={(e) => onNameChange(e.target.value)}
           disabled={isComponentDisabled || modelVariants.length === 0}
-          className={`select ${isComponentDisabled ? 'cursor-not-allowed opacity-70' : ''}`}
+          className="select"
         >
           {modelVariants.map((name) => {
-            const modelDetails = currentModelInfo?.models[name]
+            const details = currentModelInfo?.models[name]
             const isDownloaded = isModelDownloaded(name)
             return (
               <option key={name} value={name}>
                 {isDownloaded ? '✓ ' : '⬇ '}
                 {name}
-                {modelDetails && ` (${modelDetails.speed}, ${modelDetails.vram_gb}GB VRAM)`}
+                {details && ` (${details.speed}, ${details.vram_gb}GB VRAM)`}
               </option>
             )
           })}
         </select>
         
         {isLoadingModel && (
-          <div className="mt-2 flex items-center gap-2 text-blue-400 animate-pulse">
-            <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-medium">Loading model...</span>
-          </div>
+          <p className="field-status">
+            <Loader2 className="animate-spin" size={12} aria-hidden="true" />
+            Loading model...
+          </p>
         )}
 
-        {!isLoadingModel && currentModelInfo && selectedName && currentModelInfo.models[selectedName] && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+        {!isLoadingModel && modelDetails && (
+          <div className="model-pills">
             {isModelDownloaded(selectedName) ? (
-              <span className="badge-green flex items-center gap-1">
-                ✓ Downloaded
+              <span className="pill" data-tone="success">
+                <Check size={12} aria-hidden="true" />
+                Downloaded
                 {getModelSize(selectedName) && ` (${getModelSize(selectedName)})`}
               </span>
             ) : (
-              <span className="badge-gray flex items-center gap-1">
-                ⬇ Not downloaded - click to download
+              <span className="pill">
+                <Download size={12} aria-hidden="true" />
+                Not downloaded
               </span>
             )}
-            <span className="badge-blue">
-              Speed: {currentModelInfo.models[selectedName].speed}
-            </span>
-            <span className="badge-green">
-              Accuracy: {currentModelInfo.models[selectedName].accuracy}
-            </span>
-            <span className="badge-yellow">
-              VRAM: {currentModelInfo.models[selectedName].vram_gb}GB
+            <span className="pill">Speed: {modelDetails.speed}</span>
+            <span className="pill">Accuracy: {modelDetails.accuracy}</span>
+            <span className="pill" data-tone="warning">
+              VRAM: {modelDetails.vram_gb}GB
             </span>
           </div>
         )}

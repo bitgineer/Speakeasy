@@ -197,13 +197,13 @@ export default function RecordingIndicator(): JSX.Element | null {
   }
 
   return (
-    <div className="flex items-center justify-center w-full h-full overflow-hidden">
+    <div className="overlay-root">
       {/* Just the pill button - no background layers */}
       <OverlayContainer ref={contentRef} className="flex flex-col items-center justify-center w-max shrink-0">
         {status === 'loading' && (
-             <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-secondary)] rounded-full border border-[var(--color-border)] select-none animate-pulse">
-                <div className="w-3 h-3 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs font-medium text-[var(--color-text-primary)] whitespace-nowrap">
+             <div className="overlay-pill animate-pulse" role="status">
+                <span className="overlay-loading-spinner animate-spin" aria-hidden="true" />
+                <span className="overlay-pill-text">
                   Loading...
                 </span>
              </div>
@@ -225,10 +225,7 @@ export default function RecordingIndicator(): JSX.Element | null {
 
         {/* Live transcript text overlay */}
         {status === 'recording' && liveText && (
-          <div
-            ref={liveTextRef}
-            className="mt-2 max-w-md max-h-48 overflow-hidden px-3 py-2 bg-black/90 text-white rounded-xl border border-white/10 text-sm whitespace-pre-wrap shadow-2xl backdrop-blur-md"
-          >
+          <div ref={liveTextRef} className="overlay-caption">
             {liveText}
           </div>
         )}

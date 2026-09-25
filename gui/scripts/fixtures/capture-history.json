@@ -1,0 +1,33 @@
+{
+  "transcriptions": [
+    {
+      "id": "capture-history-0001",
+      "text": "hey team, the deploy broke from yesterday's config change. Fixed it now, but we should start reviewing configs before pushing to prod.",
+      "original_text": "hey team the deploy broke from yesterday's config change uh fixed it now but we should start reviewing configs before pushing to prod",
+      "duration_ms": 12400,
+      "model_used": "nvidia/parakeet-tdt-0.6b-v3",
+      "language": "en"
+    },
+    {
+      "id": "capture-history-0002",
+      "text": "so um I think we should move the standup to ten thirty, does that work for everyone",
+      "duration_ms": 7100,
+      "model_used": "nvidia/parakeet-tdt-0.6b-v3",
+      "language": "en"
+    },
+    {
+      "id": "capture-history-0003",
+      "text": "okay so the plan for the migration is, we freeze writes on Friday night, run the backfill over the weekend, and then on Monday morning we flip the read path over to the new tables. If anything in the backfill fails we can just drop the new tables and try again the following weekend, no user-visible impact. I'll post a runbook in the channel by Wednesday and we can walk through it together on Thursday's call.",
+      "duration_ms": 30100,
+      "model_used": "nvidia/parakeet-tdt-0.6b-v3",
+      "language": "en"
+    },
+    {
+      "id": "capture-history-0004",
+      "text": "reminder to review the pricing doc before Thursday, the finance team needs sign off",
+      "duration_ms": 9400,
+      "model_used": "nvidia/parakeet-tdt-0.6b-v3",
+      "language": "en"
+    }
+  ]
+}

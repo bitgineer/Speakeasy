@@ -6,10 +6,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Trash2, X } from 'lucide-react'
 import { useSettingsStore } from '../../store'
 import { apiClient } from '../../api/client'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import { Button } from '../../components/ui/button'
 import type {
   AppMatch,
   FocusedAppResponse,
@@ -253,8 +255,8 @@ export default function ProcessingSettings(): JSX.Element {
 
   if (isLoading || !draft) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
+      <div className="workspace settings-loading">
+        <span className="spinner animate-spin" role="status" aria-label="Loading processing settings" />
       </div>
     )
   }
@@ -262,236 +264,75 @@ export default function ProcessingSettings(): JSX.Element {
   const persistedIds = new Set((settings?.providers ?? []).map((provider) => provider.id))
 
   return (
-    <div className="p-6 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="workspace">
+      <header className="page-head">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Processing</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">
-            Providers, API keys, and the prompts behind Write and Command modes
+          <p className="eyebrow">Settings / processing</p>
+          <h1>Processing</h1>
+          <p className="page-subtitle">
+            Providers, API keys, and the prompts behind Write and Command modes.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="page-actions">
           <SaveStatusIndicator status={saveStatus} />
-          <button
+          <Button
             onClick={handleSave}
             disabled={isSaving || invalidToneName || saveStatus === 'idle' || saveStatus === 'saved'}
-            className="btn-primary"
             title={invalidToneName ? 'Tone names cannot be empty' : undefined}
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+            {isSaving ? 'Saving...' : 'Save changes'}
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Error message */}
       {error && (
-        <div className="mb-6 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-error)] text-sm">{error}</span>
-          <button onClick={clearError} className="text-[var(--color-error)] hover:opacity-80">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <div className="error-banner" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={clearError}
+            title="Dismiss error"
+            aria-label="Dismiss error"
+          >
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="settings-grid">
         {/* Providers */}
-        <section className="card p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-medium text-[var(--color-text-primary)]">Providers</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[var(--color-text-muted)]">Add:</span>
+        <section className="card settings-panel" aria-labelledby="providers-title">
+          <div className="settings-head">
+            <div>
+              <h2 id="providers-title">Providers</h2>
+              <p className="panel-subtitle">Add an endpoint, then choose the active provider.</p>
+            </div>
+            <div className="input-row">
+              <span className="muted text-caption">Add:</span>
               {PRESET_KINDS.map((kind) => (
-                <button
+                <Button
                   key={kind}
+                  variant="secondary"
+                  size="sm"
                   onClick={() => addProvider(kind)}
                   disabled={isSaving}
-                  className="px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] rounded-md border border-[var(--color-border)] transition-colors disabled:opacity-50"
                 >
                   {PRESETS[kind].label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
-          {draft.providers.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)] py-4 text-center">
-              No providers configured. Write and Command modes degrade to dictation until one is ready.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {draft.providers.map((provider) => {
-                const persisted = persistedIds.has(provider.id)
-                return (
-                  <div
-                    key={provider.id}
-                    className="p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {provider.label || provider.id}
-                        </span>
-                        <span className="text-xs font-mono text-[var(--color-text-muted)]">
-                          {provider.kind} · {provider.id}
-                        </span>
-                        {hasKeys[provider.id] && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--color-success-muted)] text-[var(--color-success)]">
-                            Key stored
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => removeProvider(provider.id)}
-                        disabled={isSaving}
-                        className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-error)] rounded transition-colors disabled:opacity-50"
-                        title="Remove provider"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="label">Label</label>
-                        <input
-                          type="text"
-                          value={provider.label}
-                          onChange={(e) => updateProvider(provider.id, { label: e.target.value })}
-                          disabled={isSaving}
-                          className="input w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">Model</label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            list={`provider-models-${provider.id}`}
-                            value={provider.model}
-                            onChange={(e) => updateProvider(provider.id, { model: e.target.value })}
-                            disabled={isSaving}
-                            placeholder={provider.kind === 'custom' ? 'model id' : undefined}
-                            className="input w-full"
-                          />
-                          <datalist id={`provider-models-${provider.id}`}>
-                            {(providerModels[provider.id] ?? []).map((model) => (
-                              <option key={model.id} value={model.id}>
-                                {model.name ?? undefined}
-                              </option>
-                            ))}
-                          </datalist>
-                          <button
-                            onClick={() => void loadModels(provider)}
-                            disabled={!persisted || loadingModelsId === provider.id || isSaving}
-                            className="px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] rounded-md border border-[var(--color-border)] transition-colors disabled:opacity-50 whitespace-nowrap"
-                            title={
-                              persisted ? 'Load models from the provider' : 'Save settings first'
-                            }
-                          >
-                            {loadingModelsId === provider.id ? 'Loading...' : 'Load models'}
-                          </button>
-                        </div>
-                        {providerModels[provider.id] && (
-                          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                            {providerModels[provider.id].length}{' '}
-                            {providerModels[provider.id].length === 1 ? 'model' : 'models'} available
-                          </p>
-                        )}
-                        {modelErrors[provider.id] && (
-                          <p className="text-xs text-[var(--color-error)] mt-1">
-                            {modelErrors[provider.id]}
-                          </p>
-                        )}
-                      </div>
-                      <div className="col-span-2">
-                        <label className="label">Base URL</label>
-                        <input
-                          type="text"
-                          value={provider.base_url}
-                          onChange={(e) => updateProvider(provider.id, { base_url: e.target.value })}
-                          disabled={isSaving}
-                          placeholder={provider.kind === 'custom' ? 'https://host/v1' : 'empty uses the kind default'}
-                          className="input w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">Timeout (s)</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={120}
-                          step={1}
-                          value={provider.timeout_seconds}
-                          onChange={(e) =>
-                            updateProvider(provider.id, {
-                              timeout_seconds: Number.isFinite(Number(e.target.value))
-                                ? Number(e.target.value)
-                                : 20
-                            })
-                          }
-                          disabled={isSaving}
-                          className="input w-full"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">API key</label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="password"
-                            value={keyDrafts[provider.id] ?? ''}
-                            onChange={(e) =>
-                              setKeyDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                            }
-                            disabled={!persisted || savingKeyId === provider.id || isSaving}
-                            placeholder={hasKeys[provider.id] ? 'stored - enter to replace' : 'not stored'}
-                            className="input w-full"
-                          />
-                          <button
-                            onClick={() => void handleSaveKey(provider.id, keyDrafts[provider.id] ?? '')}
-                            disabled={
-                              !persisted ||
-                              savingKeyId === provider.id ||
-                              isSaving ||
-                              !(keyDrafts[provider.id] ?? '').trim()
-                            }
-                            className="px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] rounded-md border border-[var(--color-border)] transition-colors disabled:opacity-50 whitespace-nowrap"
-                            title={persisted ? 'Store key' : 'Save settings first'}
-                          >
-                            {savingKeyId === provider.id ? 'Saving...' : 'Store key'}
-                          </button>
-                          {hasKeys[provider.id] && (
-                            <button
-                              onClick={() => void handleSaveKey(provider.id, '')}
-                              disabled={!persisted || savingKeyId === provider.id || isSaving}
-                              className="px-2.5 py-1.5 text-xs font-medium text-[var(--color-error)] hover:bg-[var(--color-error-muted)] rounded-md transition-colors disabled:opacity-50 whitespace-nowrap"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        {!persisted && (
-                          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                            Save settings before storing a key for this provider.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="mt-4">
-            <label className="label">Active provider</label>
+          <div className="active-row">
+            <label className="label" htmlFor="active-provider">
+              Active provider
+            </label>
             <select
+              id="active-provider"
               value={draft.active_provider_id}
-              onChange={(e) => updateDraft((current) => ({ ...current, active_provider_id: e.target.value }))}
+              onChange={(e) =>
+                updateDraft((current) => ({ ...current, active_provider_id: e.target.value }))
+              }
               disabled={isSaving}
               className="select"
             >
@@ -508,216 +349,437 @@ export default function ProcessingSettings(): JSX.Element {
               )}
             </select>
           </div>
-        </section>
 
-        {/* Tone profiles */}
-        <section className="card p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-base font-medium text-[var(--color-text-primary)]">Tone Profiles</h2>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                Write mode appends the first profile whose match fires, else the default tone.
-              </p>
-            </div>
-            <button
-              onClick={() =>
-                updateDraft((current) => ({
-                  ...current,
-                  tone_profiles: [
-                    ...current.tone_profiles,
-                    { name: 'New tone', prompt: '', matches: [{ field: 'app', pattern: '' }] }
-                  ]
-                }))
-              }
-              disabled={isSaving}
-              className="px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] rounded-lg border border-[var(--color-border)] transition-colors disabled:opacity-50"
-            >
-              Add profile
-            </button>
-          </div>
-
-          <div className="mb-4 p-2.5 rounded-lg bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] flex items-center justify-between">
-            <div className="text-xs text-[var(--color-text-muted)]">
-              {focusedAppLoaded ? (
-                focusedApp ? (
-                  <>
-                    Focused app: <span className="font-mono text-[var(--color-text-secondary)]">{focusedApp.key}</span>
-                    {focusedApp.title && <span className="ml-2">· {focusedApp.title}</span>}
-                  </>
-                ) : (
-                  'Focused app: not detected'
-                )
-              ) : (
-                'Detecting the focused app...'
-              )}
-            </div>
-            <button
-              onClick={refreshFocusedApp}
-              className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
-
-          {draft.tone_profiles.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)] py-4 text-center">
-              No tone profiles. Write mode uses the default tone below.
+          {draft.providers.length === 0 ? (
+            <p className="empty-panel">
+              No providers configured. Write and Command modes fall back to dictation until one is
+              ready.
             </p>
           ) : (
-            <div className="space-y-4">
-              {draft.tone_profiles.map((profile, index) => (
-                <div
-                  key={index}
-                  className="p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] space-y-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={profile.name}
-                      onChange={(e) => updateTone(index, { name: e.target.value })}
-                      disabled={isSaving}
-                      placeholder="Profile name"
-                      className="input flex-1"
-                    />
-                    <button
-                      onClick={() =>
-                        updateDraft((current) => ({
-                          ...current,
-                          tone_profiles: current.tone_profiles.filter((_, i) => i !== index)
-                        }))
-                      }
-                      disabled={isSaving}
-                      className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)] rounded transition-colors disabled:opacity-50"
-                      title="Remove profile"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <textarea
-                    value={profile.prompt}
-                    onChange={(e) => updateTone(index, { prompt: e.target.value })}
-                    disabled={isSaving}
-                    placeholder="Tone instructions appended to the rewrite prompt"
-                    rows={2}
-                    className="input w-full resize-y"
-                  />
-                  <div className="space-y-2">
-                    {profile.matches.map((match, matchIndex) => (
-                      <div key={matchIndex} className="flex items-center gap-2">
-                        <select
-                          value={match.field}
-                          onChange={(e) => {
-                            const field = e.target.value as 'app' | 'title'
-                            updateTone(index, {
-                              matches: profile.matches.map((entry, i) =>
-                                i === matchIndex ? { ...entry, field } : entry
-                              )
-                            })
-                          }}
-                          disabled={isSaving}
-                          className="select w-28"
-                        >
-                          <option value="app">App</option>
-                          <option value="title">Title</option>
-                        </select>
-                        <input
-                          type="text"
-                          value={match.pattern}
-                          onChange={(e) =>
-                            updateTone(index, {
-                              matches: profile.matches.map((entry, i) =>
-                                i === matchIndex ? { ...entry, pattern: e.target.value } : entry
-                              )
-                            })
-                          }
-                          disabled={isSaving}
-                          placeholder="match pattern (case-insensitive substring)"
-                          className="input flex-1"
-                        />
-                        <button
-                          onClick={() =>
-                            updateTone(index, {
-                              matches: profile.matches.filter((_, i) => i !== matchIndex)
-                            })
-                          }
-                          disabled={isSaving}
-                          className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-error)] rounded transition-colors disabled:opacity-50"
-                          title="Remove match"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+            <div>
+              {draft.providers.map((provider) => {
+                const persisted = persistedIds.has(provider.id)
+                return (
+                  <div key={provider.id} className="subpanel">
+                    <div className="subpanel-head">
+                      <div className="subpanel-title">
+                        <h3>{provider.label || provider.id}</h3>
+                        <span className="provider-id">
+                          {provider.kind} · {provider.id}
+                        </span>
+                        {hasKeys[provider.id] && (
+                          <span className="pill" data-tone="success">
+                            <span className="save-dot" aria-hidden="true" />
+                            Key stored
+                          </span>
+                        )}
                       </div>
-                    ))}
-                    <button
-                      onClick={() =>
-                        updateTone(index, {
-                          matches: [...profile.matches, { field: 'app', pattern: '' }]
-                        })
-                      }
-                      disabled={isSaving}
-                      className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                    >
-                      + Add match
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => removeProvider(provider.id)}
+                        disabled={isSaving}
+                        className="icon-button"
+                        data-tone="danger"
+                        title="Remove provider"
+                        aria-label="Remove provider"
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <div className="field-grid">
+                      <div className="field">
+                        <label className="label" htmlFor={`provider-label-${provider.id}`}>
+                          Label
+                        </label>
+                        <input
+                          id={`provider-label-${provider.id}`}
+                          type="text"
+                          value={provider.label}
+                          onChange={(e) => updateProvider(provider.id, { label: e.target.value })}
+                          disabled={isSaving}
+                          className="input"
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="label" htmlFor={`provider-model-${provider.id}`}>
+                          Model
+                        </label>
+                        <div className="input-row">
+                          <input
+                            id={`provider-model-${provider.id}`}
+                            type="text"
+                            list={`provider-models-${provider.id}`}
+                            value={provider.model}
+                            onChange={(e) => updateProvider(provider.id, { model: e.target.value })}
+                            disabled={isSaving}
+                            placeholder={provider.kind === 'custom' ? 'model id' : undefined}
+                            className="input"
+                          />
+                          <datalist id={`provider-models-${provider.id}`}>
+                            {(providerModels[provider.id] ?? []).map((model) => (
+                              <option key={model.id} value={model.id}>
+                                {model.name ?? undefined}
+                              </option>
+                            ))}
+                          </datalist>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => void loadModels(provider)}
+                            disabled={!persisted || loadingModelsId === provider.id || isSaving}
+                            title={
+                              persisted ? 'Load models from the provider' : 'Save settings first'
+                            }
+                          >
+                            {loadingModelsId === provider.id ? 'Loading...' : 'Load models'}
+                          </Button>
+                        </div>
+                        {providerModels[provider.id] && (
+                          <p className="field-hint">
+                            {providerModels[provider.id].length}{' '}
+                            {providerModels[provider.id].length === 1 ? 'model' : 'models'} available
+                          </p>
+                        )}
+                        {modelErrors[provider.id] && (
+                          <p className="field-error">{modelErrors[provider.id]}</p>
+                        )}
+                      </div>
+                      <div className="field field-wide">
+                        <label className="label" htmlFor={`provider-url-${provider.id}`}>
+                          Base URL
+                        </label>
+                        <input
+                          id={`provider-url-${provider.id}`}
+                          type="text"
+                          value={provider.base_url}
+                          onChange={(e) => updateProvider(provider.id, { base_url: e.target.value })}
+                          disabled={isSaving}
+                          placeholder={
+                            provider.kind === 'custom' ? 'https://host/v1' : 'Leave empty to use the default URL'
+                          }
+                          className="input"
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="label" htmlFor={`provider-timeout-${provider.id}`}>
+                          Timeout (s)
+                        </label>
+                        <input
+                          id={`provider-timeout-${provider.id}`}
+                          type="number"
+                          min={1}
+                          max={120}
+                          step={1}
+                          value={provider.timeout_seconds}
+                          onChange={(e) =>
+                            updateProvider(provider.id, {
+                              timeout_seconds: Number.isFinite(Number(e.target.value))
+                                ? Number(e.target.value)
+                                : 20
+                            })
+                          }
+                          disabled={isSaving}
+                          className="input"
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="label" htmlFor={`provider-key-${provider.id}`}>
+                          API key
+                        </label>
+                        <div className="input-row">
+                          <input
+                            id={`provider-key-${provider.id}`}
+                            type="password"
+                            value={keyDrafts[provider.id] ?? ''}
+                            onChange={(e) =>
+                              setKeyDrafts((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                            }
+                            disabled={!persisted || savingKeyId === provider.id || isSaving}
+                            placeholder={hasKeys[provider.id] ? 'stored - enter to replace' : 'not stored'}
+                            className="input"
+                          />
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                              void handleSaveKey(provider.id, keyDrafts[provider.id] ?? '')
+                            }
+                            disabled={
+                              !persisted ||
+                              savingKeyId === provider.id ||
+                              isSaving ||
+                              !(keyDrafts[provider.id] ?? '').trim()
+                            }
+                            title={persisted ? 'Store key' : 'Save settings first'}
+                          >
+                            {savingKeyId === provider.id ? 'Saving...' : 'Store key'}
+                          </Button>
+                          {hasKeys[provider.id] && (
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveKey(provider.id, '')}
+                              disabled={!persisted || savingKeyId === provider.id || isSaving}
+                              className="text-button"
+                              data-tone="danger"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        {!persisted && (
+                          <p className="field-hint">
+                            Save settings before storing a key for this provider.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>
 
-        {/* Default tone and command prompt */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Default Tone</h2>
-          <div className="space-y-3">
-            <div>
-              <label className="label">Name</label>
-              <input
-                type="text"
-                value={draft.default_tone.name}
-                onChange={(e) =>
+        <div className="settings-column">
+          {/* Tone profiles */}
+          <section className="card settings-panel" aria-labelledby="tones-title">
+            <div className="settings-head">
+              <div>
+                <h2 id="tones-title">Tone profiles</h2>
+                <p className="panel-subtitle">
+                  Write mode uses the first profile whose match applies, or the default tone.
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
                   updateDraft((current) => ({
                     ...current,
-                    default_tone: { ...current.default_tone, name: e.target.value }
+                    tone_profiles: [
+                      ...current.tone_profiles,
+                      { name: 'New tone', prompt: '', matches: [{ field: 'app', pattern: '' }] }
+                    ]
                   }))
                 }
                 disabled={isSaving}
-                className="input w-full"
-              />
+              >
+                Add profile
+              </Button>
             </div>
-            <div>
-              <label className="label">Prompt</label>
-              <textarea
-                value={draft.default_tone.prompt}
-                onChange={(e) =>
-                  updateDraft((current) => ({
-                    ...current,
-                    default_tone: { ...current.default_tone, prompt: e.target.value }
-                  }))
-                }
-                disabled={isSaving}
-                placeholder="Empty uses the built-in rewrite instruction"
-                rows={2}
-                className="input w-full resize-y"
-              />
-            </div>
-          </div>
-        </section>
 
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Command Prompt</h2>
-          <textarea
-            value={draft.command_prompt}
-            onChange={(e) => updateDraft((current) => ({ ...current, command_prompt: e.target.value }))}
-            disabled={isSaving}
-            rows={3}
-            className="input w-full resize-y"
-          />
-        </section>
+            <div className="focused-row">
+              <span>
+                {focusedAppLoaded ? (
+                  focusedApp ? (
+                    <>
+                      Focused app:{' '}
+                      <span className="focused-key">{focusedApp.key}</span>
+                      {focusedApp.title && <span className="muted"> · {focusedApp.title}</span>}
+                    </>
+                  ) : (
+                    'Focused app: not detected'
+                  )
+                ) : (
+                  'Detecting the focused app...'
+                )}
+              </span>
+              <button type="button" className="text-button" onClick={refreshFocusedApp}>
+                Refresh
+              </button>
+            </div>
+
+            {draft.tone_profiles.length === 0 ? (
+              <p className="empty-panel">No tone profiles. Write mode uses the default tone below.</p>
+            ) : (
+              <div>
+                {draft.tone_profiles.map((profile, index) => (
+                  <div key={index} className="subpanel">
+                    <div className="tone-head">
+                      <input
+                        type="text"
+                        value={profile.name}
+                        onChange={(e) => updateTone(index, { name: e.target.value })}
+                        disabled={isSaving}
+                        placeholder="Profile name"
+                        aria-label={`Tone profile ${index + 1} name`}
+                        className="input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateDraft((current) => ({
+                            ...current,
+                            tone_profiles: current.tone_profiles.filter((_, i) => i !== index)
+                          }))
+                        }
+                        disabled={isSaving}
+                        className="icon-button"
+                        data-tone="danger"
+                        title="Remove profile"
+                        aria-label={`Remove tone profile ${index + 1}`}
+                      >
+                        <X size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="tone-fields">
+                      <textarea
+                        value={profile.prompt}
+                        onChange={(e) => updateTone(index, { prompt: e.target.value })}
+                        disabled={isSaving}
+                        placeholder="Tone instructions appended to the rewrite prompt"
+                        aria-label={`Tone profile ${index + 1} prompt`}
+                        rows={2}
+                        className="textarea"
+                      />
+                      {profile.matches.map((match, matchIndex) => (
+                        <div key={matchIndex} className="tone-match">
+                          <select
+                            value={match.field}
+                            onChange={(e) => {
+                              const field = e.target.value as 'app' | 'title'
+                              updateTone(index, {
+                                matches: profile.matches.map((entry, i) =>
+                                  i === matchIndex ? { ...entry, field } : entry
+                                )
+                              })
+                            }}
+                            disabled={isSaving}
+                            aria-label={`Tone profile ${index + 1} match field ${matchIndex + 1}`}
+                            className="select"
+                          >
+                            <option value="app">App</option>
+                            <option value="title">Title</option>
+                          </select>
+                          <div className="input-row">
+                            <input
+                              type="text"
+                              value={match.pattern}
+                              onChange={(e) =>
+                                updateTone(index, {
+                                  matches: profile.matches.map((entry, i) =>
+                                    i === matchIndex ? { ...entry, pattern: e.target.value } : entry
+                                  )
+                                })
+                              }
+                              disabled={isSaving}
+                              placeholder="text to match (case-insensitive)"
+                              aria-label={`Tone profile ${index + 1} match pattern ${matchIndex + 1}`}
+                              className="input"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateTone(index, {
+                                  matches: profile.matches.filter((_, i) => i !== matchIndex)
+                                })
+                              }
+                              disabled={isSaving}
+                              className="icon-button"
+                              data-tone="danger"
+                              title="Remove match"
+                              aria-label={`Remove match ${matchIndex + 1}`}
+                            >
+                              <X size={15} aria-hidden="true" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateTone(index, {
+                            matches: [...profile.matches, { field: 'app', pattern: '' }]
+                          })
+                        }
+                        disabled={isSaving}
+                        className="text-button"
+                      >
+                        + Add match
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Default tone and command prompt */}
+          <div className="prompt-grid">
+            <section className="card settings-panel" aria-labelledby="default-tone-title">
+              <div className="settings-head">
+                <div>
+                  <h2 id="default-tone-title">Default tone</h2>
+                  <p className="panel-subtitle">Used when no profile matches.</p>
+                </div>
+              </div>
+              <div className="settings-rows">
+                <div className="field">
+                  <label className="label" htmlFor="default-tone-name">
+                    Name
+                  </label>
+                  <input
+                    id="default-tone-name"
+                    type="text"
+                    value={draft.default_tone.name}
+                    onChange={(e) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        default_tone: { ...current.default_tone, name: e.target.value }
+                      }))
+                    }
+                    disabled={isSaving}
+                    className="input"
+                  />
+                </div>
+                <div className="field">
+                  <label className="label" htmlFor="default-tone-prompt">
+                    Prompt
+                  </label>
+                  <textarea
+                    id="default-tone-prompt"
+                    value={draft.default_tone.prompt}
+                    onChange={(e) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        default_tone: { ...current.default_tone, prompt: e.target.value }
+                      }))
+                    }
+                    disabled={isSaving}
+                    placeholder="Empty uses the built-in rewrite instruction"
+                    rows={2}
+                    className="textarea"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="card settings-panel" aria-labelledby="command-prompt-title">
+              <div className="settings-head">
+                <div>
+                  <h2 id="command-prompt-title">Command prompt</h2>
+                  <p className="panel-subtitle">Turns speech into a direct instruction.</p>
+                </div>
+              </div>
+              <div className="field">
+                <label className="label" htmlFor="command-prompt">
+                  Prompt
+                </label>
+                <textarea
+                  id="command-prompt"
+                  value={draft.command_prompt}
+                  onChange={(e) =>
+                    updateDraft((current) => ({ ...current, command_prompt: e.target.value }))
+                  }
+                  disabled={isSaving}
+                  rows={3}
+                  className="textarea"
+                />
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </div>
   )

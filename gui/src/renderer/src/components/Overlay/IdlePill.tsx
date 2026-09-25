@@ -8,6 +8,7 @@ interface IdlePillProps {
 
 export function IdlePill({ onClick, mode }: IdlePillProps): JSX.Element {
   const modeLabel = mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : null
+  const label = modeLabel ? `${modeLabel} · Start recording` : 'Start recording'
 
   return (
     <motion.button
@@ -17,14 +18,13 @@ export function IdlePill({ onClick, mode }: IdlePillProps): JSX.Element {
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       title={modeLabel ? `Start recording in ${modeLabel} mode` : 'Start recording'}
-      className="group flex items-center gap-2 bg-black/80 text-white p-2.5 rounded-full backdrop-blur-md shadow-xl overflow-hidden hover:pr-5 transition-all duration-300 outline-none ring-0 border-0"
+      aria-label={label}
+      className="overlay-idle"
     >
-      <div className="p-1 bg-white/10 rounded-full group-hover:bg-red-500/20 transition-colors">
-        <Mic className="w-5 h-5 text-zinc-300 group-hover:text-red-500 transition-colors" />
-      </div>
-      <span className="max-w-0 opacity-0 group-hover:max-w-[200px] group-hover:opacity-100 whitespace-nowrap overflow-hidden transition-all duration-300 text-sm font-medium">
-        {modeLabel ? `${modeLabel} · Start Recording` : 'Start Recording'}
+      <span className="overlay-idle-glyph">
+        <Mic size={20} aria-hidden="true" />
       </span>
+      <span className="overlay-idle-label">{label}</span>
     </motion.button>
   )
 }

@@ -5,9 +5,43 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
+import { X } from 'lucide-react'
 import { useSettingsStore } from '../../store'
 import { SaveStatusIndicator } from '../../components/SaveStatusIndicator'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import { Button } from '../../components/ui/button'
+
+interface SwitchRowProps {
+  label: string
+  hint: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (checked: boolean) => void
+}
+
+function SwitchRow({
+  label,
+  hint,
+  checked,
+  disabled = false,
+  onChange
+}: SwitchRowProps): JSX.Element {
+  return (
+    <label className="switch-row">
+      <span className="switch-copy">
+        <span className="switch-label">{label}</span>
+        <span className="switch-hint">{hint}</span>
+      </span>
+      <input
+        type="checkbox"
+        className="switch"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
+  )
+}
 
 export default function BehaviorSettings(): JSX.Element {
   const {
@@ -103,150 +137,119 @@ export default function BehaviorSettings(): JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-[var(--color-border)] border-t-[var(--color-accent)] rounded-full animate-spin" />
+      <div className="workspace settings-loading">
+        <span className="spinner animate-spin" role="status" aria-label="Loading behavior settings" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="workspace">
+      <header className="page-head">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Behavior</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1">Configure app behavior and text processing</p>
+          <p className="eyebrow">Settings / behavior</p>
+          <h1>Behavior</h1>
+          <p className="page-subtitle">Configure app behavior and text processing.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="page-actions">
           <SaveStatusIndicator status={saveStatus} />
-          <button
+          <Button
             onClick={handleSave}
             disabled={isSaving || saveStatus === 'idle' || saveStatus === 'saved'}
-            className="btn-primary"
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+            {isSaving ? 'Saving...' : 'Save changes'}
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Error message */}
       {error && (
-        <div className="mb-6 p-3 bg-[var(--color-error-muted)] border border-[var(--color-error)] rounded-lg flex items-center justify-between">
-          <span className="text-[var(--color-error)] text-sm">{error}</span>
-          <button onClick={clearError} className="text-[var(--color-error)] hover:opacity-80">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <div className="error-banner" role="alert">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={clearError}
+            title="Dismiss error"
+            aria-label="Dismiss error"
+          >
+            <X size={14} aria-hidden="true" />
           </button>
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="settings-stack">
         {/* Recording Behavior */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Recording Behavior</h2>
+        <section className="card settings-panel" aria-labelledby="recording-behavior-title">
+          <div className="settings-head">
+            <h2 id="recording-behavior-title">Recording behavior</h2>
+          </div>
           
-          <div className="space-y-4">
-            {/* Auto-paste toggle */}
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <span className="text-[var(--color-text-primary)]">Auto-paste after transcription</span>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  Automatically paste transcribed text to the active window
-                </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={localSettings.auto_paste}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, auto_paste: e.target.checked }))}
-                  disabled={isSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
-              </div>
-            </label>
+          <div className="settings-rows">
+            <SwitchRow
+              label="Auto-paste after transcription"
+              hint="Automatically paste transcribed text to the active window"
+              checked={localSettings.auto_paste}
+              disabled={isSaving}
+              onChange={(checked) => setLocalSettings(prev => ({ ...prev, auto_paste: checked }))}
+            />
             
-            {/* Recording indicator toggle */}
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <span className="text-[var(--color-text-primary)]">Show recording indicator</span>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  Display a visual indicator in the center of the screen while recording
-                </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={localSettings.show_recording_indicator}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, show_recording_indicator: e.target.checked }))}
-                  disabled={isSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
-              </div>
-            </label>
+            <SwitchRow
+              label="Show recording indicator"
+              hint="Display a visual indicator in the center of the screen while recording"
+              checked={localSettings.show_recording_indicator}
+              disabled={isSaving}
+              onChange={(checked) =>
+                setLocalSettings(prev => ({ ...prev, show_recording_indicator: checked }))
+              }
+            />
 
-            {/* Always show indicator toggle */}
-            <div className={`transition-all duration-300 overflow-hidden ${localSettings.show_recording_indicator ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
-              <label className="flex items-center justify-between cursor-pointer ml-6 pl-4 border-l-2 border-[var(--color-border)] mt-4">
-                <div>
-                  <span className="text-[var(--color-text-primary)]">Always show &quot;Ready&quot; status</span>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                    Keep the indicator visible on screen when idle
-                  </p>
-                </div>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={localSettings.always_show_indicator}
-                    onChange={(e) => setLocalSettings(prev => ({ ...prev, always_show_indicator: e.target.checked }))}
-                    disabled={isSaving}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
-                </div>
-              </label>
-            </div>
+            {localSettings.show_recording_indicator && (
+              <div className="switch-nested">
+                <SwitchRow
+                  label={'Always show "Ready" status'}
+                  hint="Keep the indicator visible on screen when idle"
+                  checked={localSettings.always_show_indicator}
+                  disabled={isSaving}
+                  onChange={(checked) =>
+                    setLocalSettings(prev => ({ ...prev, always_show_indicator: checked }))
+                  }
+                />
+              </div>
+            )}
           </div>
         </section>
 
         {/* Text Cleanup */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Text Cleanup</h2>
+        <section className="card settings-panel" aria-labelledby="text-cleanup-title">
+          <div className="settings-head">
+            <h2 id="text-cleanup-title">Text cleanup</h2>
+          </div>
           
-          <div className="space-y-4">
-            {/* Text cleanup toggle */}
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <span className="text-[var(--color-text-primary)]">Remove filler words</span>
-                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                  Automatically remove common filler words like &quot;um&quot;, &quot;uh&quot;, &quot;like&quot;, etc.
-                </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={localSettings.enable_text_cleanup}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, enable_text_cleanup: e.target.checked }))}
-                  disabled={isSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
-              </div>
-            </label>
+          <div className="settings-rows">
+            <SwitchRow
+              label="Remove filler words"
+              hint='Automatically remove common filler words like "um", "uh", "like", etc.'
+              checked={localSettings.enable_text_cleanup}
+              disabled={isSaving}
+              onChange={(checked) =>
+                setLocalSettings(prev => ({ ...prev, enable_text_cleanup: checked }))
+              }
+            />
 
-            {/* Custom filler words input */}
             {localSettings.enable_text_cleanup && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                <label className="label">Additional filler words (comma-separated)</label>
+              <div className="field">
+                <label className="label" htmlFor="custom-filler-words">
+                  Additional filler words (comma-separated)
+                </label>
                 <input
+                  id="custom-filler-words"
                   type="text"
                   value={localSettings.custom_filler_words}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, custom_filler_words: e.target.value }))}
+                  onChange={(e) =>
+                    setLocalSettings(prev => ({ ...prev, custom_filler_words: e.target.value }))
+                  }
                   disabled={isSaving}
                   placeholder="e.g., basically, literally, actually"
-                  className="input w-full"
+                  className="input"
                 />
               </div>
             )}
@@ -254,95 +257,74 @@ export default function BehaviorSettings(): JSX.Element {
         </section>
 
         {/* Live Transcription */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Live Transcription</h2>
-          <div className="space-y-4">
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-[var(--color-text-primary)]">Enable Live Transcription</p>
-                <p className="text-xs text-[var(--color-text-secondary)] mt-1">
-                  Transcribe audio in real-time while recording (updates every few seconds)
-                </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={localSettings.live_transcription}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, live_transcription: e.target.checked }))}
-                  disabled={isSaving}
-                  className="sr-only peer"
-                />
-                <div className="w-10 h-6 rounded-full bg-[var(--color-border)] peer-checked:bg-[var(--color-accent)] transition-colors peer-disabled:opacity-50" />
-                <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transform transition-transform peer-checked:translate-x-4" />
-              </div>
-            </label>
+        <section className="card settings-panel" aria-labelledby="live-transcription-title">
+          <div className="settings-head">
+            <h2 id="live-transcription-title">Live transcription</h2>
+          </div>
+          <div className="settings-rows">
+            <SwitchRow
+              label="Show live text"
+              hint="Transcribe audio in real time while recording (updates every few seconds)"
+              checked={localSettings.live_transcription}
+              disabled={isSaving}
+              onChange={(checked) =>
+                setLocalSettings(prev => ({ ...prev, live_transcription: checked }))
+              }
+            />
             {localSettings.live_transcription && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-                    Update Interval: {localSettings.live_chunk_seconds}s
+              <div className="settings-rows">
+                <div className="field">
+                  <label className="label" htmlFor="live-chunk-seconds">
+                    Update interval: {localSettings.live_chunk_seconds}s
                   </label>
                   <input
+                    id="live-chunk-seconds"
                     type="range"
                     min="1"
                     max="10"
                     step="0.5"
                     value={localSettings.live_chunk_seconds}
-                    onChange={(e) => setLocalSettings(prev => ({ ...prev, live_chunk_seconds: parseFloat(e.target.value) }))}
+                    onChange={(e) =>
+                      setLocalSettings(prev => ({
+                        ...prev,
+                        live_chunk_seconds: parseFloat(e.target.value)
+                      }))
+                    }
                     disabled={isSaving}
-                    className="w-full"
+                    className="range"
                   />
-                  <div className="flex justify-between text-xs text-[var(--color-text-secondary)] mt-1">
+                  <div className="range-scale">
                     <span>1s (faster)</span>
                     <span>10s (slower)</span>
                   </div>
                 </div>
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--color-text-primary)]">Auto-paste Live Text</p>
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">
-                      Automatically paste live transcripts into the active window
-                    </p>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={localSettings.live_auto_paste}
-                      onChange={(e) => setLocalSettings(prev => ({ ...prev, live_auto_paste: e.target.checked }))}
-                      disabled={isSaving}
-                      className="sr-only peer"
-                    />
-                    <div className="w-10 h-6 rounded-full bg-[var(--color-border)] peer-checked:bg-[var(--color-accent)] transition-colors peer-disabled:opacity-50" />
-                    <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transform transition-transform peer-checked:translate-x-4" />
-                  </div>
-                </label>
+                <SwitchRow
+                  label="Auto-paste live text"
+                  hint="Automatically paste live transcripts into the active window"
+                  checked={localSettings.live_auto_paste}
+                  disabled={isSaving}
+                  onChange={(checked) =>
+                    setLocalSettings(prev => ({ ...prev, live_auto_paste: checked }))
+                  }
+                />
               </div>
             )}
           </div>
         </section>
 
         {/* Diagnostics */}
-        <section className="card p-4">
-          <h2 className="text-base font-medium mb-4 text-[var(--color-text-primary)]">Diagnostics</h2>
+        <section className="card settings-panel" aria-labelledby="diagnostics-title">
+          <div className="settings-head">
+            <h2 id="diagnostics-title">Diagnostics</h2>
+          </div>
 
-          <label className="flex items-center justify-between cursor-pointer">
-            <div>
-              <span className="text-[var(--color-text-primary)]">Verbose debug logging</span>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                Log each live transcription pass and paste action. Applies after an app restart.
-              </p>
-            </div>
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={localSettings.debug_logging}
-                onChange={(e) => setLocalSettings(prev => ({ ...prev, debug_logging: e.target.checked }))}
-                disabled={isSaving}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-[var(--color-bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-accent)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-accent)]" />
-            </div>
-          </label>
+          <SwitchRow
+            label="Verbose debug logging"
+            hint="Log every live transcription update and paste action. Applies after an app restart."
+            checked={localSettings.debug_logging}
+            disabled={isSaving}
+            onChange={(checked) => setLocalSettings(prev => ({ ...prev, debug_logging: checked }))}
+          />
         </section>
       </div>
     </div>
